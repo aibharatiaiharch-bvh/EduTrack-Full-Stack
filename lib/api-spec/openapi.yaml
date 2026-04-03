@@ -3,20 +3,36 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: EduTrack - Tutor & Coach Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: students
+    description: Student operations
+  - name: teachers
+    description: Teacher operations
+  - name: classes
+    description: Class operations
+  - name: checkins
+    description: Check-in / Check-out operations
+  - name: assessments
+    description: Assessment operations
+  - name: billing
+    description: Billing operations
+  - name: schedule
+    description: Schedule operations
+  - name: dashboard
+    description: Dashboard summary operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +40,625 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Dashboard ──
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary metrics
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/class-performance:
+    get:
+      operationId: getClassPerformance
+      tags: [dashboard]
+      summary: Get class average performance from recent assessments
+      responses:
+        "200":
+          description: Class performance list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassPerformance"
+
+  /dashboard/today-checkins:
+    get:
+      operationId: getTodayCheckins
+      tags: [dashboard]
+      summary: Get today's check-ins
+      responses:
+        "200":
+          description: Today's check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TodayCheckin"
+
+  # ── Students ──
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List all students
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Create a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudentBody"
+      responses:
+        "201":
+          description: Created student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{id}:
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get a student by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateStudent
+      tags: [students]
+      summary: Update a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStudentBody"
+      responses:
+        "200":
+          description: Updated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteStudent
+      tags: [students]
+      summary: Delete a student
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Teachers ──
+  /teachers:
+    get:
+      operationId: listTeachers
+      tags: [teachers]
+      summary: List all teachers
+      responses:
+        "200":
+          description: List of teachers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Teacher"
+    post:
+      operationId: createTeacher
+      tags: [teachers]
+      summary: Create a teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeacherBody"
+      responses:
+        "201":
+          description: Created teacher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Teacher"
+
+  /teachers/{id}:
+    get:
+      operationId: getTeacher
+      tags: [teachers]
+      summary: Get a teacher by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Teacher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Teacher"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateTeacher
+      tags: [teachers]
+      summary: Update a teacher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeacherBody"
+      responses:
+        "200":
+          description: Updated teacher
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Teacher"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteTeacher
+      tags: [teachers]
+      summary: Delete a teacher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Classes ──
+  /classes:
+    get:
+      operationId: listClasses
+      tags: [classes]
+      summary: List all classes
+      responses:
+        "200":
+          description: List of classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Class"
+    post:
+      operationId: createClass
+      tags: [classes]
+      summary: Create a class
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClassBody"
+      responses:
+        "201":
+          description: Created class
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Class"
+
+  /classes/{id}:
+    get:
+      operationId: getClass
+      tags: [classes]
+      summary: Get a class by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Class
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Class"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateClass
+      tags: [classes]
+      summary: Update a class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClassBody"
+      responses:
+        "200":
+          description: Updated class
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Class"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteClass
+      tags: [classes]
+      summary: Delete a class
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Check-ins ──
+  /checkins:
+    get:
+      operationId: listCheckins
+      tags: [checkins]
+      summary: List check-ins
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of check-ins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Checkin"
+    post:
+      operationId: createCheckin
+      tags: [checkins]
+      summary: Create a check-in record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCheckinBody"
+      responses:
+        "201":
+          description: Created check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+
+  /checkins/{id}:
+    patch:
+      operationId: updateCheckin
+      tags: [checkins]
+      summary: Update a check-in (e.g. check-out, change status)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCheckinBody"
+      responses:
+        "200":
+          description: Updated check-in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Checkin"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCheckin
+      tags: [checkins]
+      summary: Delete a check-in
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Assessments ──
+  /assessments:
+    get:
+      operationId: listAssessments
+      tags: [assessments]
+      summary: List assessments
+      responses:
+        "200":
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Assessment"
+    post:
+      operationId: createAssessment
+      tags: [assessments]
+      summary: Create an assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAssessmentBody"
+      responses:
+        "201":
+          description: Created assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assessment"
+
+  /assessments/{id}:
+    patch:
+      operationId: updateAssessment
+      tags: [assessments]
+      summary: Update an assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAssessmentBody"
+      responses:
+        "200":
+          description: Updated assessment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assessment"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteAssessment
+      tags: [assessments]
+      summary: Delete an assessment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Billing ──
+  /billing:
+    get:
+      operationId: listBillingRecords
+      tags: [billing]
+      summary: List billing records
+      responses:
+        "200":
+          description: List of billing records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BillingRecord"
+    post:
+      operationId: createBillingRecord
+      tags: [billing]
+      summary: Create a billing record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBillingRecordBody"
+      responses:
+        "201":
+          description: Created billing record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRecord"
+
+  /billing/{id}:
+    patch:
+      operationId: updateBillingRecord
+      tags: [billing]
+      summary: Update a billing record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBillingRecordBody"
+      responses:
+        "200":
+          description: Updated billing record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRecord"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteBillingRecord
+      tags: [billing]
+      summary: Delete a billing record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Schedule ──
+  /schedule:
+    get:
+      operationId: listScheduleSlots
+      tags: [schedule]
+      summary: List schedule slots
+      responses:
+        "200":
+          description: List of schedule slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleSlot"
+    post:
+      operationId: createScheduleSlot
+      tags: [schedule]
+      summary: Create a schedule slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleSlotBody"
+      responses:
+        "201":
+          description: Created schedule slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleSlot"
+
+  /schedule/{id}:
+    patch:
+      operationId: updateScheduleSlot
+      tags: [schedule]
+      summary: Update a schedule slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScheduleSlotBody"
+      responses:
+        "200":
+          description: Updated schedule slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleSlot"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteScheduleSlot
+      tags: [schedule]
+      summary: Delete a schedule slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +669,578 @@ components:
       required:
         - status
 
+    DashboardSummary:
+      type: object
+      properties:
+        totalStudents:
+          type: integer
+        classesToday:
+          type: integer
+        attendanceRate:
+          type: number
+        pendingBillings:
+          type: integer
+      required:
+        - totalStudents
+        - classesToday
+        - attendanceRate
+        - pendingBillings
+
+    ClassPerformance:
+      type: object
+      properties:
+        classId:
+          type: integer
+        className:
+          type: string
+        averageScore:
+          type: number
+        color:
+          type: string
+      required:
+        - classId
+        - className
+        - averageScore
+        - color
+
+    TodayCheckin:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        className:
+          type: string
+        scheduledTime:
+          type: string
+        status:
+          type: string
+        checkinTime:
+          type: ["string", "null"]
+        checkoutTime:
+          type: ["string", "null"]
+      required:
+        - id
+        - studentId
+        - studentName
+        - className
+        - scheduledTime
+        - status
+
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        grade:
+          type: ["string", "null"]
+        enrolledAt:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - status
+        - enrolledAt
+        - createdAt
+        - updatedAt
+
+    CreateStudentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        grade:
+          type: ["string", "null"]
+        status:
+          type: string
+          default: active
+      required:
+        - name
+        - email
+
+    UpdateStudentBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        grade:
+          type: ["string", "null"]
+        status:
+          type: string
+
+    Teacher:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        role:
+          type: string
+        subjects:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - role
+        - subjects
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateTeacherBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        role:
+          type: string
+          default: teacher
+        subjects:
+          type: string
+        status:
+          type: string
+          default: active
+      required:
+        - name
+        - email
+        - subjects
+
+    UpdateTeacherBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        role:
+          type: string
+        subjects:
+          type: string
+        status:
+          type: string
+
+    Class:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        subject:
+          type: string
+        teacherId:
+          type: ["integer", "null"]
+        teacherName:
+          type: ["string", "null"]
+        capacity:
+          type: integer
+        enrolledCount:
+          type: integer
+        status:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - subject
+        - capacity
+        - enrolledCount
+        - status
+        - color
+        - createdAt
+        - updatedAt
+
+    CreateClassBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        teacherId:
+          type: ["integer", "null"]
+        capacity:
+          type: integer
+        description:
+          type: ["string", "null"]
+        color:
+          type: string
+          default: blue
+        status:
+          type: string
+          default: active
+      required:
+        - name
+        - subject
+        - capacity
+
+    UpdateClassBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        teacherId:
+          type: ["integer", "null"]
+        capacity:
+          type: integer
+        description:
+          type: ["string", "null"]
+        color:
+          type: string
+        status:
+          type: string
+
+    Checkin:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        classId:
+          type: integer
+        className:
+          type: string
+        date:
+          type: string
+        scheduledTime:
+          type: string
+        status:
+          type: string
+        checkinTime:
+          type: ["string", "null"]
+        checkoutTime:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - studentId
+        - studentName
+        - classId
+        - className
+        - date
+        - scheduledTime
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateCheckinBody:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        classId:
+          type: integer
+        date:
+          type: string
+        scheduledTime:
+          type: string
+        status:
+          type: string
+          default: pending
+        notes:
+          type: ["string", "null"]
+      required:
+        - studentId
+        - classId
+        - date
+        - scheduledTime
+
+    UpdateCheckinBody:
+      type: object
+      properties:
+        status:
+          type: string
+        checkinTime:
+          type: ["string", "null"]
+        checkoutTime:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    Assessment:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        classId:
+          type: integer
+        className:
+          type: string
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        percentage:
+          type: number
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - studentId
+        - studentName
+        - classId
+        - className
+        - title
+        - score
+        - maxScore
+        - percentage
+        - date
+        - createdAt
+        - updatedAt
+
+    CreateAssessmentBody:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        classId:
+          type: integer
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+      required:
+        - studentId
+        - classId
+        - title
+        - score
+        - maxScore
+        - date
+
+    UpdateAssessmentBody:
+      type: object
+      properties:
+        title:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        date:
+          type: string
+        notes:
+          type: ["string", "null"]
+
+    BillingRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        classId:
+          type: ["integer", "null"]
+        className:
+          type: ["string", "null"]
+        amount:
+          type: number
+        status:
+          type: string
+        reason:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        paidDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - studentId
+        - studentName
+        - amount
+        - status
+        - reason
+        - createdAt
+        - updatedAt
+
+    CreateBillingRecordBody:
+      type: object
+      properties:
+        studentId:
+          type: integer
+        classId:
+          type: ["integer", "null"]
+        amount:
+          type: number
+        status:
+          type: string
+          default: pending
+        reason:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+      required:
+        - studentId
+        - amount
+        - reason
+
+    UpdateBillingRecordBody:
+      type: object
+      properties:
+        amount:
+          type: number
+        status:
+          type: string
+        reason:
+          type: string
+        dueDate:
+          type: ["string", "null"]
+        paidDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    ScheduleSlot:
+      type: object
+      properties:
+        id:
+          type: integer
+        classId:
+          type: integer
+        className:
+          type: string
+        teacherName:
+          type: ["string", "null"]
+        dayOfWeek:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        room:
+          type: ["string", "null"]
+        color:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - classId
+        - className
+        - dayOfWeek
+        - startTime
+        - endTime
+        - color
+        - createdAt
+        - updatedAt
+
+    CreateScheduleSlotBody:
+      type: object
+      properties:
+        classId:
+          type: integer
+        dayOfWeek:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        room:
+          type: ["string", "null"]
+      required:
+        - classId
+        - dayOfWeek
+        - startTime
+        - endTime
+
+    UpdateScheduleSlotBody:
+      type: object
+      properties:
+        classId:
+          type: integer
+        dayOfWeek:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        room:
+          type: ["string", "null"]

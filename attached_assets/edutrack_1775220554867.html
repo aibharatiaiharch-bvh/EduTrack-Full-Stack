@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduTrack — Tutor & Coach Platform</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; height: 100vh; overflow: hidden; }
+
+  /* ── Layout ── */
+  .app { display: flex; height: 100vh; }
+  .sidebar { width: 210px; background: #fff; border-right: 0.5px solid rgba(0,0,0,0.12); display: flex; flex-direction: column; padding: 16px 0; flex-shrink: 0; }
+  .main { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* ── Sidebar ── */
+  .logo { padding: 0 16px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.1); margin-bottom: 8px; }
+  .logo-name { font-size: 16px; font-weight: 600; color: #185FA5; }
+  .logo-sub  { font-size: 11px; color: #888; margin-top: 2px; }
+  .nav-section { font-size: 10px; font-weight: 600; color: #aaa; padding: 12px 16px 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .nav-item { padding: 8px 16px; font-size: 13px; color: #555; cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: #f0f4fb; color: #185FA5; }
+  .nav-item.active { color: #185FA5; border-left-color: #185FA5; background: #E6F1FB; font-weight: 500; }
+
+  /* ── Pages ── */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+  .page-sub   { font-size: 13px; color: #888; margin-bottom: 22px; }
+
+  /* ── Metric cards ── */
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  .metric { background: #f0f0ee; border-radius: 8px; padding: 14px; }
+  .metric-label { font-size: 11px; color: #777; margin-bottom: 4px; }
+  .metric-val   { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+  .metric-delta { font-size: 11px; color: #1D9E75; margin-top: 3px; }
+  .metric-delta.warn { color: #A32D2D; }
+
+  /* ── Cards ── */
+  .card { background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 14px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: #888; border-bottom: 0.5px solid rgba(0,0,0,0.1); text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.07); color: #1a1a1a; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8f8f6; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 500; }
+  .badge-green  { background: #EAF3DE; color: #3B6D11; }
+  .badge-blue   { background: #E6F1FB; color: #185FA5; }
+  .badge-amber  { background: #FAEEDA; color: #854F0B; }
+  .badge-red    { background: #FCEBEB; color: #A32D2D; }
+  .badge-gray   { background: #F1EFE8; color: #5F5E5A; }
+  .badge-purple { background: #EEEDFE; color: #534AB7; }
+
+  /* ── Buttons ── */
+  .btn { font-size: 12px; padding: 6px 14px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.2); background: transparent; color: #1a1a1a; cursor: pointer; transition: background 0.12s; }
+  .btn:hover { background: #f0f0ee; }
+  .btn-primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .btn-primary:hover { background: #0C447C; }
+  .btn-danger  { border-color: #A32D2D; color: #A32D2D; }
+  .btn-danger:hover { background: #FCEBEB; }
+
+  /* ── Check-in rows ── */
+  .checkin-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid rgba(0,0,0,0.07); }
+  .checkin-row:last-child { border-bottom: none; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .av-blue   { background: #E6F1FB; color: #185FA5; }
+  .av-teal   { background: #E1F5EE; color: #0F6E56; }
+  .av-purple { background: #EEEDFE; color: #534AB7; }
+  .av-amber  { background: #FAEEDA; color: #854F0B; }
+  .checkin-name { font-size: 13px; font-weight: 500; color: #1a1a1a; }
+  .checkin-sub  { font-size: 11px; color: #888; }
+  .checkin-btns { display: flex; gap: 6px; margin-left: auto; }
+
+  /* ── Schedule slots ── */
+  .time-slot  { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 0.5px solid rgba(0,0,0,0.07); }
+  .time-slot:last-child { border-bottom: none; }
+  .time-label { font-size: 11px; color: #888; width: 56px; flex-shrink: 0; padding-top: 5px; }
+  .slot-class { border-left: 2px solid #185FA5; background: #E6F1FB; border-radius: 0 8px 8px 0; padding: 6px 12px; flex: 1; }
+  .slot-class.teal   { background: #E1F5EE; border-left-color: #0F6E56; }
+  .slot-class.purple { background: #EEEDFE; border-left-color: #534AB7; }
+  .slot-class.amber  { background: #FAEEDA; border-left-color: #854F0B; }
+  .slot-class.coral  { background: #FAECE7; border-left-color: #993C1D; }
+  .slot-name    { font-size: 12px; font-weight: 500; color: #1a1a1a; }
+  .slot-teacher { font-size: 11px; color: #666; }
+
+  /* ── Grade bars ── */
+  .grade-bar  { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .grade-fill { height: 100%; border-radius: 3px; }
+
+  /* ── Policy box ── */
+  .policy-box { background: #FAEEDA; border: 0.5px solid #EF9F27; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+  .policy-title { font-size: 12px; font-weight: 600; color: #633806; margin-bottom: 4px; }
+  .policy-text  { font-size: 12px; color: #854F0B; line-height: 1.6; }
+
+  /* ── Role pill ── */
+  .role-pill { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: #EEEDFE; color: #534AB7; font-weight: 500; }
+  .role-pill.principal { background: #FAEEDA; color: #633806; }
+
+  /* ── Form inputs ── */
+  input[type=text], input[type=email], input[type=number], select, textarea {
+    font-size: 13px; padding: 7px 10px; border: 0.5px solid rgba(0,0,0,0.2);
+    border-radius: 8px; width: 100%; background: #fff; color: #1a1a1a; outline: none;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #185FA5; box-shadow: 0 0 0 2px rgba(24,95,165,0.12); }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; margin-top: 10px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── Add-feature area ── */
+  .add-feature { border: 1.5px dashed rgba(0,0,0,0.18); border-radius: 12px; padding: 20px; text-align: center; color: #888; font-size: 13px; cursor: pointer; margin-top: 16px; }
+  .add-feature:hover { background: #f8f8f6; color: #185FA5; border-color: #185FA5; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-name">EduTrack</div>
+      <div class="logo-sub">Tutor &amp; Coach Platform</div>
+    </div>
+
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="nav(this,'dashboard')">Dashboard</div>
+    <div class="nav-item" onclick="nav(this,'checkin')">Check-in / Out</div>
+    <div class="nav-item" onclick="nav(this,'schedule')">Schedule</div>
+
+    <div class="nav-section">Academics</div>
+    <div class="nav-item" onclick="nav(this,'classes')">Classes</div>
+    <div class="nav-item" onclick="nav(this,'grades')">Assessments</div>
+
+    <div class="nav-section">Management</div>
+    <div class="nav-item" onclick="nav(this,'teachers')">Teachers</div>
+    <div class="nav-item" onclick="nav(this,'billing')">Billing &amp; Policy</div>
+    <div class="nav-item" onclick="nav(this,'settings')">Settings / Customize</div>
+  </div>
+
+  <!-- ══ MAIN CONTENT ══ -->
+  <div class="main">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Principal Dashboard</div>
+      <div class="page-sub">Spring 2025 overview — Dr. Angela Moore</div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">Students enrolled</div>
+          <div class="metric-val">148</div>
+          <div class="metric-delta">+12 this month</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Classes today</div>
+          <div class="metric-val">10</div>
+          <div class="metric-delta">2 starting soon</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Attendance rate</div>
+          <div class="metric-val">94%</div>
+          <div class="metric-delta">Above target</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Pending billings</div>
+          <div class="metric-val">7</div>
+          <div class="metric-delta warn">Late cancels</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Today's check-ins</div>
+          <div class="checkin-row">
+            <div class="avatar av-blue">JM</div>
+            <div><div class="checkin-name">Jordan Mills</div><div class="checkin-sub">Algebra II · 9:00 AM</div></div>
+            <span class="badge badge-green" style="margin-left:auto;">Checked in</span>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-teal">SP</div>
+            <div><div class="checkin-name">Sofia Patel</div><div class="checkin-sub">Chemistry · 9:30 AM</div></div>
+            <span class="badge badge-amber" style="margin-left:auto;">Pending</span>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-purple">KL</div>
+            <div><div class="checkin-name">Kyle Lee</div><div class="checkin-sub">SAT Prep · 10:00 AM</div></div>
+            <span class="badge badge-amber" style="margin-left:auto;">Pending</span>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-amber">AR</div>
+            <div><div class="checkin-name">Aisha Reed</div><div class="checkin-sub">Essay Writing · 11:00 AM</div></div>
+            <span class="badge badge-red" style="margin-left:auto;">Late cancel</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Class performance avg</div>
+          <div style="font-size:12px;color:#888;margin-bottom:10px;">Based on last assessment</div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Algebra II</span><span style="font-weight:500;">87%</span></div>
+            <div class="grade-bar"><div class="grade-fill" style="width:87%;background:#185FA5;"></div></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Chemistry</span><span style="font-weight:500;">79%</span></div>
+            <div class="grade-bar"><div class="grade-fill" style="width:79%;background:#1D9E75;"></div></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>SAT Prep</span><span style="font-weight:500;">92%</span></div>
+            <div class="grade-bar"><div class="grade-fill" style="width:92%;background:#534AB7;"></div></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Essay Writing</span><span style="font-weight:500;">83%</span></div>
+            <div class="grade-bar"><div class="grade-fill" style="width:83%;background:#D85A30;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Calculus</span><span style="font-weight:500;">75%</span></div>
+            <div class="grade-bar"><div class="grade-fill" style="width:75%;background:#BA7517;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHECK-IN / OUT ── -->
+    <div class="page" id="page-checkin">
+      <div class="page-title">Check-in / Check-out</div>
+      <div class="page-sub">Manage student attendance in real time</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="card-title" style="margin:0;">Thursday, April 3 — Today</div>
+          <button class="btn btn-primary" onclick="showAddCheckin()">+ New check-in</button>
+        </div>
+
+        <div id="checkin-list">
+          <div class="checkin-row">
+            <div class="avatar av-blue">JM</div>
+            <div style="flex:1"><div class="checkin-name">Jordan Mills</div><div class="checkin-sub">Algebra II · Ms. Torres</div></div>
+            <span class="badge badge-green">Checked in 9:02 AM</span>
+            <div class="checkin-btns"><button class="btn" onclick="checkout(this)">Check out</button></div>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-teal">SP</div>
+            <div style="flex:1"><div class="checkin-name">Sofia Patel</div><div class="checkin-sub">Chemistry · Mr. Nguyen</div></div>
+            <span class="badge badge-amber">Expected 9:30 AM</span>
+            <div class="checkin-btns"><button class="btn btn-primary" onclick="checkin(this)">Check in</button></div>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-purple">KL</div>
+            <div style="flex:1"><div class="checkin-name">Kyle Lee</div><div class="checkin-sub">SAT Prep · Ms. Brooks</div></div>
+            <span class="badge badge-amber">Expected 10:00 AM</span>
+            <div class="checkin-btns"><button class="btn btn-primary" onclick="checkin(this)">Check in</button></div>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-amber">AR</div>
+            <div style="flex:1"><div class="checkin-name">Aisha Reed</div><div class="checkin-sub">Essay Writing · Mr. Clark</div></div>
+            <span class="badge badge-red">Late cancel — billed</span>
+            <div class="checkin-btns"></div>
+          </div>
+          <div class="checkin-row">
+            <div class="avatar av-teal">DW</div>
+            <div style="flex:1"><div class="checkin-name">David Wu</div><div class="checkin-sub">Calculus · Ms. Torres</div></div>
+            <span class="badge badge-gray">No show</span>
+            <div class="checkin-btns"><button class="btn btn-danger" onclick="billNoShow(this)">Bill</button></div>
+          </div>
+        </div>
+
+        <!-- Add check-in form (hidden by default) -->
+        <div id="add-checkin-form" style="display:none;margin-top:16px;padding-top:16px;border-top:0.5px solid rgba(0,0,0,0.1);">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Add student check-in</div>
+          <div class="form-row">
+            <div><label>Student name</label><input type="text" placeholder="Full name" id="ci-name" /></div>
+            <div><label>Subject / class</label>
+              <select id="ci-class">
+                <option>Algebra II</option><option>Calculus</option><option>Chemistry</option>
+                <option>Physics</option><option>SAT Prep</option><option>ACT Prep</option>
+                <option>Essay Writing</option><option>U.S. History</option><option>Spanish I</option><option>Biology</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn btn-primary" onclick="addCheckin()">Add</button>
+            <button class="btn" onclick="document.getElementById('add-checkin-form').style.display='none'">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCHEDULE ── -->
+    <div class="page" id="page-schedule">
+      <div class="page-title">Schedule</div>
+      <div class="page-sub">Weekly class timetable — click a slot to see details</div>
+      <div class="card">
+        <div class="card-title">Thursday</div>
+        <div class="time-slot"><div class="time-label">9:00 AM</div><div class="slot-class"><div class="slot-name">Algebra II</div><div class="slot-teacher">Ms. Torres · Room 101 · 14 students</div></div></div>
+        <div class="time-slot"><div class="time-label">9:30 AM</div><div class="slot-class teal"><div class="slot-name">Chemistry</div><div class="slot-teacher">Mr. Nguyen · Lab 2 · 16 students</div></div></div>
+        <div class="time-slot"><div class="time-label">10:00 AM</div><div class="slot-class purple"><div class="slot-name">SAT Prep</div><div class="slot-teacher">Ms. Brooks · Room 204 · 18 students</div></div></div>
+        <div class="time-slot"><div class="time-label">11:00 AM</div><div class="slot-class amber"><div class="slot-name">Essay Writing</div><div class="slot-teacher">Mr. Clark · Room 102 · 12 students</div></div></div>
+        <div class="time-slot"><div class="time-label">12:00 PM</div><div class="slot-class coral"><div class="slot-name">Calculus</div><div class="slot-teacher">Ms. Torres · Room 101 · 11 students</div></div></div>
+        <div class="time-slot"><div class="time-label">1:00 PM</div><div class="slot-class teal"><div class="slot-name">Physics</div><div class="slot-teacher">Mr. Nguyen · Lab 2 · 13 students</div></div></div>
+        <div class="time-slot"><div class="time-label">2:00 PM</div><div class="slot-class purple"><div class="slot-name">Spanish I</div><div class="slot-teacher">Ms. Rivera · Room 305 · 10 students</div></div></div>
+        <div class="time-slot"><div class="time-label">3:00 PM</div><div class="slot-class amber"><div class="slot-name">U.S. History</div><div class="slot-teacher">Mr. Johnson · Room 203 · 15 students</div></div></div>
+        <div class="time-slot"><div class="time-label">4:00 PM</div><div class="slot-class"><div class="slot-name">ACT Prep</div><div class="slot-teacher">Ms. Brooks · Room 204 · 9 students</div></div></div>
+        <div class="time-slot"><div class="time-label">5:00 PM</div><div class="slot-class teal"><div class="slot-name">Biology</div><div class="slot-teacher">Ms. Kim · Lab 1 · 14 students</div></div></div>
+      </div>
+    </div>
+
+    <!-- ── CLASSES ── -->
+    <div class="page" id="page-classes">
+      <div class="page-title">Subject classes</div>
+      <div class="page-sub">10 active subjects this semester</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="card-title" style="margin:0;">All subjects</div>
+          <button class="btn btn-primary" onclick="alert('Add class feature — connect to your backend to save!')">+ Add class</button>
+        </div>
+        <table>
+          <tr><th>Subject</th><th>Teacher</th><th>Students</th><th>Days</th><th>Room</th><th>Status</th></tr>
+          <tr><td>Algebra II</td><td>Ms. Torres</td><td>14</td><td>Mon / Thu</td><td>Room 101</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Calculus</td><td>Ms. Torres</td><td>11</td><td>Thu / Fri</td><td>Room 101</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Chemistry</td><td>Mr. Nguyen</td><td>16</td><td>Tue / Thu</td><td>Lab 2</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Physics</td><td>Mr. Nguyen</td><td>13</td><td>Mon / Wed</td><td>Lab 2</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>SAT Prep</td><td>Ms. Brooks</td><td>18</td><td>Mon / Thu</td><td>Room 204</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>ACT Prep</td><td>Ms. Brooks</td><td>9</td><td>Tue / Fri</td><td>Room 204</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Essay Writing</td><td>Mr. Clark</td><td>12</td><td>Wed / Thu</td><td>Room 102</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>U.S. History</td><td>Mr. Johnson</td><td>15</td><td>Mon / Wed</td><td>Room 203</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Spanish I</td><td>Ms. Rivera</td><td>10</td><td>Tue / Thu</td><td>Room 305</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Biology</td><td>Ms. Kim</td><td>14</td><td>Mon / Fri</td><td>Lab 1</td><td><span class="badge badge-amber">Starting soon</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── ASSESSMENTS ── -->
+    <div class="page" id="page-grades">
+      <div class="page-title">Assessments &amp; grading</div>
+      <div class="page-sub">Track student performance across all subjects</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="card-title" style="margin:0;">Recent assessments</div>
+          <button class="btn btn-primary" onclick="alert('Add assessment — connect to your backend!')">+ Add assessment</button>
+        </div>
+        <table>
+          <tr><th>Student</th><th>Subject</th><th>Assessment</th><th>Score</th><th>Grade</th><th>Date</th></tr>
+          <tr><td>Jordan Mills</td><td>Algebra II</td><td>Unit 4 Test</td><td>91/100</td><td><span class="badge badge-green">A</span></td><td>Mar 28</td></tr>
+          <tr><td>Sofia Patel</td><td>Chemistry</td><td>Lab Report #3</td><td>78/100</td><td><span class="badge badge-blue">C+</span></td><td>Mar 27</td></tr>
+          <tr><td>Kyle Lee</td><td>SAT Prep</td><td>Practice Test 5</td><td>1380/1600</td><td><span class="badge badge-green">B+</span></td><td>Mar 25</td></tr>
+          <tr><td>Aisha Reed</td><td>Essay Writing</td><td>Persuasive Essay</td><td>85/100</td><td><span class="badge badge-green">B</span></td><td>Mar 24</td></tr>
+          <tr><td>David Wu</td><td>Calculus</td><td>Midterm Exam</td><td>72/100</td><td><span class="badge badge-amber">C</span></td><td>Mar 20</td></tr>
+          <tr><td>Priya Shah</td><td>U.S. History</td><td>Essay Exam</td><td>95/100</td><td><span class="badge badge-green">A</span></td><td>Mar 19</td></tr>
+          <tr><td>Marcus Bell</td><td>SAT Prep</td><td>Practice Test 4</td><td>1290/1600</td><td><span class="badge badge-blue">B-</span></td><td>Mar 18</td></tr>
+          <tr><td>Layla Chen</td><td>Spanish I</td><td>Chapter 6 Quiz</td><td>88/100</td><td><span class="badge badge-green">B+</span></td><td>Mar 17</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── TEACHERS ── -->
+    <div class="page" id="page-teachers">
+      <div class="page-title">Teachers</div>
+      <div class="page-sub">1 principal · 10 teachers</div>
+      <div class="card">
+        <table>
+          <tr><th>Name</th><th>Role</th><th>Subjects</th><th>Students</th><th>Status</th></tr>
+          <tr><td style="font-weight:500;">Dr. Angela Moore</td><td><span class="role-pill principal">Principal</span></td><td>All</td><td>148</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Ms. Torres</td><td><span class="role-pill">Teacher</span></td><td>Algebra II, Calculus</td><td>25</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Mr. Nguyen</td><td><span class="role-pill">Teacher</span></td><td>Chemistry, Physics</td><td>29</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Ms. Brooks</td><td><span class="role-pill">Teacher</span></td><td>SAT Prep, ACT Prep</td><td>27</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Mr. Clark</td><td><span class="role-pill">Teacher</span></td><td>Essay Writing</td><td>12</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Mr. Johnson</td><td><span class="role-pill">Teacher</span></td><td>U.S. History</td><td>15</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Ms. Rivera</td><td><span class="role-pill">Teacher</span></td><td>Spanish I</td><td>10</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>Ms. Kim</td><td><span class="role-pill">Teacher</span></td><td>Biology</td><td>14</td><td><span class="badge badge-amber">Starting soon</span></td></tr>
+          <tr><td>Mr. Patel</td><td><span class="role-pill">Teacher</span></td><td>Open</td><td>—</td><td><span class="badge badge-gray">Onboarding</span></td></tr>
+          <tr><td>Ms. Okafor</td><td><span class="role-pill">Teacher</span></td><td>Open</td><td>—</td><td><span class="badge badge-gray">Onboarding</span></td></tr>
+          <tr><td>Mr. Davis</td><td><span class="role-pill">Teacher</span></td><td>Open</td><td>—</td><td><span class="badge badge-gray">Onboarding</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── BILLING ── -->
+    <div class="page" id="page-billing">
+      <div class="page-title">Billing &amp; cancellation policy</div>
+      <div class="page-sub">Manage late cancellations and no-shows</div>
+
+      <div class="policy-box">
+        <div class="policy-title">24-hour cancellation policy</div>
+        <div class="policy-text">
+          Students must cancel at least 24 hours before their scheduled class. Cancellations made within
+          24 hours, or no-shows, are automatically flagged and billed at the full session rate.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent late cancellations &amp; no-shows</div>
+        <table>
+          <tr><th>Student</th><th>Class</th><th>Date</th><th>Reason</th><th>Amount</th><th>Status</th><th></th></tr>
+          <tr><td>Aisha Reed</td><td>Essay Writing</td><td>Apr 3</td><td>Late cancel</td><td>$45</td><td><span class="badge badge-amber">Pending</span></td><td><button class="btn" style="font-size:11px;padding:4px 8px;" onclick="markPaid(this)">Mark paid</button></td></tr>
+          <tr><td>David Wu</td><td>Calculus</td><td>Apr 3</td><td>No show</td><td>$50</td><td><span class="badge badge-red">Unpaid</span></td><td><button class="btn" style="font-size:11px;padding:4px 8px;" onclick="markPaid(this)">Mark paid</button></td></tr>
+          <tr><td>Priya Shah</td><td>U.S. History</td><td>Apr 1</td><td>Late cancel</td><td>$40</td><td><span class="badge badge-green">Paid</span></td><td></td></tr>
+          <tr><td>Kyle Lee</td><td>SAT Prep</td><td>Mar 29</td><td>No show</td><td>$60</td><td><span class="badge badge-green">Paid</span></td><td></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS / CUSTOMIZE ── -->
+    <div class="page" id="page-settings">
+      <div class="page-title">Settings &amp; customization</div>
+      <div class="page-sub">Adjust platform details and add your own features</div>
+
+      <div class="card">
+        <div class="card-title">Platform settings</div>
+        <div class="form-row">
+          <div><label>Platform name</label><input type="text" value="EduTrack" /></div>
+          <div><label>Principal name</label><input type="text" value="Dr. Angela Moore" /></div>
+        </div>
+        <div class="form-row">
+          <div><label>Cancellation window (hours)</label><input type="number" value="24" /></div>
+          <div><label>Default session rate ($)</label><input type="number" value="50" /></div>
+        </div>
+        <div style="margin-top:14px;">
+          <label>Contact email</label>
+          <input type="email" value="admin@edutrack.com" />
+        </div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-primary">Save settings</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Custom features</div>
+        <div style="font-size:13px;color:#888;margin-bottom:12px;">Features you have added to the platform:</div>
+        <div id="custom-features">
+          <div style="padding:8px 0;border-bottom:0.5px solid rgba(0,0,0,0.07);font-size:13px;">
+            Student progress reports — weekly email summary
+          </div>
+          <div style="padding:8px 0;font-size:13px;">
+            Parent portal access — read-only attendance &amp; grade view
+          </div>
+        </div>
+        <div class="add-feature" onclick="addCustomFeature()">+ Add a custom feature</div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+  /* ── Navigation ── */
+  function nav(el, id) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-' + id).classList.add('active');
+  }
+
+  /* ── Check-in / out ── */
+  function checkin(btn) {
+    var row  = btn.closest('.checkin-row');
+    var badge = row.querySelector('.badge');
+    var now  = new Date();
+    var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+    badge.textContent = 'Checked in ' + time;
+    badge.className   = 'badge badge-green';
+    btn.style.display = 'none';
+    var coBtn = document.createElement('button');
+    coBtn.className   = 'btn';
+    coBtn.textContent = 'Check out';
+    coBtn.onclick     = function(){ checkout(coBtn); };
+    btn.parentElement.appendChild(coBtn);
+  }
+
+  function checkout(btn) {
+    var row  = btn.closest('.checkin-row');
+    var badge = row.querySelector('.badge');
+    var now  = new Date();
+    var time = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+    badge.textContent = 'Checked out ' + time;
+    badge.className   = 'badge badge-gray';
+    btn.style.display = 'none';
+  }
+
+  function billNoShow(btn) {
+    var row   = btn.closest('.checkin-row');
+    var badge = row.querySelector('.badge');
+    badge.textContent = 'Billed — no show';
+    badge.className   = 'badge badge-red';
+    btn.style.display = 'none';
+  }
+
+  /* ── Add check-in form ── */
+  function showAddCheckin() {
+    var form = document.getElementById('add-checkin-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function addCheckin() {
+    var name = document.getElementById('ci-name').value.trim();
+    var cls  = document.getElementById('ci-class').value;
+    if (!name) { alert('Please enter a student name.'); return; }
+    var initials = name.split(' ').map(w => w[0]).join('').substring(0,2).toUpperCase();
+    var colors   = ['av-blue','av-teal','av-purple','av-amber'];
+    var color    = colors[Math.floor(Math.random() * colors.length)];
+    var now      = new Date();
+    var time     = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+    var list     = document.getElementById('checkin-list');
+    var row      = document.createElement('div');
+    row.className = 'checkin-row';
+    row.innerHTML = '<div class="avatar ' + color + '">' + initials + '</div>'
+      + '<div style="flex:1"><div class="checkin-name">' + name + '</div><div class="checkin-sub">' + cls + ' · Added ' + time + '</div></div>'
+      + '<span class="badge badge-amber">Expected</span>'
+      + '<div class="checkin-btns"><button class="btn btn-primary" onclick="checkin(this)">Check in</button></div>';
+    list.appendChild(row);
+    document.getElementById('ci-name').value = '';
+    document.getElementById('add-checkin-form').style.display = 'none';
+  }
+
+  /* ── Billing ── */
+  function markPaid(btn) {
+    var row   = btn.closest('tr');
+    var badge = row.querySelector('.badge');
+    badge.textContent = 'Paid';
+    badge.className   = 'badge badge-green';
+    btn.style.display = 'none';
+  }
+
+  /* ── Custom features ── */
+  function addCustomFeature() {
+    var name = prompt('Describe your custom feature:');
+    if (!name || !name.trim()) return;
+    var list = document.getElementById('custom-features');
+    var div  = document.createElement('div');
+    div.style.cssText = 'padding:8px 0;border-top:0.5px solid rgba(0,0,0,0.07);font-size:13px;';
+    div.textContent   = name.trim();
+    list.appendChild(div);
+  }
+</script>
+</body>
+</html>
