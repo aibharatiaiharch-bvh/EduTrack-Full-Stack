@@ -8,6 +8,7 @@ import assessmentsRouter from "./assessments";
 import billingRouter from "./billing";
 import scheduleRouter from "./schedule";
 import dashboardRouter from "./dashboard";
+import sheetsRouter from "./sheets";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(assessmentsRouter);
 router.use(billingRouter);
 router.use(scheduleRouter);
 router.use(dashboardRouter);
+router.use(sheetsRouter);
 
 export default router;

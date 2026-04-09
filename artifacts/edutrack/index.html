@@ -570,7 +570,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
           <button class="btn btn-primary" onclick="openM('m-add-student')">+ Add student</button>
         </div>
       </div>
-      <div class="card"><div class="tbl-wrap"><table id="student-table">
+      <div class="card"><div class="tbl-wrap"><table id="student-table" data-sheet-tab="students">
         <tr><th>Name</th><th>Email</th><th>Classes</th><th>Status</th><th>Actions</th></tr>
         <tr><td>Jordan Mills</td><td>j.mills@mail.com</td><td>Algebra II, SAT Prep</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm btn-edit" onclick="editStudentRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>
         <tr class="edit-form-row" id="edit-s-0"><td colspan="5" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="Jordan Mills" style="min-width:130px;"/><input type="email" value="j.mills@mail.com" style="min-width:160px;"/><input type="text" value="Algebra II, SAT Prep" style="min-width:150px;"/><select style="min-width:110px;"><option>Active</option><option>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td></tr>
@@ -598,7 +598,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
           <button class="btn btn-primary" onclick="openM('m-add-teacher')">+ Add teacher</button>
         </div>
       </div>
-      <div class="card"><div class="tbl-wrap"><table id="teacher-table">
+      <div class="card"><div class="tbl-wrap"><table id="teacher-table" data-sheet-tab="teachers">
         <tr><th>Name</th><th>Role</th><th>Subjects</th><th>Status</th><th>Actions</th></tr>
         <tr><td style="font-weight:600;">Dr. Angela Moore</td><td><span class="badge" style="background:#FAEEDA;color:#633806;">Principal</span></td><td>All</td><td><span class="badge bg">Active</span></td><td>—</td></tr>
         <tr><td>Ms. Torres</td><td><span class="badge bp">Teacher</span></td><td>Algebra II, Calculus</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm btn-edit" onclick="editTeacherRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>
@@ -619,7 +619,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     ═══════════════════════════════════════ -->
     <div class="page" id="page-subjects">
       <div class="ph"><div><div class="pt">Subjects</div><div class="ps">10 active classes</div></div><div class="pact"><button class="btn btn-primary" onclick="openM('m-add-subject')">+ Add subject</button></div></div>
-      <div class="card"><div class="tbl-wrap"><table id="subject-table">
+      <div class="card"><div class="tbl-wrap"><table id="subject-table" data-sheet-tab="subjects">
         <tr><th>Subject</th><th>Teacher</th><th>Room</th><th>Days</th><th>Students</th><th>Status</th><th>Actions</th></tr>
         <tr><td>Algebra II</td><td>Ms. Torres</td><td>Room 101</td><td>Mon / Thu</td><td>14</td><td><span class="badge bg">Active</span></td><td><button class="btn btn-sm btn-edit" onclick="editSubjectRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>
         <tr class="edit-form-row"><td colspan="7" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="Algebra II"/><input type="text" value="Ms. Torres"/><input type="text" value="Room 101"/><input type="text" value="Mon / Thu"/><select><option>Active</option><option>Starting soon</option><option>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td></tr>
@@ -759,6 +759,34 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
             <input type="file" id="restore-input" accept=".json" style="display:none" onchange="handleRestoreFile(this)">
             <div id="restore-status" style="margin-top:8px;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Google Sheets Sync -->
+      <div class="card"><div class="ct">Google Sheets sync</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Connect EduTrack to a Google Sheet for two-way sync. Students, teachers, and subjects stay in sync between the app and your sheet.</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-2);">Status:</span>
+          <span id="sheets-status-badge" class="badge ba">Not connected</span>
+          <a id="sheets-open-link" href="#" target="_blank" style="display:none;font-size:12px;color:var(--blue);font-weight:600;text-decoration:none;">Open in Google Sheets ↗</a>
+        </div>
+        <div class="g2" style="margin-bottom:14px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Create new sheet</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">Auto-creates an "EduTrack Data" spreadsheet in your Google Drive and syncs all current data to it.</div>
+            <button id="sheets-create-btn" class="btn btn-primary" onclick="sheetsCreateNew()">+ Create new EduTrack sheet</button>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Connect existing sheet</div>
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">Paste the Google Sheet ID or full URL.</div>
+            <input type="text" id="sheets-id-input" placeholder="Sheet ID or URL" style="width:100%;margin-bottom:8px;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);">
+            <button class="btn btn-primary" onclick="sheetsConnectExisting()">Connect</button>
+          </div>
+        </div>
+        <div id="sheets-connected-actions" style="display:none;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="sheetsSyncAll()" style="background:var(--green-lt);color:#1a6b38;border:none;">↑ Push all to sheet</button>
+          <button class="btn btn-sm" onclick="sheetsLoadAll()" style="background:var(--blue-lt);color:var(--blue);border:none;">↓ Pull from sheet</button>
+          <button class="btn btn-sm btn-danger" onclick="sheetsDisconnect()">Disconnect</button>
         </div>
       </div>
 
@@ -1309,6 +1337,9 @@ function saveEdit(btn){
   }
   editRow.classList.remove('open');
   showToast('Saved successfully');
+  var tbl=btn.closest('table');
+  var tab=tbl&&tbl.dataset.sheetTab;
+  if(tab)sheetsAutoSync(tab);
 }
 function cancelEdit(btn){btn.closest('.edit-form-row').classList.remove('open');}
 
@@ -1328,6 +1359,7 @@ function addStudent(){
   tbl.appendChild(tr); tbl.appendChild(editTr);
   ['new-s-name','new-s-email','new-s-classes'].forEach(function(id){document.getElementById(id).value='';});
   closeById('m-add-student'); showToast('Student added');
+  sheetsAutoSync('students');
 }
 function addTeacher(){
   var name=document.getElementById('new-t-name').value.trim(), email=document.getElementById('new-t-email').value.trim(),
@@ -1343,6 +1375,7 @@ function addTeacher(){
   tbl.appendChild(tr); tbl.appendChild(editTr);
   ['new-t-name','new-t-email','new-t-subjects'].forEach(function(id){document.getElementById(id).value='';});
   closeById('m-add-teacher'); showToast('Teacher added');
+  sheetsAutoSync('teachers');
 }
 function addSubject(){
   var name=document.getElementById('new-sub-name').value.trim(),
@@ -1361,8 +1394,9 @@ function addSubject(){
   tbl.appendChild(tr); tbl.appendChild(editTr);
   ['new-sub-name','new-sub-teacher','new-sub-room','new-sub-days'].forEach(function(id){document.getElementById(id).value='';});
   closeById('m-add-subject'); showToast('Subject added');
+  sheetsAutoSync('subjects');
 }
-function removeRow(btn){if(confirm('Remove this record?')){var row=btn.closest('tr'),next=row.nextElementSibling;if(next&&next.classList.contains('edit-form-row'))next.remove();row.remove();showToast('Record removed');}}
+function removeRow(btn){if(confirm('Remove this record?')){var row=btn.closest('tr'),next=row.nextElementSibling;var tbl=btn.closest('table');if(next&&next.classList.contains('edit-form-row'))next.remove();row.remove();showToast('Record removed');var tab=tbl&&tbl.dataset.sheetTab;if(tab)sheetsAutoSync(tab);}}
 function switchChild(btn){btn.closest('.child-sel').querySelectorAll('.child-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
 /* ══ CHECK-IN ══ */
@@ -2243,5 +2277,215 @@ setTimeout(function(){
   asRenderLog();
   asUpdatePreview();
 }, 200);
+
+/* ══ GOOGLE SHEETS SYNC ══ */
+var sheetsId = localStorage.getItem('edutrack_sheet_id') || '';
+var sheetsUrl = localStorage.getItem('edutrack_sheet_url') || '';
+
+function sheetsApiHeaders() {
+  return { 'Content-Type': 'application/json', 'x-sheet-id': sheetsId };
+}
+
+function sheetsUpdateUI() {
+  var badge = document.getElementById('sheets-status-badge');
+  var link = document.getElementById('sheets-open-link');
+  var actions = document.getElementById('sheets-connected-actions');
+  if (!badge) return;
+  if (sheetsId) {
+    badge.textContent = 'Connected';
+    badge.className = 'badge bg';
+    if (link) { link.href = sheetsUrl || 'https://docs.google.com/spreadsheets/d/' + sheetsId; link.style.display = ''; }
+    if (actions) actions.style.display = 'flex';
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className = 'badge ba';
+    if (link) link.style.display = 'none';
+    if (actions) actions.style.display = 'none';
+  }
+}
+
+async function sheetsCreateNew() {
+  if (!confirm('This will create a new Google Sheet called "EduTrack Data" in your Google Drive and sync all current data to it. Continue?')) return;
+  var btn = document.getElementById('sheets-create-btn');
+  if (btn) { btn.textContent = 'Creating…'; btn.disabled = true; }
+  try {
+    var res = await fetch('/api/sheets/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create sheet');
+    sheetsId = data.spreadsheetId;
+    sheetsUrl = data.spreadsheetUrl;
+    localStorage.setItem('edutrack_sheet_id', sheetsId);
+    localStorage.setItem('edutrack_sheet_url', sheetsUrl);
+    sheetsUpdateUI();
+    showToast('Sheet created! Syncing data…');
+    await sheetsSyncAll();
+    showToast('Google Sheets connected ✓');
+  } catch(e) {
+    showToast('Error: ' + e.message);
+  }
+  if (btn) { btn.textContent = '+ Create new EduTrack sheet'; btn.disabled = false; }
+}
+
+function sheetsConnectExisting() {
+  var val = (document.getElementById('sheets-id-input') || {}).value || '';
+  val = val.trim();
+  if (!val) { showToast('Please enter a Sheet ID or URL'); return; }
+  var match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) val = match[1];
+  sheetsId = val;
+  sheetsUrl = 'https://docs.google.com/spreadsheets/d/' + val;
+  localStorage.setItem('edutrack_sheet_id', sheetsId);
+  localStorage.setItem('edutrack_sheet_url', sheetsUrl);
+  sheetsUpdateUI();
+  showToast('Connected to sheet');
+}
+
+function sheetsDisconnect() {
+  if (!confirm('Disconnect from Google Sheets? Your data in the app stays as-is.')) return;
+  sheetsId = '';
+  sheetsUrl = '';
+  localStorage.removeItem('edutrack_sheet_id');
+  localStorage.removeItem('edutrack_sheet_url');
+  sheetsUpdateUI();
+  showToast('Disconnected from Google Sheets');
+}
+
+/* Read all non-edit-form data rows from a table; fieldMap = [fieldName|null per column, skip last (Actions)] */
+function sheetsReadTable(tblId, fieldMap) {
+  var tbl = document.getElementById(tblId);
+  if (!tbl) return [];
+  var rows = [];
+  var trs = tbl.querySelectorAll('tr:not(.edit-form-row)');
+  trs.forEach(function(tr, i) {
+    if (i === 0) return;
+    var cells = tr.querySelectorAll('td');
+    if (!cells.length) return;
+    var obj = {};
+    fieldMap.forEach(function(f, idx) {
+      if (!f) return;
+      var cell = cells[idx];
+      if (!cell) { obj[f] = ''; return; }
+      var badge = cell.querySelector('.badge');
+      obj[f] = (badge ? badge.textContent : cell.textContent).trim();
+    });
+    rows.push(obj);
+  });
+  return rows;
+}
+
+async function sheetsPushTab(tab, rows) {
+  if (!sheetsId) return;
+  var res = await fetch('/api/sheets/' + tab + '/replace', {
+    method: 'PUT',
+    headers: sheetsApiHeaders(),
+    body: JSON.stringify({ rows: rows })
+  });
+  if (!res.ok) { var d = await res.json(); throw new Error(d.error || 'Sync failed'); }
+}
+
+async function sheetsSyncAll() {
+  if (!sheetsId) { showToast('No sheet connected. Go to Settings → Google Sheets.'); return; }
+  try {
+    var students = sheetsReadTable('student-table', ['Name','Email','Classes','Status']);
+    var teachers = sheetsReadTable('teacher-table', ['Name',null,'Subjects','Status']);
+    var subjects = sheetsReadTable('subject-table', ['Name','Teacher','Room','Days',null,'Status']);
+    await Promise.all([
+      sheetsPushTab('students', students),
+      sheetsPushTab('teachers', teachers),
+      sheetsPushTab('subjects', subjects)
+    ]);
+    showToast('All data pushed to Google Sheets ✓');
+  } catch(e) {
+    showToast('Sync error: ' + e.message);
+  }
+}
+
+/* Build a student data row + edit row HTML */
+function sheetsStudentRow(name, email, classes, status) {
+  var sb = status === 'Active' ? 'bg' : 'bgr';
+  var tr = '<tr><td>'+name+'</td><td>'+email+'</td><td>'+classes+'</td><td><span class="badge '+sb+'">'+status+'</span></td><td><button class="btn btn-sm btn-edit" onclick="editStudentRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>';
+  var er = '<tr class="edit-form-row"><td colspan="5" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="'+name+'"/><input type="email" value="'+email+'"/><input type="text" value="'+classes+'"/><select><option'+(status==='Active'?' selected':'')+'>Active</option><option'+(status==='Inactive'?' selected':'')+'>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td></tr>';
+  return tr + er;
+}
+function sheetsTeacherRow(name, subjects, status) {
+  var sb = status === 'Active' ? 'bg' : (status === 'Onboarding' ? 'ba' : 'bgr');
+  var tr = '<tr><td>'+name+'</td><td><span class="badge bp">Teacher</span></td><td>'+subjects+'</td><td><span class="badge '+sb+'">'+status+'</span></td><td><button class="btn btn-sm btn-edit" onclick="editTeacherRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>';
+  var er = '<tr class="edit-form-row"><td colspan="5" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="'+name+'"/><input type="text" value="'+subjects+'"/><select><option'+(status==='Active'?' selected':'')+'>Active</option><option'+(status==='Onboarding'?' selected':'')+'>Onboarding</option><option'+(status==='Inactive'?' selected':'')+'>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td></tr>';
+  return tr + er;
+}
+function sheetsSubjectRow(name, teacher, room, days, status) {
+  var sb = {'Active':'bg','Starting soon':'ba','Inactive':'bgr'}[status]||'bgr';
+  var tr = '<tr><td>'+name+'</td><td>'+teacher+'</td><td>'+room+'</td><td>'+days+'</td><td>—</td><td><span class="badge '+sb+'">'+status+'</span></td><td><button class="btn btn-sm btn-edit" onclick="editSubjectRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td></tr>';
+  var er = '<tr class="edit-form-row"><td colspan="7" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="'+name+'"/><input type="text" value="'+teacher+'"/><input type="text" value="'+room+'"/><input type="text" value="'+days+'"/><select><option'+(status==='Active'?' selected':'')+'>Active</option><option'+(status==='Starting soon'?' selected':'')+'>Starting soon</option><option'+(status==='Inactive'?' selected':'')+'>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td></tr>';
+  return tr + er;
+}
+
+async function sheetsLoadAll() {
+  if (!sheetsId) { showToast('No sheet connected. Go to Settings → Google Sheets.'); return; }
+  showToast('Loading from Google Sheets…');
+  try {
+    var [sRes, tRes, subRes] = await Promise.all([
+      fetch('/api/sheets/students', { headers: { 'x-sheet-id': sheetsId } }),
+      fetch('/api/sheets/teachers', { headers: { 'x-sheet-id': sheetsId } }),
+      fetch('/api/sheets/subjects', { headers: { 'x-sheet-id': sheetsId } })
+    ]);
+    var students = await sRes.json();
+    var teachers = await tRes.json();
+    var subjects = await subRes.json();
+
+    /* Rebuild student table */
+    var stbl = document.getElementById('student-table');
+    if (stbl && Array.isArray(students)) {
+      var hdr = stbl.querySelector('tr:first-child').outerHTML;
+      var html = hdr;
+      students.forEach(function(r) { html += sheetsStudentRow(r['Name']||'', r['Email']||'', r['Classes']||'', r['Status']||'Active'); });
+      stbl.innerHTML = html;
+    }
+
+    /* Rebuild teacher table (keep principal row) */
+    var ttbl = document.getElementById('teacher-table');
+    if (ttbl && Array.isArray(teachers)) {
+      var principalRow = ttbl.querySelector('tr:nth-child(2)');
+      var hdr2 = ttbl.querySelector('tr:first-child').outerHTML;
+      var html2 = hdr2 + (principalRow ? principalRow.outerHTML : '');
+      teachers.forEach(function(r) { html2 += sheetsTeacherRow(r['Name']||'', r['Subjects']||'', r['Status']||'Active'); });
+      ttbl.innerHTML = html2;
+    }
+
+    /* Rebuild subjects table */
+    var subtbl = document.getElementById('subject-table');
+    if (subtbl && Array.isArray(subjects)) {
+      var hdr3 = subtbl.querySelector('tr:first-child').outerHTML;
+      var html3 = hdr3;
+      subjects.forEach(function(r) { html3 += sheetsSubjectRow(r['Name']||'', r['Teacher']||'', r['Room']||'', r['Days']||'', r['Status']||'Active'); });
+      subtbl.innerHTML = html3;
+    }
+
+    showToast('Data loaded from Google Sheets ✓');
+  } catch(e) {
+    showToast('Load error: ' + e.message);
+  }
+}
+
+/* Auto-sync after add/edit/remove — debounced */
+var sheetsSyncTimer = null;
+function sheetsAutoSync(tab) {
+  if (!sheetsId) return;
+  clearTimeout(sheetsSyncTimer);
+  sheetsSyncTimer = setTimeout(function() {
+    var fieldMaps = {
+      students: { tblId: 'student-table', map: ['Name','Email','Classes','Status'] },
+      teachers: { tblId: 'teacher-table', map: ['Name',null,'Subjects','Status'] },
+      subjects: { tblId: 'subject-table', map: ['Name','Teacher','Room','Days',null,'Status'] }
+    };
+    var cfg = fieldMaps[tab];
+    if (!cfg) return;
+    var rows = sheetsReadTable(cfg.tblId, cfg.map);
+    sheetsPushTab(tab, rows).catch(function(e) { console.warn('Auto-sync failed:', e.message); });
+  }, 1500);
+}
+
+/* Run on page load */
+sheetsUpdateUI();
 </script>
 </body></html>
