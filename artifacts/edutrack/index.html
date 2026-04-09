@@ -417,6 +417,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 
 /* ══ SCHEDULER / AVAILABILITY / NOTIFICATION EXTRAS ══ */
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+@keyframes spin{to{transform:rotate(360deg);}}
 .as-q-item{display:flex;align-items:flex-start;gap:10px;padding:11px;border-radius:var(--r);margin-bottom:8px;border:0.5px solid var(--border);background:var(--surface);transition:all .2s;}
 .as-q-item.firing{background:var(--green-lt);border-color:rgba(59,109,17,.3);animation:pulse .6s ease;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.7;}}
@@ -734,8 +735,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
           </div>
           <div>
             <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Connect existing sheet</div>
-            <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">Paste the Google Sheet ID or full URL.</div>
-            <input type="text" id="sheets-id-input" placeholder="Sheet ID or URL" style="width:100%;margin-bottom:8px;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);">
+            <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">Browse your Drive or paste a Sheet ID / URL.</div>
+            <button class="btn" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="openDrivePicker()">
+              <svg width="14" height="14" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+              Browse Google Drive
+            </button>
+            <input type="text" id="sheets-id-input" placeholder="Or paste Sheet ID / URL" style="width:100%;margin-bottom:8px;font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);color:var(--text);">
             <button class="btn btn-primary" onclick="sheetsConnectExisting()">Connect</button>
           </div>
         </div>
@@ -2074,6 +2079,29 @@ setTimeout(function(){
   </div>
 </div>
 
+<!-- DRIVE PICKER MODAL -->
+<div class="modal-overlay" id="m-drive-picker" onclick="closeM(event,'m-drive-picker')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;width:95%;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="display:flex;align-items:center;gap:8px;">
+      <svg width="16" height="16" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>
+      Select a Google Sheet
+    </div>
+    <div id="drive-picker-body" style="min-height:120px;">
+      <div id="drive-picker-loading" style="display:flex;align-items:center;justify-content:center;padding:40px 0;gap:10px;font-size:13px;color:var(--text-3);">
+        <div class="spinner" style="width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;"></div>
+        Loading your spreadsheets…
+      </div>
+      <div id="drive-picker-list" style="display:none;max-height:340px;overflow-y:auto;margin:0 -20px;"></div>
+      <div id="drive-picker-empty" style="display:none;text-align:center;padding:40px 0;font-size:13px;color:var(--text-3);">No spreadsheets found in your Drive.</div>
+      <div id="drive-picker-error" style="display:none;text-align:center;padding:30px 0;font-size:13px;color:var(--red);"></div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn" onclick="closeById('m-drive-picker')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function addFromCustom(){
   var v = document.getElementById('custom-recip-input').value.trim();
@@ -2407,6 +2435,51 @@ function sheetsDisconnect() {
   localStorage.removeItem('edutrack_sheet_url');
   sheetsUpdateUI();
   showToast('Disconnected from Google Sheets');
+}
+
+/* ══ DRIVE PICKER ══ */
+async function openDrivePicker() {
+  openM('m-drive-picker');
+  var loading = document.getElementById('drive-picker-loading');
+  var list    = document.getElementById('drive-picker-list');
+  var empty   = document.getElementById('drive-picker-empty');
+  var errEl   = document.getElementById('drive-picker-error');
+  loading.style.display = 'flex';
+  list.style.display = 'none';
+  empty.style.display = 'none';
+  errEl.style.display = 'none';
+  try {
+    var res  = await fetch('/api/sheets/drive-files');
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load files');
+    var files = data.files || [];
+    loading.style.display = 'none';
+    if (!files.length) { empty.style.display = 'block'; return; }
+    list.innerHTML = files.map(function(f) {
+      var d = f.modifiedTime ? new Date(f.modifiedTime).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : '';
+      return '<div onclick="drivePickerSelect(\''+f.id+'\',\''+f.webViewLink+'\','+JSON.stringify(f.name)+')" style="display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer;border-bottom:0.5px solid var(--border-lt);transition:background .15s;" onmouseover="this.style.background=\'var(--blue-lt)\'" onmouseout="this.style.background=\'\'">'+
+        '<svg width="20" height="20" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg>'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+f.name+'</div>'+
+        (d?'<div style="font-size:11px;color:var(--text-3);">Modified '+d+'</div>':'')+
+        '</div>'+
+        '<span style="font-size:11px;color:var(--blue);font-weight:600;white-space:nowrap;">Select ›</span>'+
+      '</div>';
+    }).join('');
+    list.style.display = 'block';
+  } catch(e) {
+    loading.style.display = 'none';
+    errEl.textContent = 'Error: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+function drivePickerSelect(id, url, name) {
+  sheetsId  = id;
+  sheetsUrl = url || 'https://docs.google.com/spreadsheets/d/' + id;
+  localStorage.setItem('edutrack_sheet_id', sheetsId);
+  localStorage.setItem('edutrack_sheet_url', sheetsUrl);
+  sheetsUpdateUI();
+  closeById('m-drive-picker');
+  showToast('Connected to "' + name + '"');
 }
 
 /* Read all non-edit-form data rows from a table; fieldMap = [fieldName|null per column, skip last (Actions)] */

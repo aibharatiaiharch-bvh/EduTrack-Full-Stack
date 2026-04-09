@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, getUncachableGoogleDriveClient, SHEET_TABS, SHEET_HEADERS } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -28,6 +28,22 @@ async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: num
     return obj;
   });
 }
+
+// GET /api/sheets/drive-files — list all spreadsheets in the user's Drive
+router.get('/sheets/drive-files', async (_req, res): Promise<void> => {
+  try {
+    const drive = await getUncachableGoogleDriveClient();
+    const result = await drive.files.list({
+      q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+      fields: 'files(id,name,modifiedTime,webViewLink)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 50,
+    });
+    res.json({ files: result.data.files || [] });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // POST /api/sheets/setup — create a new spreadsheet with EduTrack tabs
 router.post('/sheets/setup', async (req, res): Promise<void> => {
