@@ -136,7 +136,7 @@ input,select,textarea{font-family:inherit;}
 .pact{display:flex;gap:8px;flex-wrap:wrap;}
 
 /* ══ COMPONENTS ══ */
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px;}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px;}
 .metric{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);padding:13px;}
 .ml{font-size:10px;color:var(--text-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
 .mv{font-size:22px;font-weight:700;color:var(--text);}
@@ -509,7 +509,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div class="metric"><div class="ml">Students</div><div class="mv" id="dash-students">148</div><div class="md">enrolled</div></div>
         <div class="metric"><div class="ml">Teachers</div><div class="mv" id="dash-teachers">10</div><div class="md">active</div></div>
         <div class="metric"><div class="ml">Attendance</div><div class="mv">94%</div><div class="md">above target</div></div>
-        <div class="metric"><div class="ml">Revenue Apr</div><div class="mv">$8,240</div><div class="md warn">7 unpaid</div></div>
       </div>
       <div class="g2">
         <div class="card"><div class="ct">Today's check-ins</div>
@@ -637,37 +636,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
       </table></div></div>
     </div>
 
-    <!-- GRADES -->
-    <div class="page" id="page-grades">
-      <div class="ph"><div><div class="pt">Assessments</div></div><div class="pact"><button class="btn btn-primary" onclick="openM('m-addgrade')">+ Add</button></div></div>
-      <div class="card"><div class="tbl-wrap"><table>
-        <tr><th>Student</th><th>Subject</th><th>Assessment</th><th>Score</th><th>Grade</th><th>Date</th></tr>
-        <tr><td>Jordan Mills</td><td>Algebra II</td><td>Unit 4 Test</td><td>91/100</td><td><span class="badge bg">A</span></td><td>Mar 28</td></tr>
-        <tr><td>Sofia Patel</td><td>Chemistry</td><td>Lab Report #3</td><td>78/100</td><td><span class="badge bb">C+</span></td><td>Mar 27</td></tr>
-        <tr><td>Kyle Lee</td><td>SAT Prep</td><td>Practice Test 5</td><td>1380/1600</td><td><span class="badge bg">B+</span></td><td>Mar 25</td></tr>
-        <tr><td>Aisha Reed</td><td>Essay Writing</td><td>Persuasive Essay</td><td>85/100</td><td><span class="badge bg">B</span></td><td>Mar 24</td></tr>
-        <tr><td>David Wu</td><td>Calculus</td><td>Midterm</td><td>72/100</td><td><span class="badge ba">C</span></td><td>Mar 20</td></tr>
-        <tr><td>Priya Shah</td><td>U.S. History</td><td>Essay Exam</td><td>95/100</td><td><span class="badge bg">A</span></td><td>Mar 19</td></tr>
-      </table></div></div>
-    </div>
-
-    <!-- BILLING -->
-    <div class="page" id="page-billing">
-      <div class="ph"><div><div class="pt">Billing & Payments</div></div><div class="pact"><button class="btn btn-primary" onclick="openM('m-pay')">+ Record payment</button></div></div>
-      <div class="policy-box"><div class="policy-title">24-hour cancellation policy</div><div class="policy-text">Students must cancel 24+ hours before class or they are billed at the full session rate.</div></div>
-      <div class="g3" style="margin-bottom:12px;">
-        <div class="card" style="margin:0;"><div class="pay-stat"><div class="pay-stat-val" style="color:var(--green);">$8,240</div><div class="pay-stat-label">Collected Apr</div></div></div>
-        <div class="card" style="margin:0;"><div class="pay-stat"><div class="pay-stat-val" style="color:var(--amber);">$620</div><div class="pay-stat-label">Pending</div></div></div>
-        <div class="card" style="margin:0;"><div class="pay-stat"><div class="pay-stat-val" style="color:var(--red);">$185</div><div class="pay-stat-label">Overdue</div></div></div>
-      </div>
-      <div class="card"><div class="ct">Recent transactions</div><div class="tbl-wrap"><table id="billing-table">
-        <tr><th>Student</th><th>Date</th><th>Type</th><th>Amount</th><th>Notes</th><th>Status</th><th></th></tr>
-        <tr><td>Aisha Reed</td><td>Apr 3</td><td>Late cancel</td><td>$45</td><td>Essay Writing</td><td><span class="badge ba">Pending</span></td><td><button class="btn btn-sm btn-success" onclick="markPaid(this)">Mark paid</button></td></tr>
-        <tr><td>David Wu</td><td>Apr 3</td><td>No show</td><td>$50</td><td>Calculus</td><td><span class="badge br">Unpaid</span></td><td><button class="btn btn-sm btn-success" onclick="markPaid(this)">Mark paid</button></td></tr>
-        <tr><td>Jordan Mills</td><td>Apr 1</td><td>Session</td><td>$55</td><td>Algebra II</td><td><span class="badge bg">Paid</span></td><td></td></tr>
-      </table></div></div>
-    </div>
-
     <!-- ═══════════════════════════════════════
          REPORTS & ARCHIVE
     ═══════════════════════════════════════ -->
@@ -678,8 +646,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div>
           <div class="card"><div class="ct">Download reports</div>
             <div class="report-card" onclick="downloadReport('attendance')"><div class="report-icon" style="background:var(--blue-lt);"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#185FA5" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></div><div><div class="report-name">Attendance report</div><div class="report-desc">All check-ins, check-outs, absences</div></div><div class="report-action">↓ CSV</div></div>
-            <div class="report-card" onclick="downloadReport('grades')"><div class="report-icon" style="background:var(--purple-lt);"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#534AB7" stroke-width="1.5"><path d="M3 12V4l5 3 5-3v8M8 7v5"/></svg></div><div><div class="report-name">Grade report</div><div class="report-desc">All assessments and scores per student</div></div><div class="report-action">↓ CSV</div></div>
-            <div class="report-card" onclick="downloadReport('billing')"><div class="report-icon" style="background:var(--green-lt);"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#3B6D11" stroke-width="1.5"><path d="M2 4h12v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM2 4l2-2h8l2 2"/></svg></div><div><div class="report-name">Billing report</div><div class="report-desc">All payments, pending and overdue</div></div><div class="report-action">↓ CSV</div></div>
             <div class="report-card" onclick="downloadReport('roster')"><div class="report-icon" style="background:var(--teal-lt);"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#0F6E56" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1 13c0-2.5 2-4 5-4s5 1.5 5 4"/><circle cx="12" cy="5" r="2"/><path d="M14 13c0-1.5-1-3-3-3"/></svg></div><div><div class="report-name">Roster report</div><div class="report-desc">Full student and teacher directory</div></div><div class="report-action">↓ CSV</div></div>
           </div>
         </div>
@@ -688,8 +654,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
             <div class="tbl-wrap"><table id="archive-table">
               <tr><th>Report</th><th>Date</th><th>Type</th><th></th></tr>
               <tr><td>Attendance — Mar 2025</td><td>Apr 1</td><td><span class="badge bg">CSV</span></td><td><button class="btn btn-sm btn-edit" onclick="alert('Downloading archived report...')">↓</button></td></tr>
-              <tr><td>Billing — Q1 2025</td><td>Mar 31</td><td><span class="badge bg">CSV</span></td><td><button class="btn btn-sm btn-edit" onclick="alert('Downloading archived report...')">↓</button></td></tr>
-              <tr><td>Grade report — Feb 2025</td><td>Mar 1</td><td><span class="badge bg">CSV</span></td><td><button class="btn btn-sm btn-edit" onclick="alert('Downloading archived report...')">↓</button></td></tr>
             </table></div>
           </div>
         </div>
@@ -1099,9 +1063,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Notification type</div>
         <div class="notif-type-row">
           <button class="notif-type-btn active" onclick="setNotifType(this,'general')">General</button>
-          <button class="notif-type-btn" onclick="setNotifType(this,'grade')">Grade posted</button>
           <button class="notif-type-btn" onclick="setNotifType(this,'attendance')">Attendance alert</button>
-          <button class="notif-type-btn" onclick="setNotifType(this,'billing')">Billing / payment</button>
           <button class="notif-type-btn" onclick="setNotifType(this,'cancellation')">Class cancellation</button>
           <button class="notif-type-btn" onclick="setNotifType(this,'reminder')">Session reminder</button>
         </div>
@@ -1132,10 +1094,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:var(--r);">
           <div style="font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:6px;">Quick templates</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="btn btn-sm" onclick="fillTemplate('grade')">Grade posted</button>
             <button class="btn btn-sm" onclick="fillTemplate('reminder')">Session reminder</button>
             <button class="btn btn-sm" onclick="fillTemplate('cancel')">Class cancelled</button>
-            <button class="btn btn-sm" onclick="fillTemplate('billing')">Payment due</button>
             <button class="btn btn-sm" onclick="fillTemplate('absence')">Absence alert</button>
           </div>
         </div>
@@ -1160,7 +1120,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div id="sent-notif-log">
           <div class="sent-notif-row"><div class="sent-icon" style="background:var(--green-lt);color:var(--green);">✓</div><div style="flex:1"><div style="font-size:12px;font-weight:600;">Grade posted — Algebra II Unit 4 Test</div><div style="font-size:11px;color:var(--text-3);">To: Jordan Mills, Maria Mills (parent) · Apr 3 at 2:15 PM</div></div><span class="badge bg">Read</span></div>
           <div class="sent-notif-row"><div class="sent-icon" style="background:var(--amber-lt);color:var(--amber);">⚠</div><div style="flex:1"><div style="font-size:12px;font-weight:600;">Attendance alert — Aisha Reed missed Essay Writing</div><div style="font-size:11px;color:var(--text-3);">To: Aisha Reed, parents · Apr 3 at 11:30 AM</div></div><span class="badge bg">Read</span></div>
-          <div class="sent-notif-row"><div class="sent-icon" style="background:var(--red-lt);color:var(--red);">$</div><div style="flex:1"><div style="font-size:12px;font-weight:600;">Billing — Late cancellation charge $45</div><div style="font-size:11px;color:var(--text-3);">To: Aisha Reed · Apr 3 at 11:31 AM</div></div><span class="badge bg">Read</span></div>
           <div class="sent-notif-row"><div class="sent-icon" style="background:var(--blue-lt);color:var(--blue);">i</div><div style="flex:1"><div style="font-size:12px;font-weight:600;">Session reminder — SAT Prep Monday 10 AM</div><div style="font-size:11px;color:var(--text-3);">To: All SAT Prep students · Apr 4 at 8:00 AM</div></div><span class="badge ba">Pending</span></div>
           <div class="sent-notif-row"><div class="sent-icon" style="background:var(--purple-lt);color:var(--purple);">★</div><div style="flex:1"><div style="font-size:12px;font-weight:600;">General — Spring schedule update</div><div style="font-size:11px;color:var(--text-3);">To: All students, All parents · Apr 1 at 9:00 AM</div></div><span class="badge bg">Read</span></div>
         </div>
@@ -1176,7 +1135,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div class="notif-item unread"><div class="notif-icon" style="background:var(--green-lt);">✓</div><div style="flex:1"><div class="notif-title">Grade posted — Algebra II Unit 4 Test</div><div class="notif-body">Your grade for Unit 4 Test has been posted by Ms. Torres. Score: 91/100 — Grade: A. Great work!</div><div class="notif-time">Today at 2:15 PM</div></div><div class="notif-unread-dot"></div></div>
         <div class="notif-item unread"><div class="notif-icon" style="background:var(--blue-lt);">📅</div><div style="flex:1"><div class="notif-title">Session reminder — SAT Prep</div><div class="notif-body">Your SAT Prep session with Ms. Brooks is on Monday April 7 at 10:00 AM in Room 204. See you there!</div><div class="notif-time">Yesterday at 8:00 AM</div></div><div class="notif-unread-dot"></div></div>
         <div class="notif-item"><div class="notif-icon" style="background:var(--purple-lt);">★</div><div style="flex:1"><div class="notif-title">Spring schedule update</div><div class="notif-body">The spring 2025 schedule has been updated. Please review your class times in the Schedule section. Contact the principal if you have questions.</div><div class="notif-time">Apr 1 at 9:00 AM</div></div></div>
-        <div class="notif-item"><div class="notif-icon" style="background:var(--amber-lt);">💳</div><div style="flex:1"><div class="notif-title">Payment receipt — $55 Algebra II session</div><div class="notif-body">Your payment of $55 for the Algebra II session on April 1 has been received. Thank you!</div><div class="notif-time">Apr 1 at 10:30 AM</div></div></div>
       </div>
     </div>
 
@@ -1190,7 +1148,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
         <div class="notif-item unread"><div class="notif-icon" style="background:var(--green-lt);">✓</div><div style="flex:1"><div class="notif-title">Grade posted — Jordan · Algebra II</div><div class="notif-body">Jordan received an A (91/100) on the Unit 4 Test in Algebra II taught by Ms. Torres. Excellent performance!</div><div class="notif-time">Today at 2:15 PM</div></div><div class="notif-unread-dot"></div></div>
         <div class="notif-item unread"><div class="notif-icon" style="background:var(--blue-lt);">✓</div><div style="flex:1"><div class="notif-title">Checked in — Jordan · Algebra II</div><div class="notif-body">Jordan checked into Algebra II at 9:02 AM today with Ms. Torres in Room 101.</div><div class="notif-time">Today at 9:02 AM</div></div><div class="notif-unread-dot"></div></div>
         <div class="notif-item"><div class="notif-icon" style="background:var(--purple-lt);">★</div><div style="flex:1"><div class="notif-title">Spring schedule published</div><div class="notif-body">The updated spring 2025 schedule is now available. Jordan is enrolled in Algebra II, SAT Prep, and Essay Writing.</div><div class="notif-time">Apr 1 at 9:00 AM</div></div></div>
-        <div class="notif-item"><div class="notif-icon" style="background:var(--amber-lt);">💳</div><div style="flex:1"><div class="notif-title">Payment received — $55</div><div class="notif-body">We have received $55 for Jordan's Algebra II session on April 1. Your account is fully paid and up to date.</div><div class="notif-time">Apr 1 at 10:30 AM</div></div></div>
       </div>
 
       <!-- Notification preferences -->
@@ -1216,9 +1173,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 
 <div class="modal-overlay" id="m-add-subject" onclick="closeM(event,'m-add-subject')"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">Add subject</div><div class="fr"><div><label>Subject name</label><input type="text" id="new-sub-name" placeholder="e.g. Biology"/></div><div><label>Teacher</label><input type="text" id="new-sub-teacher" placeholder="e.g. Ms. Kim"/></div></div><div class="fr"><div><label>Room</label><input type="text" id="new-sub-room" placeholder="e.g. Lab 1"/></div><div><label>Days</label><input type="text" id="new-sub-days" placeholder="e.g. Mon / Fri"/></div></div><div><label>Status</label><select id="new-sub-status"><option>Active</option><option>Starting soon</option><option>Inactive</option></select></div><div class="modal-actions"><button class="btn" onclick="closeById('m-add-subject')">Cancel</button><button class="btn btn-primary" onclick="addSubject()">Add subject</button></div></div></div>
 
-<div class="modal-overlay" id="m-addgrade" onclick="closeM(event,'m-addgrade')"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">Add assessment</div><div class="fr"><div><label>Student</label><input type="text" id="ng-student" placeholder="Student name"/></div><div><label>Subject</label><select id="ng-subject"><option>Algebra II</option><option>Chemistry</option><option>SAT Prep</option><option>Essay Writing</option><option>Calculus</option><option>U.S. History</option><option>Spanish I</option><option>Physics</option><option>Biology</option></select></div></div><label>Assessment name</label><input type="text" id="ng-name" placeholder="e.g. Unit 5 Test"/><div class="fr"><div><label>Score</label><input type="text" id="ng-score" placeholder="e.g. 88/100"/></div><div><label>Grade</label><select id="ng-grade"><option>A</option><option>A-</option><option>B+</option><option>B</option><option>B-</option><option>C+</option><option>C</option><option>D</option><option>F</option></select></div></div><div class="modal-actions"><button class="btn" onclick="closeById('m-addgrade')">Cancel</button><button class="btn btn-primary" onclick="addGrade()">Save assessment</button></div></div></div>
 
-<div class="modal-overlay" id="m-pay" onclick="closeM(event,'m-pay')"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">Record payment</div><div class="fr"><div><label>Student</label><input type="text" id="pay-student" placeholder="Student name"/></div><div><label>Amount ($)</label><input type="number" id="pay-amount" value="55" min="0"/></div></div><div class="fr"><div><label>Date</label><input type="date" id="pay-date"/></div><div><label>Type</label><select id="pay-type"><option>Session</option><option>Late cancellation</option><option>No show</option><option>Package</option><option>Other</option></select></div></div><label>Notes (optional)</label><input type="text" id="pay-notes" placeholder="e.g. Spring term payment, special class..."/><div class="modal-actions"><button class="btn" onclick="closeById('m-pay')">Cancel</button><button class="btn btn-primary" onclick="addPayment()">Record payment</button></div></div></div>
 
 <div class="modal-overlay" id="m-cancel" onclick="closeM(event,'m-cancel')"><div class="modal" onclick="event.stopPropagation()"><div class="modal-handle"></div><div class="modal-title">Request cancellation</div><div class="policy-box"><div class="policy-title">24-hour policy</div><div class="policy-text">Cancellations within 24 hours will be billed at the full session rate.</div></div><label>Select session</label><select><option>Algebra II — Thu Apr 3</option><option>SAT Prep — Mon Apr 7</option></select><label>Reason</label><textarea rows="3" placeholder="Optional note..."></textarea><div class="modal-actions"><button class="btn" onclick="closeById('m-cancel')">Nevermind</button><button class="btn btn-danger" onclick="closeById('m-cancel');alert('Cancellation submitted!')">Submit</button></div></div></div>
 
@@ -1232,21 +1187,20 @@ var hiddenPages = {};
 var roles = {
   principal:{name:'Dr. Angela Moore',initials:'AM',roleLabel:'Principal',rc:'r-principal',
     nav:[{s:'Overview'},{l:'Dashboard',p:'dashboard'},{l:'Check-in / Out',p:'checkin'},{l:'Schedule',p:'schedule'},
-         {s:'Academics'},{l:'Subjects',p:'subjects'},{l:'Assessments',p:'grades'},
-         {s:'People'},{l:'Teachers',p:'teachers'},{l:'Students',p:'students'},
+         {s:'Academics'},{l:'Subjects',p:'subjects'},{s:'People'},{l:'Teachers',p:'teachers'},{l:'Students',p:'students'},
          {s:'Staff'},{l:'Availability & timesheets',p:'availability'},{l:'Auto-reminders',p:'auto-reminders'},{l:'Notifications',p:'notifications',b:'3'},
          {s:'Admin'},{l:'Upload roster',p:'upload',upload:true},{l:'Reports & archive',p:'reports'},
-         {l:'Billing',p:'billing',b:'7'},{l:'Settings',p:'settings'}],
+         {l:'Settings',p:'settings'}],
     home:'dashboard',mob:['dashboard','availability','notifications','students','settings']},
   teacher:{name:'Ms. Torres',initials:'MT',roleLabel:'Teacher',rc:'r-teacher',
-    nav:[{s:'Classes'},{l:'Dashboard',p:'dashboard'},{l:'Check-in / Out',p:'checkin'},{l:'Schedule',p:'schedule'},{s:'Academics'},{l:'Subjects',p:'subjects'},{l:'Assessments',p:'grades'},{s:'My Info'},{l:'My availability',p:'teacher-availability'},{l:'My timesheets',p:'teacher-timesheets'}],
-    home:'dashboard',mob:['dashboard','checkin','teacher-availability','teacher-timesheets','grades']},
+    nav:[{s:'Classes'},{l:'Dashboard',p:'dashboard'},{l:'Check-in / Out',p:'checkin'},{l:'Schedule',p:'schedule'},{s:'My Info'},{l:'My availability',p:'teacher-availability'},{l:'My timesheets',p:'teacher-timesheets'}],
+    home:'dashboard',mob:['dashboard','checkin','teacher-availability','teacher-timesheets']},
   student:{name:'Jordan Mills',initials:'JM',roleLabel:'Student',rc:'r-student',
-    nav:[{s:'My Portal'},{l:'Home',p:'student-home'},{l:'My Billing',p:'student-billing'},{l:'Notifications',p:'student-notifications'}],
-    home:'student-home',mob:['student-home','student-notifications','student-billing']},
+    nav:[{s:'My Portal'},{l:'Home',p:'student-home'},{l:'Notifications',p:'student-notifications'}],
+    home:'student-home',mob:['student-home','student-notifications']},
   parent:{name:'Maria Mills',initials:'MM',roleLabel:'Parent',rc:'r-parent',
-    nav:[{s:'Parent Portal'},{l:'Overview',p:'parent-home'},{l:"Child's grades",p:'parent-grades'},{l:'Billing',p:'parent-billing'},{l:'Notifications',p:'parent-notifications'}],
-    home:'parent-home',mob:['parent-home','parent-grades','parent-notifications','parent-billing']}
+    nav:[{s:'Parent Portal'},{l:'Overview',p:'parent-home'},{l:'Notifications',p:'parent-notifications'}],
+    home:'parent-home',mob:['parent-home','parent-notifications']}
 };
 
 /* ══ LOGIN ══ */
@@ -1410,7 +1364,6 @@ function addSubject(){
   closeById('m-add-subject'); showToast('Subject added');
 }
 function removeRow(btn){if(confirm('Remove this record?')){var row=btn.closest('tr'),next=row.nextElementSibling;if(next&&next.classList.contains('edit-form-row'))next.remove();row.remove();showToast('Record removed');}}
-function markPaid(btn){var row=btn.closest('tr');row.querySelector('.badge').textContent='Paid';row.querySelector('.badge').className='badge bg';btn.style.display='none';}
 function switchChild(btn){btn.closest('.child-sel').querySelectorAll('.child-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
 /* ══ CHECK-IN ══ */
@@ -1448,14 +1401,14 @@ function toggleUploadBtns(){
 
 /* ══ REPORTS ══ */
 function downloadReport(type){
-  var data={'attendance':'Date,Student,Class,Status\nApr 3 2025,Jordan Mills,Algebra II,Checked in\nApr 3 2025,Sofia Patel,Chemistry,Pending\nApr 3 2025,Aisha Reed,Essay Writing,Late cancel\n','grades':'Student,Subject,Assessment,Score,Grade,Date\nJordan Mills,Algebra II,Unit 4 Test,91/100,A,Mar 28\nSofia Patel,Chemistry,Lab Report #3,78/100,C+,Mar 27\nKyle Lee,SAT Prep,Practice Test 5,1380/1600,B+,Mar 25\n','billing':'Student,Class,Type,Amount,Status,Date\nAisha Reed,Essay Writing,Late cancel,$45,Pending,Apr 3\nDavid Wu,Calculus,No show,$50,Unpaid,Apr 3\nJordan Mills,Algebra II,Session,$55,Paid,Apr 1\n','roster':'Type,Name,Email,Subjects/Classes,Status\nTeacher,Ms. Torres,torres@school.edu,Algebra II,Active\nStudent,Jordan Mills,j.mills@mail.com,Algebra II SAT Prep,Active\nStudent,Sofia Patel,s.patel@mail.com,Chemistry,Active\n'};
+  var data={'attendance':'Date,Student,Class,Status\nApr 3 2025,Jordan Mills,Algebra II,Checked in\nApr 3 2025,Sofia Patel,Chemistry,Pending\nApr 3 2025,Aisha Reed,Essay Writing,Late cancel\n','roster':'Type,Name,Email,Subjects/Classes,Status\nTeacher,Ms. Torres,torres@school.edu,Algebra II,Active\nStudent,Jordan Mills,j.mills@mail.com,Algebra II SAT Prep,Active\nStudent,Sofia Patel,s.patel@mail.com,Chemistry,Active\n'};
   var csv=data[type]||'No data';
   var blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='edutrack_'+type+'_report_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);
   // Add to archive
   var now=new Date(),ds=now.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   var arch=document.getElementById('archive-table'),tr=document.createElement('tr');
-  var labels={attendance:'Attendance',grades:'Grade',billing:'Billing',roster:'Roster'};
+  var labels={attendance:'Attendance',roster:'Roster'};
   tr.innerHTML='<td>'+labels[type]+' — '+ds+'</td><td>'+ds+'</td><td><span class="badge bg">CSV</span></td><td><button class="btn btn-sm btn-edit" onclick="alert(\'Downloading...\')">↓</button></td>';
   var first=arch.querySelector('tr:nth-child(2)');arch.insertBefore(tr,first);
   showToast(labels[type]+' report downloaded & archived');
@@ -1514,12 +1467,6 @@ function dlTemplate(type){var csv=type==='students'?'name,email,classes,grade_av
 /* ══ MODALS ══ */
 function openM(id){
   document.getElementById(id).classList.add('open');
-  // Pre-fill today's date on payment modal
-  if(id==='m-pay'){
-    var today=new Date().toISOString().slice(0,10);
-    var el=document.getElementById('pay-date');
-    if(el&&!el.value) el.value=today;
-  }
 }
 function closeById(id){document.getElementById(id).classList.remove('open');}
 function closeM(e,id){if(e.target.id===id)closeById(id);}
@@ -1532,49 +1479,6 @@ function showToast(msg){
   t.textContent=msg;t.style.opacity='1';clearTimeout(toastTimeout);toastTimeout=setTimeout(function(){t.style.opacity='0';},2500);
 }
 
-/* ══ FIX 2: ADD GRADE ══ */
-function addGrade(){
-  var student = document.getElementById('ng-student').value.trim();
-  var subject = document.getElementById('ng-subject').value;
-  var name    = document.getElementById('ng-name').value.trim();
-  var score   = document.getElementById('ng-score').value.trim();
-  var grade   = document.getElementById('ng-grade').value;
-  if(!student){showToast('Please enter a student name.');return;}
-  if(!name){showToast('Please enter an assessment name.');return;}
-  var tbl = document.querySelector('#page-grades table');
-  if(!tbl) return;
-  var gradeClass = {A:'bg','A-':'bg','B+':'bg',B:'bg','B-':'bb','C+':'bb',C:'ba',D:'ba',F:'br'}[grade]||'ba';
-  var now = new Date();
-  var ds  = now.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  var tr  = document.createElement('tr');
-  tr.innerHTML = '<td>'+student+'</td><td>'+subject+'</td><td>'+name+'</td><td>'+(score||'—')+'</td><td><span class="badge '+gradeClass+'">'+grade+'</span></td><td>'+ds+'</td>';
-  tbl.appendChild(tr);
-  ['ng-student','ng-name','ng-score'].forEach(function(id){document.getElementById(id).value='';});
-  closeById('m-addgrade');
-  showToast('Assessment added for '+student);
-}
-
-/* ══ FIX 5: ADD PAYMENT ══ */
-function addPayment(){
-  var student = document.getElementById('pay-student').value.trim();
-  var amount  = document.getElementById('pay-amount').value.trim();
-  var date    = document.getElementById('pay-date').value;
-  var type    = document.getElementById('pay-type').value;
-  var notes   = document.getElementById('pay-notes').value.trim();
-  if(!student){showToast('Please enter a student name.');return;}
-  if(!amount){showToast('Please enter an amount.');return;}
-  var tbl = document.getElementById('billing-table');
-  if(!tbl) return;
-  var ds = date ? new Date(date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : 'Today';
-  var tr = document.createElement('tr');
-  tr.innerHTML = '<td>'+student+'</td><td>'+ds+'</td><td>'+type+'</td><td>$'+parseFloat(amount).toFixed(0)+'</td><td>'+(notes||'—')+'</td><td><span class="badge ba">Pending</span></td><td><button class="btn btn-sm btn-success" onclick="markPaid(this)">Mark paid</button></td>';
-  var first = tbl.querySelector('tr:nth-child(2)');
-  if(first) tbl.insertBefore(tr, first); else tbl.appendChild(tr);
-  ['pay-student','pay-notes'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('pay-amount').value='55';
-  closeById('m-pay');
-  showToast('Payment recorded for '+student);
-}
 
 /* ══ FIX 3 & 6: CALENDAR ENGINE ══ */
 var calWeekOffset = 0; // 0 = current week, -1 = last week, etc.
