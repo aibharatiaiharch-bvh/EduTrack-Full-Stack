@@ -215,6 +215,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 /* ══ CHECKIN ══ */
 .ci-row{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:0.5px solid var(--border-lt);}
 .ci-row:last-child{border-bottom:none;}
+.ci-suggest{padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:0.5px solid var(--border-lt);}
+.ci-suggest:last-child{border-bottom:none;}
+.ci-suggest:hover,.ci-suggest.active{background:var(--blue-lt);}
+.ci-suggest-name{font-weight:600;color:var(--text);}
+.ci-suggest-sub{font-size:10px;color:var(--text-3);margin-top:1px;}
 .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
 .av-b{background:var(--blue-lt);color:var(--blue);}.av-t{background:var(--teal-lt);color:var(--teal);}
 .av-p{background:var(--purple-lt);color:var(--purple);}.av-a{background:var(--amber-lt);color:var(--amber);}
@@ -521,7 +526,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
       <div class="card">
         <div id="add-ci-form" style="display:none;padding-bottom:12px;margin-bottom:12px;border-bottom:0.5px solid var(--border);">
           <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Add student check-in</div>
-          <div class="fr"><div><label>Student name</label><input type="text" id="ci-name" placeholder="Full name"/></div><div><label>Class</label><select id="ci-class"><option>Algebra II</option><option>Chemistry</option><option>SAT Prep</option><option>Essay Writing</option><option>Calculus</option></select></div></div>
+          <div class="fr">
+            <div style="position:relative;flex:1;">
+              <label>Student name</label>
+              <input type="text" id="ci-name" placeholder="Type to search…" autocomplete="off"
+                oninput="ciSearch(this.value)"
+                onfocus="ciSearch(this.value)"
+                onblur="setTimeout(function(){var d=document.getElementById('ci-dropdown');if(d)d.style.display='none';},160)"
+                onkeydown="ciKeyNav(event)"/>
+              <div id="ci-dropdown" style="display:none;position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--r);box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:60;max-height:200px;overflow-y:auto;"></div>
+            </div>
+            <div><label>Class</label><select id="ci-class"><option>Algebra II</option><option>Chemistry</option><option>SAT Prep</option><option>Essay Writing</option><option>Calculus</option></select></div>
+          </div>
           <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-primary" onclick="addCheckin()">Check in</button><button class="btn" onclick="toggleAddCI()">Cancel</button></div>
         </div>
         <div id="ci-list">
@@ -1386,7 +1402,85 @@ function removeRow(btn){if(confirm('Remove this record?')){var row=btn.closest('
 function switchChild(btn){btn.closest('.child-sel').querySelectorAll('.child-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
 /* ══ CHECK-IN ══ */
-function toggleAddCI(){var f=document.getElementById('add-ci-form');f.style.display=f.style.display==='none'?'block':'none';}
+function toggleAddCI(){
+  var f=document.getElementById('add-ci-form');
+  var open=f.style.display==='none';
+  f.style.display=open?'block':'none';
+  if(open){
+    // reset & populate class dropdown from subjects table
+    var inp=document.getElementById('ci-name');inp.value='';
+    ciPopulateClassDropdown(null);
+    setTimeout(function(){inp.focus();},50);
+    document.getElementById('ci-dropdown').style.display='none';
+  }
+}
+
+/* ══ CHECK-IN AUTOCOMPLETE ══ */
+var ciActiveIdx=-1;
+function ciGetStudents(){
+  var tbl=document.getElementById('student-table');
+  var students=[];
+  if(!tbl)return students;
+  tbl.querySelectorAll('tr:not(.edit-form-row)').forEach(function(tr,i){
+    if(i===0)return;
+    var cells=tr.querySelectorAll('td');
+    if(!cells.length)return;
+    var name=cells[1]?cells[1].textContent.trim():'';
+    var enrolled=cells[7]?cells[7].textContent.trim():'';
+    if(name)students.push({name:name,enrolled:enrolled});
+  });
+  return students;
+}
+function ciSearch(q){
+  var dropdown=document.getElementById('ci-dropdown');
+  var students=ciGetStudents();
+  var query=q.toLowerCase().trim();
+  var matches=query?students.filter(function(s){return s.name.toLowerCase().includes(query);}):students;
+  ciActiveIdx=-1;
+  if(!matches.length){dropdown.style.display='none';return;}
+  dropdown.innerHTML=matches.map(function(s,i){
+    return '<div class="ci-suggest" data-name="'+s.name+'" data-enrolled="'+s.enrolled+'" onmousedown="ciSelect(\''+s.name.replace(/'/g,"\\'")+"','"+s.enrolled.replace(/'/g,"\\'")+'\')">'+
+      '<div class="ci-suggest-name">'+s.name+'</div>'+
+      (s.enrolled&&s.enrolled!=='—'?'<div class="ci-suggest-sub">'+s.enrolled+'</div>':'')+
+    '</div>';
+  }).join('');
+  dropdown.style.display='block';
+}
+function ciSelect(name,enrolled){
+  document.getElementById('ci-name').value=name;
+  document.getElementById('ci-dropdown').style.display='none';
+  ciPopulateClassDropdown(enrolled);
+}
+function ciPopulateClassDropdown(enrolled){
+  var sel=document.getElementById('ci-class');
+  sel.innerHTML='';
+  if(enrolled&&enrolled!=='—'&&enrolled.trim()){
+    enrolled.split(',').map(function(c){return c.trim();}).filter(Boolean).forEach(function(cls){
+      var o=document.createElement('option');o.value=cls;o.textContent=cls;sel.appendChild(o);
+    });
+  } else {
+    // fallback: all subjects
+    var tbl=document.getElementById('subject-table');
+    if(tbl){tbl.querySelectorAll('tr:not(.edit-form-row)').forEach(function(tr,i){
+      if(i===0)return;
+      var c=tr.querySelector('td');if(!c)return;
+      var o=document.createElement('option');o.value=c.textContent.trim();o.textContent=c.textContent.trim();sel.appendChild(o);
+    });}
+  }
+  if(!sel.options.length){['Algebra II','Chemistry','SAT Prep','Essay Writing','Calculus'].forEach(function(n){var o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});}
+}
+function ciKeyNav(e){
+  var dd=document.getElementById('ci-dropdown');
+  var items=dd.querySelectorAll('.ci-suggest');
+  if(!items.length||dd.style.display==='none')return;
+  if(e.key==='ArrowDown'){e.preventDefault();ciActiveIdx=Math.min(ciActiveIdx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();ciActiveIdx=Math.max(ciActiveIdx-1,0);}
+  else if(e.key==='Enter'&&ciActiveIdx>=0){e.preventDefault();var it=items[ciActiveIdx];if(it)ciSelect(it.dataset.name,it.dataset.enrolled);return;}
+  else if(e.key==='Escape'){dd.style.display='none';return;}
+  items.forEach(function(it,i){it.classList.toggle('active',i===ciActiveIdx);});
+  if(ciActiveIdx>=0)items[ciActiveIdx].scrollIntoView({block:'nearest'});
+}
+
 function checkinBtn(btn){var row=btn.closest('.ci-row'),badge=row.querySelector('.badge');var t=new Date(),ts=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');badge.textContent='Checked in '+ts;badge.className='badge bg';btn.style.display='none';}
 function checkout(btn){var row=btn.closest('.ci-row'),badge=row.querySelector('.badge');var t=new Date(),ts=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');badge.textContent='Out '+ts;badge.className='badge bgr';btn.style.display='none';}
 function addCheckin(){
