@@ -57,6 +57,7 @@ router.post('/sheets/setup', async (req, res): Promise<void> => {
           { properties: { title: SHEET_TABS.students } },
           { properties: { title: SHEET_TABS.teachers } },
           { properties: { title: SHEET_TABS.subjects } },
+          { properties: { title: SHEET_TABS.enrollments } },
         ],
       },
     });
@@ -68,6 +69,7 @@ router.post('/sheets/setup', async (req, res): Promise<void> => {
       { range: `${SHEET_TABS.students}!A1`, values: [SHEET_HEADERS.students] },
       { range: `${SHEET_TABS.teachers}!A1`, values: [SHEET_HEADERS.teachers] },
       { range: `${SHEET_TABS.subjects}!A1`, values: [SHEET_HEADERS.subjects] },
+      { range: `${SHEET_TABS.enrollments}!A1`, values: [SHEET_HEADERS.enrollments] },
     ];
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,

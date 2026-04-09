@@ -9,6 +9,7 @@ import billingRouter from "./billing";
 import scheduleRouter from "./schedule";
 import dashboardRouter from "./dashboard";
 import sheetsRouter from "./sheets";
+import enrollmentsRouter from "./enrollments";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(billingRouter);
 router.use(scheduleRouter);
 router.use(dashboardRouter);
 router.use(sheetsRouter);
+router.use(enrollmentsRouter);
 
 export default router;

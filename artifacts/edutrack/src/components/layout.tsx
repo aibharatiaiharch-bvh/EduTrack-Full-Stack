@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -31,6 +31,13 @@ export function AppSidebar() {
         { name: "Teachers", href: "/teachers", icon: Users },
         { name: "Billing", href: "/billing", icon: CreditCard },
         { name: "Settings", href: "/settings", icon: Settings },
+      ],
+    },
+    {
+      label: "Portals",
+      items: [
+        { name: "Parent Portal", href: "/parent", icon: UserRound },
+        { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
       ],
     },
   ];

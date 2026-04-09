@@ -12,6 +12,8 @@ import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Settings from "@/pages/settings";
 import Checkin from "@/pages/checkin";
+import ParentView from "@/pages/parent";
+import PrincipalDashboard from "@/pages/principal";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -131,6 +133,12 @@ function ClerkProviderWithRoutes() {
           </Route>
           <Route path="/settings">
             <ProtectedRoute component={Settings} />
+          </Route>
+          <Route path="/parent">
+            <ProtectedRoute component={ParentView} />
+          </Route>
+          <Route path="/principal">
+            <ProtectedRoute component={PrincipalDashboard} />
           </Route>
           
           <Route component={NotFound} />

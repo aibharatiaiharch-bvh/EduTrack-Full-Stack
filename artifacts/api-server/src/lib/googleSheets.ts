@@ -64,10 +64,12 @@ export const SHEET_TABS = {
   students: 'Students',
   teachers: 'Teachers',
   subjects: 'Subjects',
+  enrollments: 'Enrollments',
 };
 
 export const SHEET_HEADERS = {
   students: ['Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email'],
   teachers: ['Name', 'Email', 'Subjects', 'Role', 'Status'],
   subjects: ['Name', 'Teacher', 'Room', 'Days', 'Status'],
+  enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action'],
 };
