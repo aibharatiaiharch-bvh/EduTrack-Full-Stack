@@ -80,7 +80,6 @@ input,select,textarea{font-family:inherit;}
 }
 .nav-item:hover{background:#f0f4fb;color:var(--blue);}
 .nav-item.active{color:var(--blue);border-left-color:var(--blue);background:var(--blue-lt);font-weight:700;}
-.nav-item-upload .nav-item-text{color:var(--blue);font-weight:700;}
 .nav-badge{
   flex-shrink:0;
   display:inline-flex;
@@ -169,8 +168,6 @@ tr:hover td{background:#fafaf8;}
 .btn-danger{background:var(--red-lt);color:var(--red);border-color:rgba(163,45,45,.2);}
 .btn-edit{background:var(--blue-lt);color:var(--blue);border-color:rgba(24,95,165,.2);}
 .btn-sm{font-size:10px;padding:4px 8px;}
-.btn-upload{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:7px 13px;border-radius:8px;border:0.5px solid var(--border);background:transparent;color:var(--text);cursor:pointer;white-space:nowrap;}
-.btn-upload svg{width:14px;height:14px;flex-shrink:0;}
 
 label{font-size:12px;color:var(--text-2);display:block;margin-bottom:4px;margin-top:10px;}
 input[type=text],input[type=email],input[type=number],input[type=password],input[type=date],select,textarea{font-size:15px;padding:9px 11px;border:0.5px solid var(--border);border-radius:8px;width:100%;background:var(--surface);color:var(--text);outline:none;-webkit-appearance:none;appearance:none;}
@@ -244,9 +241,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 .backup-icon{width:42px;height:42px;margin:0 auto 8px;border-radius:50%;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;}
 
 /* ══ UPLOAD ══ */
-.upload-tabs{display:flex;border-bottom:0.5px solid var(--border);}
-.upload-tab{flex:1;padding:10px;font-size:13px;font-weight:600;border:none;background:var(--surface);color:var(--text-2);cursor:pointer;border-bottom:2px solid transparent;}
-.upload-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
 .dropzone{border:1.5px dashed var(--border);border-radius:var(--r);padding:26px 16px;text-align:center;cursor:pointer;background:var(--bg);transition:all .15s;}
 .dropzone.drag-over,.dropzone:active{border-color:var(--blue);background:var(--blue-lt);}
 .dropzone-icon{width:40px;height:40px;margin:0 auto 8px;border-radius:50%;background:var(--blue-lt);display:flex;align-items:center;justify-content:center;}
@@ -258,10 +252,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 .preview-scroll{overflow-x:auto;max-height:180px;overflow-y:auto;}
 .preview-scroll table{font-size:11px;}
 .preview-foot{display:flex;gap:8px;padding:10px 12px;background:var(--bg);border-top:0.5px solid var(--border);}
-.up-status{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--r);font-size:12px;margin-top:10px;}
-.up-status.success{background:var(--green-lt);color:var(--green);}
-.up-status.error{background:var(--red-lt);color:var(--red);}
-.up-status.info{background:var(--blue-lt);color:var(--blue);}
 .up-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .template-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
 .template-card{flex:1;min-width:160px;border:0.5px solid var(--border);border-radius:var(--r);padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;}
@@ -323,8 +313,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 .ts-bar{height:100%;border-radius:3px;background:var(--blue);}
 .ts-hours{font-size:11px;font-weight:600;color:var(--text);width:50px;text-align:right;flex-shrink:0;}
 .ts-status{flex-shrink:0;}
-.upload-ts-zone{border:1.5px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;background:var(--bg);transition:all .15s;margin-bottom:12px;}
-.upload-ts-zone:hover,.upload-ts-zone.drag-over{border-color:var(--blue);background:var(--blue-lt);}
 
 /* ══ NOTIFICATIONS ══ */
 .notif-item{display:flex;gap:12px;align-items:flex-start;padding:13px;border-radius:var(--r);margin-bottom:8px;border:0.5px solid var(--border);background:var(--surface);transition:all .12s;}
@@ -385,7 +373,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
   /* page header wraps cleanly */
   .ph{flex-direction:column;gap:8px;}
   .pact{width:100%;}
-  .pact .btn,.pact .btn-upload,.pact button{flex:1;text-align:center;justify-content:center;}
+  .pact .btn,.pact button{flex:1;text-align:center;justify-content:center;}
 
   /* cards */
   .card{padding:13px;}
@@ -566,7 +554,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
       <div class="ph">
         <div><div class="pt">Students</div><div class="ps"><span id="student-count">6</span> enrolled</div></div>
         <div class="pact">
-          <div id="btn-upload-students"><button class="btn-upload" onclick="navTo('upload',null)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V3M5 6l3-3 3 3M3 12h10"/></svg>Upload list</button></div>
           <button class="btn btn-primary" onclick="openM('m-add-student')">+ Add student</button>
         </div>
       </div>
@@ -594,7 +581,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
       <div class="ph">
         <div><div class="pt">Teachers</div><div class="ps">1 principal · <span id="teacher-count">10</span> teachers</div></div>
         <div class="pact">
-          <div id="btn-upload-teachers"><button class="btn-upload" onclick="navTo('upload',null)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V3M5 6l3-3 3 3M3 12h10"/></svg>Upload list</button></div>
           <button class="btn btn-primary" onclick="openM('m-add-teacher')">+ Add teacher</button>
         </div>
       </div>
@@ -663,46 +649,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <!-- ═══════════════════════════════════════
          UPLOAD ROSTER
     ═══════════════════════════════════════ -->
-    <div class="page" id="page-upload">
-      <div class="ph"><div><div class="pt">Upload roster</div><div class="ps">Bulk import students or teachers from CSV or Excel</div></div></div>
-      <div class="card" style="padding:0;overflow:hidden;">
-        <div class="upload-tabs">
-          <button class="upload-tab active" id="utab-s" onclick="switchUpTab('students')">Students</button>
-          <button class="upload-tab" id="utab-t" onclick="switchUpTab('teachers')">Teachers</button>
-        </div>
-        <div style="padding:16px;">
-          <div class="dropzone" id="up-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event)" onclick="document.getElementById('up-file-input').click()">
-            <div class="dropzone-icon"><svg viewBox="0 0 20 20" fill="none" stroke="#185FA5" stroke-width="1.5"><path d="M10 13V4M7 7l3-3 3 3M4 14v1a2 2 0 002 2h8a2 2 0 002-2v-1"/></svg></div>
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px;">Tap to browse or drop a file</div>
-            <div style="font-size:11px;color:var(--text-3);">CSV, Excel or plain text — first row must be column headers</div>
-            <div class="fmt-pills"><span class="fmt-pill">.csv</span><span class="fmt-pill">.xlsx</span><span class="fmt-pill">.xls</span><span class="fmt-pill">.txt</span></div>
-          </div>
-          <input type="file" id="up-file-input" accept=".csv,.xlsx,.xls,.txt" style="display:none" onchange="handleUpFileInput(this)">
-          <div id="up-status" style="display:none"></div>
-          <div id="up-preview" style="display:none" class="preview-wrap">
-            <div class="preview-hdr"><div style="font-size:12px;font-weight:700;" id="up-preview-title">Preview</div><div style="font-size:11px;color:var(--text-3);" id="up-preview-count"></div></div>
-            <div class="preview-scroll"><table id="up-preview-table"></table></div>
-            <div class="preview-foot"><button class="btn btn-primary" onclick="confirmUpImport()">Import all</button><button class="btn" onclick="cancelUpPreview()">Cancel</button></div>
-          </div>
-          <div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;color:var(--text-2);margin-bottom:8px;">Download a template:</div>
-            <div class="template-row">
-              <div class="template-card" onclick="dlTemplate('students')"><div class="t-icon" style="background:var(--green-lt);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#3B6D11" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></div><div><div class="t-name">Student template</div><div class="t-desc">CSV · Name, Email, Classes, Status</div></div></div>
-              <div class="template-card" onclick="dlTemplate('teachers')"><div class="t-icon" style="background:var(--purple-lt);"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#534AB7" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></div><div><div class="t-name">Teacher template</div><div class="t-desc">CSV · Name, Email, Subjects, Status</div></div></div>
-            </div>
-          </div>
-          <div style="margin-top:12px;padding:11px 12px;background:var(--bg);border-radius:var(--r);border:0.5px solid var(--border);">
-            <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:5px;">Expected columns</div>
-            <div id="up-guide-s"><div class="pill-row"><span class="col-pill">name *</span><span class="col-pill">email *</span><span class="col-pill">classes</span><span class="col-pill">status</span></div><div style="font-size:10px;color:var(--text-3);margin-top:5px;">* required</div></div>
-            <div id="up-guide-t" style="display:none;"><div class="pill-row"><span class="col-pill">name *</span><span class="col-pill">email *</span><span class="col-pill">subjects</span><span class="col-pill">status</span></div><div style="font-size:10px;color:var(--text-3);margin-top:5px;">* required</div></div>
-          </div>
-        </div>
-      </div>
-      <div class="card"><div class="ct">Import history</div><div class="tbl-wrap"><table id="up-import-history">
-        <tr><th>Date</th><th>Type</th><th>File</th><th>Records</th><th>Status</th></tr>
-        <tr><td>Apr 3, 2025</td><td>Students</td><td style="font-family:monospace;font-size:11px;">spring_students.csv</td><td>52</td><td><span class="badge bg">Imported</span></td></tr>
-        <tr><td>Mar 15, 2025</td><td>Teachers</td><td style="font-family:monospace;font-size:11px;">faculty_roster.csv</td><td>10</td><td><span class="badge bg">Imported</span></td></tr>
-      </table></div></div>
-    </div>
 
     <!-- ═══════════════════════════════════════
          SETTINGS — backup, restore, visibility
@@ -726,18 +672,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
           <div class="toggle-row"><div><div class="toggle-label">Schedule</div><div class="toggle-desc">Weekly timetable view</div></div><label class="toggle"><input type="checkbox" checked onchange="toggleFeature('schedule',this.checked)"><span class="toggle-slider"></span></label></div>
           <div class="toggle-row"><div><div class="toggle-label">Assessments & grading</div><div class="toggle-desc">Student grade tracking</div></div><label class="toggle"><input type="checkbox" checked onchange="toggleFeature('grades',this.checked)"><span class="toggle-slider"></span></label></div>
           <div class="toggle-row"><div><div class="toggle-label">Billing & payments</div><div class="toggle-desc">Invoices and cancellation billing</div></div><label class="toggle"><input type="checkbox" checked onchange="toggleFeature('billing',this.checked)"><span class="toggle-slider"></span></label></div>
-          <div class="toggle-row"><div><div class="toggle-label">Upload roster (bulk import)</div><div class="toggle-desc">CSV / Excel roster upload</div></div><label class="toggle"><input type="checkbox" checked id="toggle-upload" onchange="toggleFeature('upload',this.checked)"><span class="toggle-slider"></span></label></div>
           <div class="toggle-row"><div><div class="toggle-label">Reports & archive</div><div class="toggle-desc">Downloadable reports</div></div><label class="toggle"><input type="checkbox" checked onchange="toggleFeature('reports',this.checked)"><span class="toggle-slider"></span></label></div>
         </div>
       </div>
 
-      <!-- Student add mode -->
-      <div class="card"><div class="ct">Student entry mode</div>
-        <div style="font-size:12px;color:var(--text-3);margin-bottom:12px;">Choose how new students can be added to the platform.</div>
-        <div class="toggle-row"><div><div class="toggle-label">Show "Upload list" button</div><div class="toggle-desc">Allow bulk CSV/Excel import on Students page</div></div><label class="toggle"><input type="checkbox" checked id="toggle-upload-btn-s" onchange="toggleUploadBtns()"><span class="toggle-slider"></span></label></div>
-        <div class="toggle-row"><div><div class="toggle-label">Show "Upload list" button for teachers</div><div class="toggle-desc">Allow bulk import on Teachers page</div></div><label class="toggle"><input type="checkbox" checked id="toggle-upload-btn-t" onchange="toggleUploadBtns()"><span class="toggle-slider"></span></label></div>
-        <div style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;color:var(--text-2);">Tip: Turn off both upload buttons above to make the platform "add one at a time only" — the + Add student / + Add teacher buttons always stay visible.</div>
-      </div>
 
       <!-- Backup & Restore -->
       <div class="card"><div class="ct">Backup & restore data</div>
@@ -1217,7 +1155,7 @@ var roles = {
     nav:[{s:'Overview'},{l:'Dashboard',p:'dashboard'},{l:'Check-in / Out',p:'checkin'},{l:'Schedule',p:'schedule'},
          {s:'Academics'},{l:'Subjects',p:'subjects'},{s:'People'},{l:'Teachers',p:'teachers'},{l:'Students',p:'students'},
          {s:'Staff'},{l:'Availability & timesheets',p:'availability'},{l:'Auto-reminders',p:'auto-reminders'},{l:'Notifications',p:'notifications',b:'3'},
-         {s:'Admin'},{l:'Upload roster',p:'upload',upload:true},{l:'Reports & archive',p:'reports'},
+         {s:'Admin'},{l:'Reports & archive',p:'reports'},
          {l:'Settings',p:'settings'}],
     home:'dashboard',mob:['dashboard','availability','notifications','students','settings']},
   teacher:{name:'Ms. Torres',initials:'MT',roleLabel:'Teacher',rc:'r-teacher',
@@ -1262,7 +1200,6 @@ function buildSideNav(cfg,cid,isDrawer){
       if(hiddenPages[item.p])return;
       var d=document.createElement('div');
       d.className=isDrawer?'drawer-nav-item':'nav-item';
-      if(item.upload) d.className+=' nav-item-upload';
       d.dataset.page=item.p;
       /* Build inner content — text + optional badge */
       var inner='<span class="nav-item-text">'+item.l+'</span>';
@@ -1425,12 +1362,6 @@ function toggleFeature(page, show){
   if(!show&&active&&active.id==='page-'+page){navTo('dashboard',null);}
   showToast((show?'Showing':'Hiding')+' '+page);
 }
-function toggleUploadBtns(){
-  var showS=document.getElementById('toggle-upload-btn-s').checked;
-  var showT=document.getElementById('toggle-upload-btn-t').checked;
-  var bs=document.getElementById('btn-upload-students');if(bs)bs.style.display=showS?'':'none';
-  var bt=document.getElementById('btn-upload-teachers');if(bt)bt.style.display=showT?'':'none';
-}
 
 /* ══ REPORTS ══ */
 function downloadReport(type){
@@ -1481,21 +1412,6 @@ function showRestoreStatus(msg,type){var el=document.getElementById('restore-sta
 /* ══ SETTINGS ══ */
 function saveSettings(){showToast('Settings saved');}
 function addFeat(){var n=prompt('Describe your custom feature:');if(!n||!n.trim())return;var list=document.getElementById('feat-list'),d=document.createElement('div');d.style.cssText='padding:8px 0;border-top:0.5px solid var(--border-lt);font-size:12px;';d.textContent=n.trim();list.appendChild(d);}
-
-/* ══ UPLOAD ══ */
-var upTab='students',upRows=[],upHeaders=[];
-function switchUpTab(tab){upTab=tab;document.getElementById('utab-s').classList.toggle('active',tab==='students');document.getElementById('utab-t').classList.toggle('active',tab==='teachers');document.getElementById('up-guide-s').style.display=tab==='students'?'block':'none';document.getElementById('up-guide-t').style.display=tab==='teachers'?'block':'none';cancelUpPreview();}
-function handleDrop(e){e.preventDefault();document.getElementById('up-dropzone').classList.remove('drag-over');var file=e.dataTransfer.files[0];if(file)processUpFile(file);}
-function handleUpFileInput(inp){var file=inp.files[0];if(file)processUpFile(file);inp.value='';}
-function processUpFile(file){var n=file.name.toLowerCase();if(n.endsWith('.xlsx')||n.endsWith('.xls')){simulateUpExcel(file.name);return;}if(!n.endsWith('.csv')&&!n.endsWith('.txt')){showUpStatus('Please upload .csv, .xlsx or .txt','error');return;}var r=new FileReader();r.onload=function(e){parseUpCSV(e.target.result,file.name);};r.readAsText(file);}
-function parseUpCSV(text,filename){var lines=text.trim().split(/\r?\n/).filter(l=>l.trim());if(lines.length<2){showUpStatus('File must have a header row and at least one data row.','error');return;}var headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));var rows=lines.slice(1).map(function(line){var cells=line.split(',').map(c=>c.trim().replace(/^"|"$/g,''));return headers.reduce(function(obj,h,i){obj[h]=cells[i]||'';return obj;},{});});upHeaders=headers;upRows=rows;showUpPreview(filename);}
-function simulateUpExcel(filename){if(upTab==='students'){upHeaders=['name','email','classes','status'];upRows=[{name:'Alex Johnson',email:'alex.j@mail.com',classes:'Algebra II',status:'Active'},{name:'Mia Gonzalez',email:'mia.g@mail.com',classes:'Chemistry',status:'Active'},{name:'Ethan Park',email:'ethan.p@mail.com',classes:'SAT Prep',status:'Active'}];}else{upHeaders=['name','email','subjects','status'];upRows=[{name:'Ms. Harper',email:'harper@school.edu',subjects:'Physics',status:'Active'},{name:'Mr. Singh',email:'singh@school.edu',subjects:'Calculus',status:'Onboarding'}];}showUpPreview(filename);}
-function showUpPreview(filename){hideUpStatus();var maxCols=Math.min(upHeaders.length,5),vis=upHeaders.slice(0,maxCols),extra=upHeaders.length>maxCols;var html='<tr>'+vis.map(h=>'<th>'+h+'</th>').join('')+(extra?'<th>…</th>':'')+'</tr>';var maxR=Math.min(upRows.length,6);for(var i=0;i<maxR;i++){var r=upRows[i];html+='<tr>'+vis.map(h=>'<td>'+(r[h]||'')+'</td>').join('')+(extra?'<td style="color:var(--text-3)">…</td>':'')+'</tr>';}if(upRows.length>maxR)html+='<tr><td colspan="'+(vis.length+1)+'" style="color:var(--text-3);text-align:center;font-style:italic;">+ '+(upRows.length-maxR)+' more rows</td></tr>';document.getElementById('up-preview-table').innerHTML=html;document.getElementById('up-preview-title').textContent='Preview — '+filename;document.getElementById('up-preview-count').textContent=upRows.length+' records found';document.getElementById('up-preview').style.display='block';}
-function confirmUpImport(){var count=upRows.length;upRows.forEach(function(r){var name=r['name']||'Unknown',email=r['email']||'—',status=r['status']||'Active',sb=status==='Active'?'bg':'bgr';if(upTab==='students'){var classes=r['classes']||'—';var tbl=document.getElementById('student-table');if(tbl){var tr=document.createElement('tr');tr.innerHTML='<td>'+name+'</td><td>'+email+'</td><td>'+classes+'</td><td><span class="badge '+sb+'">'+status+'</span></td><td><button class="btn btn-sm btn-edit" onclick="editStudentRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td>';var editTr=document.createElement('tr');editTr.className='edit-form-row';editTr.innerHTML='<td colspan="5" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="'+name+'"/><input type="email" value="'+email+'"/><input type="text" value="'+classes+'"/><select><option>Active</option><option>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td>';tbl.appendChild(tr);tbl.appendChild(editTr);}}else{var subs=r['subjects']||'—';var tbl=document.getElementById('teacher-table');if(tbl){var tr=document.createElement('tr');tr.innerHTML='<td>'+name+'</td><td><span class="badge bp">Teacher</span></td><td>'+subs+'</td><td><span class="badge '+sb+'">'+status+'</span></td><td><button class="btn btn-sm btn-edit" onclick="editTeacherRow(this)">Edit</button> <button class="btn btn-sm btn-danger" onclick="removeRow(this)">Remove</button></td>';var editTr=document.createElement('tr');editTr.className='edit-form-row';editTr.innerHTML='<td colspan="5" class="edit-form-cell"><div class="edit-inline-grid"><input type="text" value="'+name+'"/><input type="text" value="'+subs+'"/><select><option>Active</option><option>Onboarding</option><option>Inactive</option></select><div class="edit-inline-actions"><button class="btn btn-sm btn-primary" onclick="saveEdit(this)">Save</button><button class="btn btn-sm" onclick="cancelEdit(this)">Cancel</button></div></div></td>';tbl.appendChild(tr);tbl.appendChild(editTr);}}});var now=new Date(),ds=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});var hist=document.getElementById('up-import-history'),tr=document.createElement('tr');tr.innerHTML='<td>'+ds+'</td><td>'+(upTab==='students'?'Students':'Teachers')+'</td><td style="font-family:monospace;font-size:10px;">uploaded.csv</td><td>'+count+'</td><td><span class="badge bg">Imported</span></td>';var first=hist.querySelector('tr:nth-child(2)');hist.insertBefore(tr,first);cancelUpPreview();showUpStatus(count+' '+upTab+' imported!','success');}
-function cancelUpPreview(){document.getElementById('up-preview').style.display='none';hideUpStatus();upRows=[];upHeaders=[];}
-function showUpStatus(msg,type){var el=document.getElementById('up-status');el.style.display='flex';el.className='up-status '+type;el.innerHTML='<div class="up-dot"></div><span>'+msg+'</span>';}
-function hideUpStatus(){document.getElementById('up-status').style.display='none';}
-function dlTemplate(type){var csv=type==='students'?'name,email,classes,status,phone,parent_email\nJordan Mills,j.mills@mail.com,Algebra II,Active,555-0101,parent@mail.com\n':'name,email,subjects,status,phone,start_date\nMs. Torres,torres@school.edu,Algebra II,Active,555-0201,2024-08-15\n';var blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='edutrack_'+type+'_template.csv';a.click();URL.revokeObjectURL(url);showUpStatus('Template downloaded — fill it in and upload it back here.','info');}
 
 /* ══ MODALS ══ */
 function openM(id){
