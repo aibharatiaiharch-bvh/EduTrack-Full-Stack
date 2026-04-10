@@ -9,22 +9,24 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
-async function readUsersTab(spreadsheetId: string): Promise<{ email: string; role: string; name: string }[]> {
+async function readUsersTab(spreadsheetId: string): Promise<{ email: string; role: string; name: string; status: string }[]> {
   const sheets = await getUncachableGoogleSheetClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `Users!A1:D`,
+    range: `Users!A1:E`,
   });
   const rows = res.data.values || [];
   if (rows.length < 2) return [];
   const header = rows[0] as string[];
-  const emailIdx = header.indexOf('Email');
-  const roleIdx = header.indexOf('Role');
-  const nameIdx = header.indexOf('Name');
+  const emailIdx  = header.findIndex(h => h.toLowerCase() === 'email');
+  const roleIdx   = header.findIndex(h => h.toLowerCase() === 'role');
+  const nameIdx   = header.findIndex(h => h.toLowerCase() === 'name');
+  const statusIdx = header.findIndex(h => h.toLowerCase() === 'status');
   return rows.slice(1).map((row: any[]) => ({
-    email: (row[emailIdx] || '').toLowerCase().trim(),
-    role: (row[roleIdx] || '').toLowerCase().trim(),
-    name: row[nameIdx] || '',
+    email:  (row[emailIdx]  || '').toLowerCase().trim(),
+    role:   (row[roleIdx]   || '').toLowerCase().trim(),
+    name:    row[nameIdx]   || '',
+    status: (row[statusIdx] || 'active').toLowerCase().trim(),
   }));
 }
 
@@ -42,16 +44,16 @@ router.get('/roles/check', async (req, res): Promise<void> => {
     const users = await readUsersTab(sheetId);
     const user = users.find((u) => u.email === email);
     if (user) {
-      res.json({ role: user.role, name: user.name, found: true });
+      res.json({ role: user.role, name: user.name, status: user.status, found: true });
     } else {
-      res.json({ role: null, found: false });
+      res.json({ role: null, status: null, found: false });
     }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/roles/enroll  — submit an enrollment request
+// POST /api/roles/enroll — submit an enrollment request and add user as Pending
 router.post('/roles/enroll', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) {
@@ -62,7 +64,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
   const {
     studentName, dob, currentSchool, currentGrade,
     parentName, parentEmail, parentPhone, studentPhone,
-    classesInterested, notes,
+    classesInterested, notes, userEmail, userName,
   } = req.body;
 
   if (!studentName || !parentEmail) {
@@ -74,6 +76,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     const sheets = await getUncachableGoogleSheetClient();
     const submissionDate = new Date().toLocaleDateString('en-AU');
 
+    // Add to Enrollment Requests tab
     await sheets.spreadsheets.values.append({
       spreadsheetId: sheetId,
       range: 'Enrollment Requests!A:L',
@@ -86,6 +89,29 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         ]],
       },
     });
+
+    // If the signed-in user's email is provided, add them to Users tab as Pending
+    // so on next sign-in they see "pending approval" rather than the form again
+    if (userEmail) {
+      const existingUsers = await readUsersTab(sheetId);
+      const alreadyExists = existingUsers.find(u => u.email === userEmail.toLowerCase().trim());
+      if (!alreadyExists) {
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: sheetId,
+          range: 'Users!A:E',
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [[
+              userEmail.toLowerCase().trim(),
+              'parent',
+              userName || parentName || '',
+              submissionDate,
+              'Pending',
+            ]],
+          },
+        });
+      }
+    }
 
     res.json({ success: true });
   } catch (err: any) {

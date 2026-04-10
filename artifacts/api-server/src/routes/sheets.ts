@@ -161,12 +161,12 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
     const today = new Date().toLocaleDateString('en-AU');
 
     const userRows = [
-      ['p.anderson@edutrack.edu', 'principal', 'Principal Anderson', today],
-      ['s.chen@edutrack.edu',     'tutor',     'Dr. Sarah Chen',     today],
-      ['j.taylor@edutrack.edu',   'tutor',     'Mr. James Taylor',   today],
-      ['r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     today],
-      ['sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      today],
-      ['mike.smith@gmail.com',    'parent',    'Mike Smith',         today],
+      ['p.anderson@edutrack.edu', 'principal', 'Principal Anderson', today, 'Active'],
+      ['s.chen@edutrack.edu',     'tutor',     'Dr. Sarah Chen',     today, 'Active'],
+      ['j.taylor@edutrack.edu',   'tutor',     'Mr. James Taylor',   today, 'Active'],
+      ['r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     today, 'Active'],
+      ['sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      today, 'Active'],
+      ['mike.smith@gmail.com',    'parent',    'Mike Smith',         today, 'Active'],
     ];
 
     const enrollmentRequestRows: string[][] = [];

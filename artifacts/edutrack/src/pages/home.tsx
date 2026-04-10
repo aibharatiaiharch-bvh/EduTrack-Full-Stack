@@ -1,7 +1,30 @@
-import { Link } from "wouter";
-import { GraduationCap, Users } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { GraduationCap, Users, UserPlus, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+const SHEET_KEY = "edutrack_sheet_id";
 
 export default function Home() {
+  const [showEnrollCode, setShowEnrollCode] = useState(false);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [, setLocation] = useLocation();
+
+  function handleNewContinue(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setCodeError("Please enter your School Enrollment Code.");
+      return;
+    }
+    setCodeError("");
+    localStorage.setItem(SHEET_KEY, trimmed);
+    setLocation("/sign-up");
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="px-6 py-4 flex items-center bg-white border-b border-border shadow-sm">
@@ -14,7 +37,7 @@ export default function Home() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-lg space-y-8 text-center">
+        <div className="w-full max-w-lg space-y-6 text-center">
           <div className="space-y-2">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
               Welcome to EduTrack
@@ -48,6 +71,69 @@ export default function Home() {
                 </p>
               </div>
             </Link>
+          </div>
+
+          <div className="rounded-xl border-2 border-dashed border-border bg-white overflow-hidden">
+            {!showEnrollCode ? (
+              <button
+                onClick={() => setShowEnrollCode(true)}
+                className="w-full p-5 flex items-center gap-4 text-left hover:bg-muted/40 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                  <UserPlus className="w-5 h-5 text-orange-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">New Student or Family?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sign up and submit an enrolment request — your school will activate your account.
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            ) : (
+              <form onSubmit={handleNewContinue} className="p-5 space-y-4 text-left">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <UserPlus className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">New Student or Family</p>
+                    <p className="text-xs text-muted-foreground">Enter the code provided by your school to get started.</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="schoolCode" className="text-xs font-medium">
+                    School Enrollment Code
+                  </Label>
+                  <Input
+                    id="schoolCode"
+                    value={code}
+                    onChange={(e) => { setCode(e.target.value); setCodeError(""); }}
+                    placeholder="Paste your school's enrollment code here"
+                    className="text-sm"
+                    autoFocus
+                  />
+                  {codeError && <p className="text-xs text-destructive">{codeError}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Don't have a code? Ask your school's front desk or principal.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" size="sm" className="flex-1">
+                    Continue to Sign Up
+                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => { setShowEnrollCode(false); setCode(""); setCodeError(""); }}
+                  >
+                    Back
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       </main>

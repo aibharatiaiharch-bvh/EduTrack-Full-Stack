@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useUser } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ function apiUrl(path: string) {
 
 export default function EnrollPage() {
   const [, setLocation] = useLocation();
+  const { user } = useUser();
   const sheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
 
   const [form, setForm] = useState({
@@ -49,10 +51,12 @@ export default function EnrollPage() {
 
     setSubmitting(true);
     try {
+      const userEmail = user?.primaryEmailAddress?.emailAddress || "";
+      const userName = user?.fullName || "";
       const res = await fetch(apiUrl("/roles/enroll"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, sheetId }),
+        body: JSON.stringify({ ...form, sheetId, userEmail, userName }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
