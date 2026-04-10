@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import {
   LogOut, Shield, Settings, RefreshCw,
   FlaskConical, AlertTriangle, Columns, ToggleLeft, ShieldCheck,
+  GraduationCap, UserRound, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
 import { FEATURE_META, type FeatureKey, setStoredFeatures, getFeatures } from "@/config/features";
+import { DevModeBanner } from "@/components/dev-mode-banner";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");

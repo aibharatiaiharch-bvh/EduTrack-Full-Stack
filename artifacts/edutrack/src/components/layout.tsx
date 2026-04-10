@@ -4,6 +4,7 @@ import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, Cred
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
+import { DevModeBanner } from "@/components/dev-mode-banner";
 
 function getStoredRole(): string {
   return localStorage.getItem("edutrack_user_role") || "tutor";
@@ -150,6 +151,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <DevModeBanner />
     </SidebarProvider>
   );
 }
