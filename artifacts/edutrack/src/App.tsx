@@ -46,16 +46,7 @@ function SignUpPage() {
 }
 
 function HomeRedirect() {
-  return (
-    <>
-      <Show when="signed-in">
-        <Redirect to="/dashboard" />
-      </Show>
-      <Show when="signed-out">
-        <Home />
-      </Show>
-    </>
-  );
+  return <Home />;
 }
 
 function ProtectedRoute({ component: Component }: { component: any }) {
@@ -134,9 +125,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/settings">
             <ProtectedRoute component={Settings} />
           </Route>
-          <Route path="/parent">
-            <ProtectedRoute component={ParentView} />
-          </Route>
+          <Route path="/parent" component={ParentView} />
           <Route path="/principal">
             <ProtectedRoute component={PrincipalDashboard} />
           </Route>
