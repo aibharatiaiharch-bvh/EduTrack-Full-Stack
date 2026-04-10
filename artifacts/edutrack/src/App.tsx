@@ -16,6 +16,7 @@ import ParentView from "@/pages/parent";
 import PrincipalDashboard from "@/pages/principal";
 import AuthRedirect from "@/pages/auth-redirect";
 import EnrollPage from "@/pages/enroll";
+import AdminPortal from "@/pages/admin";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -136,6 +137,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/parent" component={ParentView} />
           <Route path="/principal">
             <ProtectedRoute component={PrincipalDashboard} />
+          </Route>
+          <Route path="/admin">
+            <ProtectedRoute component={AdminPortal} />
           </Route>
           
           <Route component={NotFound} />

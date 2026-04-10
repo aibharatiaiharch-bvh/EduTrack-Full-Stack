@@ -28,3 +28,9 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+DEVELOPER_EMAIL = "aibharatiaiharch@gmail.com"
+DEVELOPER_NAME = "App Developer"

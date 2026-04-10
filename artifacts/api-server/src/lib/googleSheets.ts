@@ -67,6 +67,7 @@ export const SHEET_TABS = {
   enrollments: 'Enrollments',
   users: 'Users',
   enrollment_requests: 'Enrollment Requests',
+  parents: 'Parents',
 };
 
 export const SHEET_HEADERS = {
@@ -76,4 +77,5 @@ export const SHEET_HEADERS = {
   enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action'],
   users: ['Email', 'Role', 'Name', 'Added Date', 'Status'],
   enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status'],
+  parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status'],
 };

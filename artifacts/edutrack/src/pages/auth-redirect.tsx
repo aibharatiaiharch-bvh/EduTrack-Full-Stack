@@ -170,7 +170,10 @@ export default function AuthRedirect() {
 
         // Active — route by role
         const role: string = data.role;
-        if (role === "principal") {
+        if (role === "admin") {
+          setStatusMsg("Welcome, Admin. Redirecting…");
+          setTimeout(() => setLocation("/admin"), 500);
+        } else if (role === "principal") {
           setStatusMsg("Welcome, Principal. Redirecting…");
           setTimeout(() => setLocation("/principal"), 500);
         } else if (role === "tutor") {

@@ -171,6 +171,13 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
 
     const enrollmentRequestRows: string[][] = [];
 
+    const parentRows = [
+      ['sarah.johnson@gmail.com', 'Sarah Johnson', '555-0201', 'Emma Johnson; Ava Wilson', today, 'Active'],
+      ['mike.smith@gmail.com',    'Mike Smith',    '555-0202', 'Liam Smith',               today, 'Active'],
+      ['lisa.brown@gmail.com',    'Lisa Brown',    '555-0203', 'Olivia Brown',             today, 'Active'],
+      ['karen.davis@gmail.com',   'Karen Davis',   '555-0204', 'Noah Davis',               today, 'Active'],
+    ];
+
     const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
       { tab: SHEET_TABS.students,             headers: SHEET_HEADERS.students,             rows: studentRows },
       { tab: SHEET_TABS.teachers,             headers: SHEET_HEADERS.teachers,             rows: teacherRows },
@@ -178,6 +185,7 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       { tab: SHEET_TABS.enrollments,          headers: SHEET_HEADERS.enrollments,          rows: enrollmentRows },
       { tab: SHEET_TABS.users,                headers: SHEET_HEADERS.users,                rows: userRows },
       { tab: SHEET_TABS.enrollment_requests,  headers: SHEET_HEADERS.enrollment_requests,  rows: enrollmentRequestRows },
+      { tab: SHEET_TABS.parents,              headers: SHEET_HEADERS.parents,              rows: parentRows },
     ];
 
     for (const { tab, headers, rows } of tabData) {

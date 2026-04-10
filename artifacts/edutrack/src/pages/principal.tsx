@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { FEATURES } from "@/config/features";
-import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock } from "lucide-react";
+import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock, Mail } from "lucide-react";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
 const FEATURE_META = [
   {
@@ -79,6 +83,14 @@ export default function PrincipalDashboard() {
 
   const pending = requests ?? [];
 
+  const [devEmail, setDevEmail] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(apiUrl("/admin/contact"))
+      .then((r) => r.json())
+      .then((d) => { if (d.email) setDevEmail(d.email); })
+      .catch(() => {});
+  }, []);
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
@@ -145,6 +157,28 @@ export default function PrincipalDashboard() {
             })}
           </CardContent>
         </Card>
+
+        {devEmail && (
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm text-foreground">Need help or want a new feature?</p>
+                <p className="text-xs text-muted-foreground">Contact your app developer directly.</p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700 gap-2 shrink-0"
+                onClick={() => window.open(`mailto:${devEmail}?subject=EduTrack Support&body=Hi,%0A%0A`, "_blank")}
+              >
+                <Mail className="w-3 h-3" />
+                Contact Developer
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
