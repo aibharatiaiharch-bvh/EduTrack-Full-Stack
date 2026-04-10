@@ -1,6 +1,19 @@
 import { Router, type IRouter } from 'express';
 import { getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS } from '../lib/googleSheets.js';
 
+async function readTabRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
+  const sheets = await getUncachableGoogleSheetClient();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });
+  const rows = res.data.values || [];
+  if (rows.length < 1) return [];
+  const headerRow = rows[0] as string[];
+  return rows.slice(1).map((row, i) => {
+    const obj: any = { _row: i + 2 };
+    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
+    return obj;
+  });
+}
+
 const router: IRouter = Router();
 
 const TAB = SHEET_TABS.enrollments;
@@ -158,6 +171,59 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
     });
 
     res.json({ ok: true, action });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/enrollments/:row/assign-teacher
+// Assigns (or reassigns) a teacher to an enrollment row.
+// Looks up the teacher from the Teachers tab and copies their Name, Email, and Zoom Link.
+router.put('/enrollments/:row/assign-teacher', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  const rowNum = parseInt(req.params.row, 10);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+  if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
+
+  const { teacherEmail } = req.body;
+  if (!teacherEmail) { res.status(400).json({ error: 'teacherEmail is required' }); return; }
+
+  try {
+    // Look up teacher in the Teachers tab
+    const teachers = await readTabRows(spreadsheetId, SHEET_TABS.teachers);
+    const teacher = teachers.find(t =>
+      (t['Email'] || '').toLowerCase().trim() === teacherEmail.toLowerCase().trim()
+    );
+    if (!teacher) { res.status(404).json({ error: 'Teacher not found in Teachers tab' }); return; }
+
+    // Read the current enrollment row
+    const enrollments = await readEnrollmentRows(spreadsheetId);
+    const enrollment = enrollments.find(r => r._row === rowNum);
+    if (!enrollment) { res.status(404).json({ error: 'Enrollment not found' }); return; }
+
+    // Build updated row — preserve all existing values, overwrite Teacher fields
+    const updatedValues = HEADERS.map(h => {
+      if (h === 'Teacher')       return teacher['Name'] || '';
+      if (h === 'Teacher Email') return teacher['Email'] || '';
+      if (h === 'Zoom Link')     return teacher['Zoom Link'] || '';
+      return enrollment[h] || '';
+    });
+
+    const sheets = await getUncachableGoogleSheetClient();
+    const colLetter = String.fromCharCode(64 + HEADERS.length);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${TAB}!A${rowNum}:${colLetter}${rowNum}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [updatedValues] },
+    });
+
+    res.json({
+      ok: true,
+      teacher: teacher['Name'],
+      teacherEmail: teacher['Email'],
+      zoomLink: teacher['Zoom Link'] || '',
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

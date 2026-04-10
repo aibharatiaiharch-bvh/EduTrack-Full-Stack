@@ -36,17 +36,23 @@ router.get('/tutors/me', async (req, res): Promise<void> => {
     const teachers = await readRows(sheetId, SHEET_TABS.teachers);
     const tutor = teachers.find(t => (t['Email'] || '').toLowerCase().trim() === email) || null;
 
-    // All enrollments
+    // All enrollments — filter to this tutor's classes if Teacher Email column is populated
     const enrollments = await readRows(sheetId, SHEET_TABS.enrollments);
-    const activeEnrollments = enrollments.filter(e =>
-      (e['Status'] || '').toLowerCase() === 'enrolled'
-    );
+    const activeEnrollments = enrollments.filter(e => {
+      if ((e['Status'] || '').toLowerCase() !== 'enrolled') return false;
+      // If the enrollment has a Teacher Email value, only show it to the matching tutor.
+      // If the column is blank (pre-assignment or legacy), show it to all tutors so
+      // classes are not accidentally hidden during the transition period.
+      const teacherEmail = (e['Teacher Email'] || '').toLowerCase().trim();
+      if (teacherEmail && teacherEmail !== email) return false;
+      return true;
+    });
 
     // Today's classes
     const today = new Date().toLocaleDateString('en-AU');
     const todayEnrollments = activeEnrollments.filter(e => e['Class Date'] === today);
 
-    // Unique students
+    // Unique students for this tutor
     const studentNames = new Set(activeEnrollments.map(e => e['Student Name']).filter(Boolean));
 
     // All students tab for count

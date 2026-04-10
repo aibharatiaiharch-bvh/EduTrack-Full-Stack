@@ -141,4 +141,18 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/principals/teachers?sheetId=X
+// Returns all active teachers from the Teachers tab for dropdown population.
+router.get('/principals/teachers', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const rows = await readRows(sheetId, SHEET_TABS.teachers);
+    const active = rows.filter(r => (r['Status'] || '').toLowerCase() === 'active');
+    res.json(active);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

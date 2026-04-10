@@ -19,7 +19,7 @@ import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } fro
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
   XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
-  UserCheck, UserX, Search, ChevronDown,
+  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -64,6 +64,19 @@ type Enrollment = {
   "Parent Email": string;
   "Status": string;
   "Override Action": string;
+  "Teacher": string;
+  "Teacher Email": string;
+  "Zoom Link": string;
+};
+
+type TeacherRow = {
+  _row: number;
+  "UserID": string;
+  "Name": string;
+  "Email": string;
+  "Subjects": string;
+  "Status": string;
+  "Zoom Link": string;
 };
 
 type EnrollmentRequest = {
@@ -159,6 +172,56 @@ export default function PrincipalDashboard() {
   });
 
   const pendingRequests = (enrollmentRequests ?? []).filter(r => r["Status"]?.toLowerCase() === "pending");
+
+  // ── Class Assignments ────────────────────────────────────────────────
+  const { data: allEnrollments, isLoading: loadingAllEnrollments } = useQuery<Enrollment[]>({
+    queryKey: ["enrollments", "all", sheetId],
+    enabled: !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/enrollments?sheetId=${encodeURIComponent(sheetId!)}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const { data: activeTeachers } = useQuery<TeacherRow[]>({
+    queryKey: ["principal-teachers", sheetId],
+    enabled: !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/principals/teachers?sheetId=${encodeURIComponent(sheetId!)}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const [assignDialog, setAssignDialog] = useState<{ open: boolean; enrollment: Enrollment | null }>({
+    open: false,
+    enrollment: null,
+  });
+  const [assignSearch, setAssignSearch] = useState("");
+
+  const assignTeacherMutation = useMutation({
+    mutationFn: async ({ row, teacherEmail }: { row: number; teacherEmail: string }) => {
+      const res = await fetch(apiUrl(`/enrollments/${row}/assign-teacher`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherEmail, sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setAssignDialog({ open: false, enrollment: null });
+      setAssignSearch("");
+      qc.invalidateQueries({ queryKey: ["enrollments"] });
+      toast({ title: "Teacher assigned", description: `${data.teacher} assigned successfully.` });
+    },
+    onError: (err: any) => toast({ title: "Assignment failed", description: err.message, variant: "destructive" }),
+  });
+
+  const assignableEnrollments = (allEnrollments ?? []).filter(
+    e => !["cancelled", "late cancellation", "rejected"].includes((e["Status"] || "").toLowerCase())
+  );
 
   // Add Teacher dialog
   const [showAddTeacher, setShowAddTeacher] = useState(false);
@@ -528,6 +591,102 @@ export default function PrincipalDashboard() {
           </CardContent>
         </Card>
 
+        {/* Class Assignments */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users2 className="h-5 w-5 text-primary" />
+                  Class Assignments
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Assign or reassign a teacher to any active class. The teacher's Zoom link and details are auto-populated.
+                </CardDescription>
+              </div>
+              {!loadingAllEnrollments && (
+                <Badge variant="secondary" className="text-sm px-3 py-1 self-start shrink-0">
+                  {assignableEnrollments.length} active
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingAllEnrollments ? (
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+            ) : assignableEnrollments.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
+                <BookOpen className="h-8 w-8 text-muted-foreground/40" />
+                <p className="font-medium">No active enrollments</p>
+                <p className="text-sm">Enrollments will appear here once added.</p>
+              </div>
+            ) : (
+              assignableEnrollments.map((enrollment) => {
+                const hasTeacher = !!enrollment["Teacher"];
+                return (
+                  <div
+                    key={enrollment._row}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${hasTeacher ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-600"}`}>
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="font-semibold text-foreground text-sm">{enrollment["Student Name"]}</p>
+                        <p className="text-sm text-muted-foreground">{enrollment["Class Name"]}</p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+                          {enrollment["Class Date"] && (
+                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{enrollment["Class Date"]}</span>
+                          )}
+                          {enrollment["Class Time"] && (
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{enrollment["Class Time"]}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1">
+                          {hasTeacher ? (
+                            <>
+                              <span className="flex items-center gap-1 text-green-700 font-medium">
+                                <UserCheck className="h-3 w-3" />
+                                {enrollment["Teacher"]}
+                              </span>
+                              {enrollment["Zoom Link"] && (
+                                <a
+                                  href={enrollment["Zoom Link"]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-blue-600 hover:underline"
+                                >
+                                  <Video className="h-3 w-3" />
+                                  Zoom Link
+                                </a>
+                              )}
+                            </>
+                          ) : (
+                            <span className="flex items-center gap-1 text-amber-600 font-medium">
+                              <AlertTriangle className="h-3 w-3" />
+                              No teacher assigned
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={hasTeacher ? "outline" : "default"}
+                      className="shrink-0 gap-1.5"
+                      onClick={() => { setAssignDialog({ open: true, enrollment }); setAssignSearch(""); }}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      {hasTeacher ? "Reassign" : "Assign Teacher"}
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+
         {/* Feature Upgrades */}
         <Card>
           <CardHeader>
@@ -708,6 +867,107 @@ export default function PrincipalDashboard() {
           </Card>
         )}
       </div>
+
+      {/* Assign Teacher Dialog */}
+      <Dialog
+        open={assignDialog.open}
+        onOpenChange={(open) => { if (!open) { setAssignDialog({ open: false, enrollment: null }); setAssignSearch(""); } }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              {assignDialog.enrollment?.["Teacher"] ? "Reassign Teacher" : "Assign Teacher"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {assignDialog.enrollment && (
+            <div className="rounded-lg border border-border bg-muted/40 px-4 py-3 space-y-1 text-sm">
+              <p className="font-semibold">{assignDialog.enrollment["Student Name"]}</p>
+              <p className="text-muted-foreground">{assignDialog.enrollment["Class Name"]}</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                {assignDialog.enrollment["Class Date"] && (
+                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{assignDialog.enrollment["Class Date"]}</span>
+                )}
+                {assignDialog.enrollment["Class Time"] && (
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{assignDialog.enrollment["Class Time"]}</span>
+                )}
+              </div>
+              {assignDialog.enrollment["Teacher"] && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Currently: <strong>{assignDialog.enrollment["Teacher"]}</strong> — selecting a new teacher will replace this assignment.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Select a Teacher</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Search by name or subject..."
+                value={assignSearch}
+                onChange={(e) => setAssignSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+            {(activeTeachers ?? [])
+              .filter(t => {
+                if (!assignSearch) return true;
+                const q = assignSearch.toLowerCase();
+                return (t["Name"] || "").toLowerCase().includes(q) ||
+                       (t["Subjects"] || "").toLowerCase().includes(q);
+              })
+              .map((teacher) => (
+                <button
+                  key={teacher._row}
+                  disabled={assignTeacherMutation.isPending}
+                  onClick={() => assignDialog.enrollment && assignTeacherMutation.mutate({
+                    row: assignDialog.enrollment._row,
+                    teacherEmail: teacher["Email"],
+                  })}
+                  className="w-full text-left rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-colors p-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <p className="font-medium text-sm">{teacher["Name"]}</p>
+                      {teacher["Subjects"] && (
+                        <p className="text-xs text-muted-foreground">{teacher["Subjects"]}</p>
+                      )}
+                      {teacher["Zoom Link"] && (
+                        <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                          <Video className="h-3 w-3" />
+                          Zoom link available
+                        </p>
+                      )}
+                    </div>
+                    {assignTeacherMutation.isPending ? (
+                      <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin shrink-0 mt-0.5" />
+                    ) : (
+                      <LinkIcon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    )}
+                  </div>
+                </button>
+              ))}
+            {(activeTeachers ?? []).length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                <Users2 className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
+                No active teachers found. Add a teacher first.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialog({ open: false, enrollment: null })}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Teacher Dialog */}
       <Dialog open={showAddTeacher} onOpenChange={setShowAddTeacher}>
