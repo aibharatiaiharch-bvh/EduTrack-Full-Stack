@@ -92,6 +92,7 @@ type EnrollmentRequest = {
   "Parent Phone": string;
   "Reference": string;
   "Promo Code": string;
+  "Notes": string;
   "Submission Date": string;
   "Status": string;
   "Request Type": string;
@@ -602,6 +603,9 @@ export default function PrincipalDashboard() {
                           {req["Reference"] && req["Promo Code"] && " · "}
                           {req["Promo Code"] && <>Promo: {req["Promo Code"]}</>}
                         </p>
+                      )}
+                      {req["Notes"] && (
+                        <p className="text-xs text-muted-foreground italic">Notes: {req["Notes"]}</p>
                       )}
                       {req["Submission Date"] && (
                         <p className="text-xs text-muted-foreground">Submitted: {req["Submission Date"]}</p>

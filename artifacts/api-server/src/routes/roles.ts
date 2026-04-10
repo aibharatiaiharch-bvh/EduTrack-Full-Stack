@@ -120,7 +120,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     requestType,
     studentName, studentEmail, previouslyEnrolled, currentSchool, currentGrade,
     age, classesInterested, parentEmail, parentPhone,
-    reference, promoCode, userEmail, userName,
+    reference, promoCode, notes, userEmail, userName,
     // Legacy fields — kept for backward compat with old form submissions
     parentName,
   } = req.body;
@@ -167,6 +167,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         parentPhone || '',
         reference || '',
         promoCode || '',
+        notes || '',
         submissionDate,
         'Pending',
         'student',

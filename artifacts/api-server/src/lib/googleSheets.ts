@@ -77,7 +77,7 @@ export const SHEET_HEADERS = {
   subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status'],
   enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action', 'Teacher', 'Teacher Email', 'Zoom Link', 'Class Type'],
   users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
-  enrollment_requests: ['Student Name', 'Student Email', 'Previously Enrolled', 'Current School', 'Current Grade', 'Age', 'Classes Interested', 'Parent Email', 'Parent Phone', 'Reference', 'Promo Code', 'Submission Date', 'Status', 'Request Type'],
+  enrollment_requests: ['Student Name', 'Student Email', 'Previously Enrolled', 'Current School', 'Current Grade', 'Age', 'Classes Interested', 'Parent Email', 'Parent Phone', 'Reference', 'Promo Code', 'Notes', 'Submission Date', 'Status', 'Request Type'],
   parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status', 'ParentID'],
   archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
 };

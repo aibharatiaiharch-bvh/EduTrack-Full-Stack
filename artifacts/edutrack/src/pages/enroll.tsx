@@ -56,6 +56,7 @@ export default function EnrollPage() {
     parentPhone: "",
     reference: "",
     promoCode: "",
+    notes: "",
   });
 
   // Available subjects fetched from the school's sheet
@@ -70,12 +71,17 @@ export default function EnrollPage() {
       .catch(() => setSubjects([]));
   }, [sheetId]);
 
-  function toggleSubject(name: string) {
-    setSelectedSubjects(prev => {
-      const next = prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name];
-      setStudent("classesInterested", next.join(", "));
-      return next;
-    });
+  function addSubject(name: string) {
+    if (!name || selectedSubjects.includes(name)) return;
+    const next = [...selectedSubjects, name];
+    setSelectedSubjects(next);
+    setStudent("classesInterested", next.join(", "));
+  }
+
+  function removeSubject(name: string) {
+    const next = selectedSubjects.filter(s => s !== name);
+    setSelectedSubjects(next);
+    setStudent("classesInterested", next.join(", "));
   }
 
   const [tutorForm, setTutorForm] = useState({
@@ -130,7 +136,6 @@ export default function EnrollPage() {
         body = {
           requestType: "student",
           ...studentForm,
-          preferredClassType: studentForm.preferredClassType,
           sheetId,
           userEmail,
           userName,
@@ -315,57 +320,49 @@ export default function EnrollPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Classes Interested In</CardTitle>
-                  <CardDescription>Select the subjects you'd like to enrol in.</CardDescription>
+                  <CardDescription>Select one or more classes from the list below.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   {subjects.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
-                        {subjects.map(subject => {
-                          const selected = selectedSubjects.includes(subject.Name);
-                          const typeColor = subject.Type === "Individual"
-                            ? "bg-blue-50 border-blue-200 text-blue-700"
-                            : subject.Type === "Group"
-                            ? "bg-green-50 border-green-200 text-green-700"
-                            : "bg-purple-50 border-purple-200 text-purple-700";
-                          return (
-                            <button
-                              key={subject._row}
-                              type="button"
-                              onClick={() => toggleSubject(subject.Name)}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                                selected
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
-                              }`}
-                            >
-                              <BookOpen className="h-3.5 w-3.5" />
-                              {subject.Name}
-                              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${typeColor}`}>
-                                {subject.Type}
-                              </span>
-                              {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <>
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        value=""
+                        onChange={e => addSubject(e.target.value)}
+                      >
+                        <option value="" disabled>Select a class…</option>
+                        {subjects
+                          .filter(s => !selectedSubjects.includes(s.Name))
+                          .map(s => (
+                            <option key={s._row} value={s.Name}>
+                              {s.Name}{s.Type ? ` (${s.Type})` : ""}
+                            </option>
+                          ))}
+                      </select>
                       {selectedSubjects.length > 0 && (
-                        <p className="text-xs text-muted-foreground">Selected: <strong>{selectedSubjects.join(", ")}</strong></p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSubjects.map(name => (
+                            <span
+                              key={name}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1"
+                            >
+                              <BookOpen className="h-3 w-3" />
+                              {name}
+                              <button
+                                type="button"
+                                onClick={() => removeSubject(name)}
+                                className="ml-0.5 hover:text-destructive transition-colors"
+                                aria-label={`Remove ${name}`}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
                       )}
-                      <div className="space-y-1">
-                        <Label htmlFor="classesInterested" className="text-xs text-muted-foreground">
-                          Or type subjects not listed above
-                        </Label>
-                        <Input
-                          id="classesInterested"
-                          value={studentForm.classesInterested}
-                          onChange={e => { setStudent("classesInterested", e.target.value); setSelectedSubjects([]); }}
-                          placeholder="e.g. Mathematics, Science"
-                        />
-                      </div>
-                    </div>
+                    </>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
                       <Input
                         id="classesInterested"
@@ -401,7 +398,7 @@ export default function EnrollPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Additional Information</CardTitle>
-                  <CardDescription>Optional — how did you hear about us, and any promotional codes.</CardDescription>
+                  <CardDescription>Optional — how did you hear about us, any promotional codes, or extra requests.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -413,6 +410,17 @@ export default function EnrollPage() {
                       <Label htmlFor="promoCode">Promo Code</Label>
                       <Input id="promoCode" value={studentForm.promoCode} onChange={e => setStudent("promoCode", e.target.value)} placeholder="e.g. WELCOME10" />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <textarea
+                      id="notes"
+                      rows={3}
+                      value={studentForm.notes}
+                      onChange={e => setStudent("notes", e.target.value)}
+                      placeholder="Any extra requests, scheduling needs, or information for the principal…"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    />
                   </div>
                 </CardContent>
               </Card>
