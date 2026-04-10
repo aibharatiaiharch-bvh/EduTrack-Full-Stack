@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
-import { Loader2, Clock, LogOut, ShieldCheck, UserPlus, Settings } from "lucide-react";
+import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const SHEET_KEY = "edutrack_sheet_id";
@@ -11,31 +11,24 @@ function apiUrl(path: string) {
   return `${BASE}/api${path}`;
 }
 
-// Shown when the user's email is not in the Users tab yet
+// Shown when the user's email is not in the Users tab
 function NotFoundScreen({ sheetId, onEnroll }: { sheetId: string; onEnroll: () => void }) {
   const { signOut } = useClerk();
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md space-y-6 text-center">
-        <h1 className="text-2xl font-bold text-foreground">Account Not Found</h1>
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+          <ShieldCheck className="w-8 h-8 text-red-500" />
+        </div>
+        <h1 className="text-2xl font-bold text-foreground">Access Denied</h1>
         <p className="text-muted-foreground text-sm">
-          Your email isn't registered in this school's system yet. What would you like to do?
+          Your email is not registered in this school's system. Only approved users can sign in.
+          If you're a new family, you can submit an enrolment request below.
         </p>
         <div className="grid grid-cols-1 gap-3">
-          <Button
-            className="w-full gap-2"
-            onClick={onEnroll}
-          >
+          <Button className="w-full gap-2" onClick={onEnroll}>
             <UserPlus className="w-4 h-4" />
             Submit Enrolment Request
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => window.location.href = `${BASE}/settings`}
-          >
-            <Settings className="w-4 h-4" />
-            I'm an Administrator — Go to Settings
           </Button>
           <Button
             variant="ghost"
@@ -47,7 +40,7 @@ function NotFoundScreen({ sheetId, onEnroll }: { sheetId: string; onEnroll: () =
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          If you're a tutor or staff member, contact your principal to be added to the Users tab in the school's Google Sheet.
+          Tutors and staff must be added to the Users tab by a principal before they can sign in.
         </p>
       </div>
     </div>
@@ -65,15 +58,12 @@ function SetupRequiredScreen() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Sheet Setup Required</h1>
         <p className="text-muted-foreground text-sm">
-          Your Google Sheet hasn't been set up yet. As the administrator, go to Settings and click <strong>"Set up columns & add sample data"</strong> to initialise the sheet, then sign in again.
+          Your Google Sheet hasn't been set up yet. Go to the Admin Portal to initialise the sheet,
+          then sign in again.
         </p>
         <div className="grid grid-cols-1 gap-3">
-          <Button
-            className="w-full gap-2"
-            onClick={() => window.location.href = `${BASE}/settings`}
-          >
-            <Settings className="w-4 h-4" />
-            Go to Settings
+          <Button className="w-full" onClick={() => window.location.href = `${BASE}/admin`}>
+            Go to Admin Portal
           </Button>
           <Button
             variant="ghost"
@@ -149,26 +139,22 @@ export default function AuthRedirect() {
     fetch(apiUrl(`/roles/check?email=${encodeURIComponent(email)}&sheetId=${encodeURIComponent(sid)}`))
       .then((r) => r.json())
       .then((data) => {
-        // Sheet isn't set up at all
         if (data.tabMissing) {
           setScreen("setup-required");
           return;
         }
 
-        // Email not in Users tab
         if (!data.found || !data.role) {
           setScreen("not-found");
           return;
         }
 
-        // Account exists but pending approval
         if (data.status === "pending") {
           setPendingName(data.name || "");
           setScreen("pending");
           return;
         }
 
-        // Active — route by role
         const role: string = data.role;
         if (role === "admin") {
           setStatusMsg("Welcome, Admin. Redirecting…");
@@ -187,7 +173,6 @@ export default function AuthRedirect() {
         }
       })
       .catch(() => {
-        // Network error — send admin to settings, don't trap them
         setScreen("setup-required");
       });
   }, [isLoaded, isSignedIn, user, setLocation]);

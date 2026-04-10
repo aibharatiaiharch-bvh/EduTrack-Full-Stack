@@ -4,30 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { FEATURES } from "@/config/features";
-import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock, Mail, Download, RefreshCw } from "lucide-react";
+import {
+  ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
+  XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
+} from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
 const FEATURE_META = [
-  {
-    key: "assessments" as const,
-    label: "Assessments",
-    description: "Grade tracking, assessment reports, and student evaluations",
-  },
-  {
-    key: "billing" as const,
-    label: "Billing",
-    description: "Invoices, payment tracking, and billing history",
-  },
-  {
-    key: "schedule" as const,
-    label: "Schedule",
-    description: "Class scheduling, calendar view, and timetable management",
-  },
+  { key: "assessments" as const, label: "Assessments", description: "Grade tracking, assessment reports, and student evaluations" },
+  { key: "billing" as const, label: "Billing", description: "Invoices, payment tracking, and billing history" },
+  { key: "schedule" as const, label: "Schedule", description: "Class scheduling, calendar view, and timetable management" },
 ];
 
 const SHEET_KEY = "edutrack_sheet_id";
@@ -43,17 +43,31 @@ type Enrollment = {
   "Override Action": string;
 };
 
+type EnrollmentRequest = {
+  _row: number;
+  "Student Name": string;
+  "Parent Name": string;
+  "Parent Email": string;
+  "Parent Phone": string;
+  "Classes Interested": string;
+  "Submission Date": string;
+  "Status": string;
+  "Current Grade": string;
+  "Notes": string;
+};
+
 export default function PrincipalDashboard() {
   const sheetId = localStorage.getItem(SHEET_KEY);
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  // Late cancellations
   const { data: requests, isLoading } = useQuery<Enrollment[]>({
     queryKey: ["enrollments", "late-cancellations", sheetId],
     enabled: !!sheetId,
     queryFn: async () => {
       const params = new URLSearchParams({ status: "Late Cancellation", ...(sheetId ? { sheetId } : {}) });
-      const res = await fetch(`/api/enrollments?${params}`);
+      const res = await fetch(apiUrl(`/enrollments?${params}`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -61,7 +75,7 @@ export default function PrincipalDashboard() {
 
   const overrideMutation = useMutation({
     mutationFn: async ({ row, action }: { row: number; action: "Fee Waived" | "Fee Confirmed" }) => {
-      const res = await fetch(`/api/enrollments/${row}/override`, {
+      const res = await fetch(apiUrl(`/enrollments/${row}/override`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, sheetId }),
@@ -71,39 +85,116 @@ export default function PrincipalDashboard() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["enrollments"] });
-      toast({
-        title: data.action === "Fee Waived" ? "Fee waived" : "Fee confirmed",
-        description: `The enrollment has been updated to "${data.action}".`,
-      });
+      toast({ title: data.action === "Fee Waived" ? "Fee waived" : "Fee confirmed" });
     },
-    onError: (err: any) => {
-      toast({ title: "Override failed", description: err.message, variant: "destructive" });
+    onError: (err: any) => toast({ title: "Override failed", description: err.message, variant: "destructive" }),
+  });
+
+  // Enrollment requests
+  const { data: enrollmentRequests, isLoading: loadingRequests } = useQuery<EnrollmentRequest[]>({
+    queryKey: ["enrollment-requests", sheetId],
+    enabled: !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/enrollment-requests?sheetId=${encodeURIComponent(sheetId!)}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
     },
   });
 
-  const pending = requests ?? [];
+  const approveMutation = useMutation({
+    mutationFn: async (row: number) => {
+      const res = await fetch(apiUrl(`/enrollment-requests/${row}/approve`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["enrollment-requests"] });
+      toast({ title: "Enrolment approved", description: "Student and parent have been activated." });
+    },
+    onError: (err: any) => toast({ title: "Approval failed", description: err.message, variant: "destructive" }),
+  });
 
+  const rejectMutation = useMutation({
+    mutationFn: async (row: number) => {
+      const res = await fetch(apiUrl(`/enrollment-requests/${row}/reject`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["enrollment-requests"] });
+      toast({ title: "Enrolment rejected" });
+    },
+    onError: (err: any) => toast({ title: "Rejection failed", description: err.message, variant: "destructive" }),
+  });
+
+  const pendingRequests = (enrollmentRequests ?? []).filter(r => r["Status"]?.toLowerCase() === "pending");
+
+  // Add Teacher dialog
+  const [showAddTeacher, setShowAddTeacher] = useState(false);
+  const [teacherForm, setTeacherForm] = useState({ name: "", email: "", subjects: "" });
+  const addTeacherMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl("/principals/add-teacher"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...teacherForm, sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowAddTeacher(false);
+      setTeacherForm({ name: "", email: "", subjects: "" });
+      toast({ title: "Teacher added", description: "Added to the Teachers tab and can now log in." });
+    },
+    onError: (err: any) => toast({ title: "Failed to add teacher", description: err.message, variant: "destructive" }),
+  });
+
+  // Add Student dialog
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", parentEmail: "" });
+  const addStudentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl("/principals/add-student"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...studentForm, sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      setShowAddStudent(false);
+      setStudentForm({ name: "", email: "", phone: "", parentEmail: "" });
+      toast({ title: "Student added", description: "Student is now active in the Students tab." });
+    },
+    onError: (err: any) => toast({ title: "Failed to add student", description: err.message, variant: "destructive" }),
+  });
+
+  // Backup
   const [backingUp, setBackingUp] = useState(false);
-
   async function downloadBackup() {
     if (!sheetId) return;
     setBackingUp(true);
     const tabs = [
-      { key: 'students', label: 'Students' },
-      { key: 'teachers', label: 'Teachers' },
-      { key: 'subjects', label: 'Subjects' },
-      { key: 'enrollments', label: 'Enrollments' },
-      { key: 'parents', label: 'Parents' },
-      { key: 'users', label: 'Users' },
+      { key: "students", label: "Students" }, { key: "teachers", label: "Teachers" },
+      { key: "subjects", label: "Subjects" }, { key: "enrollments", label: "Enrollments" },
+      { key: "parents", label: "Parents" }, { key: "users", label: "Users" },
     ];
-
     function toCSV(rows: any[]): string {
-      if (!rows.length) return '';
-      const headers = Object.keys(rows[0]).filter(k => k !== '_row');
-      const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      return [headers.map(escape).join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+      if (!rows.length) return "";
+      const headers = Object.keys(rows[0]).filter(k => k !== "_row");
+      const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      return [headers.map(escape).join(","), ...rows.map(r => headers.map(h => escape(r[h])).join(","))].join("\n");
     }
-
     try {
       const parts: string[] = [];
       for (const { key, label } of tabs) {
@@ -111,9 +202,9 @@ export default function PrincipalDashboard() {
         const rows = await res.json();
         if (Array.isArray(rows)) parts.push(`### ${label}\n${toCSV(rows)}`);
       }
-      const blob = new Blob([parts.join('\n\n')], { type: 'text/csv' });
+      const blob = new Blob([parts.join("\n\n")], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `edutrack-backup-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
@@ -136,9 +227,12 @@ export default function PrincipalDashboard() {
       .catch(() => {});
   }, [sheetId]);
 
+  const pending = requests ?? [];
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
+        {/* Header */}
         <header className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary flex items-center justify-center text-white shrink-0">
@@ -146,7 +240,7 @@ export default function PrincipalDashboard() {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Principal Dashboard</h1>
-              <p className="text-muted-foreground mt-1">Review and resolve late cancellation requests.</p>
+              <p className="text-muted-foreground mt-1">Manage enrolments, staff, and students.</p>
             </div>
           </div>
           <Button
@@ -155,12 +249,8 @@ export default function PrincipalDashboard() {
             className="gap-2 shrink-0"
             onClick={downloadBackup}
             disabled={backingUp || !sheetId}
-            title={!sheetId ? "No sheet linked" : "Download all data as CSV"}
           >
-            {backingUp
-              ? <RefreshCw className="w-4 h-4 animate-spin" />
-              : <Download className="w-4 h-4" />
-            }
+            {backingUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             <span className="hidden sm:inline">{backingUp ? "Downloading…" : "Download Backup"}</span>
           </Button>
         </header>
@@ -172,82 +262,121 @@ export default function PrincipalDashboard() {
           </div>
         )}
 
+        {/* Quick Actions: Add Teacher / Student */}
         <Card>
           <CardHeader>
-            <CardTitle>Features & Upgrades</CardTitle>
-            <CardDescription>
-              See which features are active on your plan. Request an upgrade to unlock additional modules.
-            </CardDescription>
+            <CardTitle>Quick Add</CardTitle>
+            <CardDescription>Add a teacher or student directly without going through the enrolment form.</CardDescription>
           </CardHeader>
-          <CardContent className="divide-y divide-border">
-            {FEATURE_META.map((feat, i) => {
-              const active = FEATURES[feat.key];
-              return (
-                <div key={feat.key} className={`flex items-center justify-between gap-4 py-3 ${i === 0 ? "pt-0" : ""}`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-                      {active ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{feat.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
-                    </div>
-                  </div>
-                  {active ? (
-                    <Badge variant="secondary" className="text-xs shrink-0 text-green-700 bg-green-100 dark:bg-green-950 dark:text-green-400">
-                      Active
-                    </Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1.5 text-primary border-primary/40 hover:bg-primary/5"
-                      onClick={() => {
-                        toast({
-                          title: "Upgrade request sent",
-                          description: `Your interest in ${feat.label} has been noted. Your account manager will be in touch shortly.`,
-                        });
-                      }}
-                    >
-                      <Rocket className="h-3.5 w-3.5" />
-                      Request Upgrade
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+          <CardContent className="flex flex-wrap gap-3">
+            <Button
+              className="gap-2"
+              onClick={() => setShowAddTeacher(true)}
+              disabled={!sheetId}
+            >
+              <UserPlus className="w-4 h-4" />
+              Add Teacher
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowAddStudent(true)}
+              disabled={!sheetId}
+            >
+              <GraduationCap className="w-4 h-4" />
+              Add Student
+            </Button>
           </CardContent>
         </Card>
 
-        {devEmail && (
-          <Card className="border-purple-200 bg-purple-50/30">
-            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
-                <Mail className="w-4 h-4 text-purple-600" />
+        {/* Pending Enrolment Requests */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+              <div>
+                <CardTitle>Enrolment Requests</CardTitle>
+                <CardDescription className="mt-1">
+                  Review submissions from the enrolment form. Approving will activate the student and parent.
+                </CardDescription>
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm text-foreground">Need help or want a new feature?</p>
-                <p className="text-xs text-muted-foreground">Contact your app developer directly.</p>
+              {!loadingRequests && (
+                <Badge
+                  variant={pendingRequests.length > 0 ? "destructive" : "secondary"}
+                  className="text-sm px-3 py-1 self-start shrink-0"
+                >
+                  {pendingRequests.length} pending
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingRequests ? (
+              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+            ) : pendingRequests.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+                <p className="font-medium">No pending requests</p>
+                <p className="text-sm">All enrolment requests have been processed.</p>
               </div>
-              <Button
-                size="sm"
-                className="bg-purple-600 hover:bg-purple-700 gap-2 shrink-0"
-                onClick={() => window.open(`mailto:${devEmail}?subject=EduTrack Support&body=Hi,%0A%0A`, "_blank")}
-              >
-                <Mail className="w-3 h-3" />
-                Contact Developer
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              pendingRequests.map((req) => (
+                <div
+                  key={req._row}
+                  className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                    <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <GraduationCap className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <p className="font-semibold text-foreground">{req["Student Name"]}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Parent: <span className="text-foreground">{req["Parent Name"]}</span>
+                        {req["Parent Email"] && <> · {req["Parent Email"]}</>}
+                      </p>
+                      {req["Classes Interested"] && (
+                        <p className="text-xs text-muted-foreground">Interested in: {req["Classes Interested"]}</p>
+                      )}
+                      {req["Submission Date"] && (
+                        <p className="text-xs text-muted-foreground">Submitted: {req["Submission Date"]}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => approveMutation.mutate(req._row)}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                      onClick={() => rejectMutation.mutate(req._row)}
+                      disabled={approveMutation.isPending || rejectMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Late Cancellation Requests (God Mode) */}
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
               <div>
                 <CardTitle>Late Cancellation Requests</CardTitle>
                 <CardDescription className="mt-1">
-                  These cancellations were made within 24 hours of class start. Use "God Mode" to waive or confirm the fee.
+                  Cancellations within 24 hours of class. Use "God Mode" to waive or confirm the fee.
                 </CardDescription>
               </div>
               {!isLoading && (
@@ -259,9 +388,7 @@ export default function PrincipalDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-xl" />
-              ))
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
             ) : pending.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
@@ -283,29 +410,20 @@ export default function PrincipalDashboard() {
                       <p className="font-medium text-sm">{enrollment["Class Name"]}</p>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                         {enrollment["Class Date"] && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {enrollment["Class Date"]}
-                          </span>
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{enrollment["Class Date"]}</span>
                         )}
                         {enrollment["Class Time"] && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {enrollment["Class Time"]}
-                          </span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{enrollment["Class Time"]}</span>
                         )}
-                        {enrollment["Parent Email"] && (
-                          <span className="text-muted-foreground">{enrollment["Parent Email"]}</span>
-                        )}
+                        {enrollment["Parent Email"] && <span>{enrollment["Parent Email"]}</span>}
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:border-green-700 dark:hover:bg-green-950"
+                      className="gap-1.5 text-green-700 border-green-300 hover:bg-green-50"
                       onClick={() => overrideMutation.mutate({ row: enrollment._row, action: "Fee Waived" })}
                       disabled={overrideMutation.isPending}
                     >
@@ -328,7 +446,178 @@ export default function PrincipalDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Feature Upgrades */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Features & Upgrades</CardTitle>
+            <CardDescription>See which features are active on your plan.</CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y divide-border">
+            {FEATURE_META.map((feat, i) => {
+              const active = FEATURES[feat.key];
+              return (
+                <div key={feat.key} className={`flex items-center justify-between gap-4 py-3 ${i === 0 ? "pt-0" : ""}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
+                      {active ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{feat.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
+                    </div>
+                  </div>
+                  {active ? (
+                    <Badge variant="secondary" className="text-xs shrink-0 text-green-700 bg-green-100">Active</Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1.5 text-primary border-primary/40 hover:bg-primary/5"
+                      onClick={() => toast({ title: "Upgrade request sent", description: `Your interest in ${feat.label} has been noted.` })}
+                    >
+                      <Rocket className="h-3.5 w-3.5" />
+                      Request Upgrade
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Contact Developer */}
+        {devEmail && (
+          <Card className="border-purple-200 bg-purple-50/30">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm text-foreground">Need help or want a new feature?</p>
+                <p className="text-xs text-muted-foreground">Contact your app developer directly.</p>
+              </div>
+              <Button
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700 gap-2 shrink-0"
+                onClick={() => window.open(`mailto:${devEmail}?subject=EduTrack Support&body=Hi,%0A%0A`, "_blank")}
+              >
+                <Mail className="w-3 h-3" />
+                Contact Developer
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Add Teacher Dialog */}
+      <Dialog open={showAddTeacher} onOpenChange={setShowAddTeacher}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Teacher</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="t-name">Full Name *</Label>
+              <Input
+                id="t-name"
+                placeholder="e.g. Jane Smith"
+                value={teacherForm.name}
+                onChange={e => setTeacherForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="t-email">Email (for login)</Label>
+              <Input
+                id="t-email"
+                type="email"
+                placeholder="jane@school.edu"
+                value={teacherForm.email}
+                onChange={e => setTeacherForm(f => ({ ...f, email: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">
+                If provided, this teacher will be added to the Users tab so they can log in.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="t-subjects">Subjects</Label>
+              <Input
+                id="t-subjects"
+                placeholder="e.g. Maths, Science"
+                value={teacherForm.subjects}
+                onChange={e => setTeacherForm(f => ({ ...f, subjects: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddTeacher(false)}>Cancel</Button>
+            <Button
+              onClick={() => addTeacherMutation.mutate()}
+              disabled={!teacherForm.name.trim() || addTeacherMutation.isPending}
+            >
+              {addTeacherMutation.isPending ? "Adding…" : "Add Teacher"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Student Dialog */}
+      <Dialog open={showAddStudent} onOpenChange={setShowAddStudent}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Student</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="s-name">Full Name *</Label>
+              <Input
+                id="s-name"
+                placeholder="e.g. Alex Johnson"
+                value={studentForm.name}
+                onChange={e => setStudentForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-email">Student Email</Label>
+              <Input
+                id="s-email"
+                type="email"
+                placeholder="alex@email.com"
+                value={studentForm.email}
+                onChange={e => setStudentForm(f => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-phone">Phone</Label>
+              <Input
+                id="s-phone"
+                placeholder="e.g. 0412 345 678"
+                value={studentForm.phone}
+                onChange={e => setStudentForm(f => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-parent">Parent Email</Label>
+              <Input
+                id="s-parent"
+                type="email"
+                placeholder="parent@email.com"
+                value={studentForm.parentEmail}
+                onChange={e => setStudentForm(f => ({ ...f, parentEmail: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddStudent(false)}>Cancel</Button>
+            <Button
+              onClick={() => addStudentMutation.mutate()}
+              disabled={!studentForm.name.trim() || addStudentMutation.isPending}
+            >
+              {addStudentMutation.isPending ? "Adding…" : "Add Student"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

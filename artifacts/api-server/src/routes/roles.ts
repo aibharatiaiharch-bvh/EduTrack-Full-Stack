@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_HEADERS } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -9,25 +9,52 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
-async function readUsersTab(spreadsheetId: string): Promise<{ email: string; role: string; name: string; status: string }[]> {
+async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
   const sheets = await getUncachableGoogleSheetClient();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `Users!A1:E`,
+    range: `${tab}!A1:Z`,
   });
   const rows = res.data.values || [];
-  if (rows.length < 2) return [];
-  const header = rows[0] as string[];
-  const emailIdx  = header.findIndex(h => h.toLowerCase() === 'email');
-  const roleIdx   = header.findIndex(h => h.toLowerCase() === 'role');
-  const nameIdx   = header.findIndex(h => h.toLowerCase() === 'name');
-  const statusIdx = header.findIndex(h => h.toLowerCase() === 'status');
-  return rows.slice(1).map((row: any[]) => ({
-    email:  (row[emailIdx]  || '').toLowerCase().trim(),
-    role:   (row[roleIdx]   || '').toLowerCase().trim(),
-    name:    row[nameIdx]   || '',
-    status: (row[statusIdx] || 'active').toLowerCase().trim(),
+  if (rows.length < 1) return [];
+  const headerRow = rows[0] as string[];
+  return rows.slice(1).map((row, i) => {
+    const obj: any = { _row: i + 2 };
+    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
+    return obj;
+  });
+}
+
+async function readUsersTab(spreadsheetId: string) {
+  const rows = await readRows(spreadsheetId, 'Users');
+  return rows.map(r => ({
+    _row: r._row,
+    email: (r['Email'] || '').toLowerCase().trim(),
+    role: (r['Role'] || '').toLowerCase().trim(),
+    name: r['Name'] || '',
+    status: (r['Status'] || 'active').toLowerCase().trim(),
   }));
+}
+
+async function appendRow(spreadsheetId: string, tab: string, values: string[]): Promise<void> {
+  const sheets = await getUncachableGoogleSheetClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${tab}!A1`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [values] },
+  });
+}
+
+async function updateCell(spreadsheetId: string, range: string, value: string): Promise<void> {
+  const sheets = await getUncachableGoogleSheetClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[value]] },
+  });
 }
 
 // GET /api/roles/check?email=X&sheetId=Y
@@ -40,6 +67,19 @@ router.get('/roles/check', async (req, res): Promise<void> => {
     return;
   }
 
+  // Developer email bypass — skip Users tab lookup entirely
+  const devEmail = (process.env.DEVELOPER_EMAIL || '').toLowerCase().trim();
+  if (devEmail && email === devEmail) {
+    res.json({
+      role: 'admin',
+      name: process.env.DEVELOPER_NAME || 'Developer',
+      status: 'active',
+      found: true,
+      tabMissing: false,
+    });
+    return;
+  }
+
   try {
     const users = await readUsersTab(sheetId);
     const user = users.find((u) => u.email === email);
@@ -49,7 +89,6 @@ router.get('/roles/check', async (req, res): Promise<void> => {
       res.json({ role: null, status: null, found: false, tabMissing: false });
     }
   } catch (err: any) {
-    // Users tab likely doesn't exist yet — not a hard error
     res.json({ role: null, status: null, found: false, tabMissing: true });
   }
 });
@@ -74,47 +113,105 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
   }
 
   try {
-    const sheets = await getUncachableGoogleSheetClient();
     const submissionDate = new Date().toLocaleDateString('en-AU');
 
-    // Add to Enrollment Requests tab
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: sheetId,
-      range: 'Enrollment Requests!A:L',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [[
-          studentName, dob || '', currentSchool || '', currentGrade || '',
-          parentName || '', parentEmail, parentPhone || '', studentPhone || '',
-          classesInterested || '', notes || '', submissionDate, 'Pending',
-        ]],
-      },
-    });
+    await appendRow(sheetId, 'Enrollment Requests', [
+      studentName, dob || '', currentSchool || '', currentGrade || '',
+      parentName || '', parentEmail, parentPhone || '', studentPhone || '',
+      classesInterested || '', notes || '', submissionDate, 'Pending',
+    ]);
 
-    // If the signed-in user's email is provided, add them to Users tab as Pending
-    // so on next sign-in they see "pending approval" rather than the form again
     if (userEmail) {
       const existingUsers = await readUsersTab(sheetId);
       const alreadyExists = existingUsers.find(u => u.email === userEmail.toLowerCase().trim());
       if (!alreadyExists) {
-        await sheets.spreadsheets.values.append({
-          spreadsheetId: sheetId,
-          range: 'Users!A:E',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: {
-            values: [[
-              userEmail.toLowerCase().trim(),
-              'parent',
-              userName || parentName || '',
-              submissionDate,
-              'Pending',
-            ]],
-          },
-        });
+        await appendRow(sheetId, 'Users', [
+          userEmail.toLowerCase().trim(),
+          'parent',
+          userName || parentName || '',
+          submissionDate,
+          'Pending',
+        ]);
       }
     }
 
     res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/enrollment-requests?sheetId=X
+router.get('/enrollment-requests', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const rows = await readRows(sheetId, 'Enrollment Requests');
+    res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/enrollment-requests/:row/approve
+// Approves a request: sets status Active, adds parent to Users, adds student to Students
+router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  const rowNum = parseInt(req.params.row, 10);
+  if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: 'sheetId and valid row required' }); return; }
+
+  try {
+    const rows = await readRows(sheetId, 'Enrollment Requests');
+    const request = rows.find(r => r._row === rowNum);
+    if (!request) { res.status(404).json({ error: 'Enrollment request not found' }); return; }
+
+    const today = new Date().toLocaleDateString('en-AU');
+    const parentEmail = (request['Parent Email'] || '').toLowerCase().trim();
+    const parentName  = request['Parent Name'] || '';
+    const studentName = request['Student Name'] || '';
+    const studentPhone = request['Student Phone'] || '';
+
+    // 1. Mark enrollment request as Active (Status is column 12 = L)
+    const headers = SHEET_HEADERS.enrollment_requests;
+    const statusColIdx = headers.findIndex(h => h === 'Status');
+    const statusColLetter = String.fromCharCode(65 + statusColIdx); // A=65
+    await updateCell(sheetId, `Enrollment Requests!${statusColLetter}${rowNum}`, 'Active');
+
+    // 2. Add / activate parent in Users tab
+    if (parentEmail) {
+      const users = await readUsersTab(sheetId);
+      const existing = users.find(u => u.email === parentEmail);
+      if (!existing) {
+        await appendRow(sheetId, 'Users', [parentEmail, 'parent', parentName, today, 'Active']);
+      } else if (existing.status !== 'active') {
+        // Activate the pending user — Status is column E (index 4)
+        await updateCell(sheetId, `Users!E${existing._row}`, 'Active');
+      }
+    }
+
+    // 3. Add student to Students tab
+    if (studentName) {
+      await appendRow(sheetId, 'Students', [studentName, '', '', 'Active', studentPhone, parentEmail]);
+    }
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/enrollment-requests/:row/reject
+router.post('/enrollment-requests/:row/reject', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  const rowNum = parseInt(req.params.row, 10);
+  if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: 'sheetId and valid row required' }); return; }
+
+  try {
+    const headers = SHEET_HEADERS.enrollment_requests;
+    const statusColIdx = headers.findIndex(h => h === 'Status');
+    const statusColLetter = String.fromCharCode(65 + statusColIdx);
+    await updateCell(sheetId, `Enrollment Requests!${statusColLetter}${rowNum}`, 'Rejected');
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

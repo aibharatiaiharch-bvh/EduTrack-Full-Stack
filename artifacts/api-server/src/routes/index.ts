@@ -12,6 +12,7 @@ import sheetsRouter from "./sheets";
 import enrollmentsRouter from "./enrollments";
 import rolesRouter from "./roles";
 import adminRouter from "./admin";
+import principalsRouter from "./principals";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(sheetsRouter);
 router.use(enrollmentsRouter);
 router.use(rolesRouter);
 router.use(adminRouter);
+router.use(principalsRouter);
 
 export default router;
