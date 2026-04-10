@@ -155,7 +155,12 @@ export default function Settings() {
                       driveFiles.map((file) => (
                         <SelectItem key={file.id} value={file.id}>
                           <span className="flex items-center gap-2">
-                            {file.name}
+                            <span className="flex flex-col">
+                              <span>{file.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                Modified {format(new Date(file.modifiedTime), "MMM d, yyyy h:mm a")}
+                              </span>
+                            </span>
                             {file.id === sheetId && (
                               <Badge variant="secondary" className="text-xs py-0">linked</Badge>
                             )}
