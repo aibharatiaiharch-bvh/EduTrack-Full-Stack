@@ -82,14 +82,19 @@ type TeacherRow = {
 type EnrollmentRequest = {
   _row: number;
   "Student Name": string;
-  "Parent Name": string;
+  "Student Email": string;
+  "Previously Enrolled": string;
+  "Current School": string;
+  "Current Grade": string;
+  "Age": string;
+  "Classes Interested": string;
   "Parent Email": string;
   "Parent Phone": string;
-  "Classes Interested": string;
+  "Reference": string;
+  "Promo Code": string;
   "Submission Date": string;
   "Status": string;
-  "Current Grade": string;
-  "Notes": string;
+  "Request Type": string;
 };
 
 export default function PrincipalDashboard() {
@@ -579,11 +584,24 @@ export default function PrincipalDashboard() {
                     <div className="space-y-1 min-w-0">
                       <p className="font-semibold text-foreground">{req["Student Name"]}</p>
                       <p className="text-sm text-muted-foreground">
-                        Parent: <span className="text-foreground">{req["Parent Name"]}</span>
-                        {req["Parent Email"] && <> · {req["Parent Email"]}</>}
+                        {req["Parent Email"] && <span>{req["Parent Email"]}</span>}
+                        {req["Parent Phone"] && <> · {req["Parent Phone"]}</>}
                       </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                        {req["Age"] && <p className="text-xs text-muted-foreground">Age: {req["Age"]}</p>}
+                        {req["Current Grade"] && <p className="text-xs text-muted-foreground">Grade: {req["Current Grade"]}</p>}
+                        {req["Current School"] && <p className="text-xs text-muted-foreground">School: {req["Current School"]}</p>}
+                        {req["Previously Enrolled"] && <p className="text-xs text-muted-foreground">Prev. enrolled: {req["Previously Enrolled"]}</p>}
+                      </div>
                       {req["Classes Interested"] && (
-                        <p className="text-xs text-muted-foreground">Interested in: {req["Classes Interested"]}</p>
+                        <p className="text-xs text-muted-foreground">Interested in: <strong>{req["Classes Interested"]}</strong></p>
+                      )}
+                      {(req["Reference"] || req["Promo Code"]) && (
+                        <p className="text-xs text-muted-foreground">
+                          {req["Reference"] && <>Ref: {req["Reference"]}</>}
+                          {req["Reference"] && req["Promo Code"] && " · "}
+                          {req["Promo Code"] && <>Promo: {req["Promo Code"]}</>}
+                        </p>
                       )}
                       {req["Submission Date"] && (
                         <p className="text-xs text-muted-foreground">Submitted: {req["Submission Date"]}</p>

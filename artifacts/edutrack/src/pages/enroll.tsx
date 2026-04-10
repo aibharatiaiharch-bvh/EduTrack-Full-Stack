@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertTriangle, Users, GraduationCap, BookOpen, Users2, User } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Users, GraduationCap, BookOpen } from "lucide-react";
 
 type SubjectRow = {
   _row: number;
@@ -47,16 +46,16 @@ export default function EnrollPage() {
 
   const [studentForm, setStudentForm] = useState({
     studentName: "",
-    dob: "",
+    studentEmail: "",
+    previouslyEnrolled: "No",
     currentSchool: "",
     currentGrade: "",
-    parentName: "",
+    age: "",
+    classesInterested: "",
     parentEmail: "",
     parentPhone: "",
-    studentPhone: "",
-    classesInterested: "",
-    preferredClassType: "",
-    notes: "",
+    reference: "",
+    promoCode: "",
   });
 
   // Available subjects fetched from the school's sheet
@@ -268,60 +267,59 @@ export default function EnrollPage() {
                       <Input id="studentName" value={studentForm.studentName} onChange={e => setStudent("studentName", e.target.value)} placeholder="e.g. Emma Johnson" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="dob">Date of Birth</Label>
-                      <Input id="dob" type="date" value={studentForm.dob} onChange={e => setStudent("dob", e.target.value)} />
+                      <Label htmlFor="studentEmail">Student Email</Label>
+                      <Input id="studentEmail" type="email" value={studentForm.studentEmail} onChange={e => setStudent("studentEmail", e.target.value)} placeholder="e.g. emma@email.com" />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Previously Enrolled at This School?</Label>
+                    <div className="flex gap-2">
+                      {["Yes", "No"].map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setStudent("previouslyEnrolled", opt)}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                            studentForm.previouslyEnrolled === opt
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="currentSchool">Current School Attending</Label>
+                      <Input id="currentSchool" value={studentForm.currentSchool} onChange={e => setStudent("currentSchool", e.target.value)} placeholder="e.g. Greenwood Primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currentGrade">Current Grade / Year</Label>
+                      <Input id="currentGrade" value={studentForm.currentGrade} onChange={e => setStudent("currentGrade", e.target.value)} placeholder="e.g. Year 5" />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="currentSchool">Current School <span className="text-destructive">*</span></Label>
-                      <Input id="currentSchool" value={studentForm.currentSchool} onChange={e => setStudent("currentSchool", e.target.value)} placeholder="e.g. Greenwood Primary" required />
+                      <Label htmlFor="age">Age</Label>
+                      <Input id="age" type="number" min="1" max="25" value={studentForm.age} onChange={e => setStudent("age", e.target.value)} placeholder="e.g. 12" />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="currentGrade">Current Year / Grade <span className="text-destructive">*</span></Label>
-                      <Input id="currentGrade" value={studentForm.currentGrade} onChange={e => setStudent("currentGrade", e.target.value)} placeholder="e.g. Year 5" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="studentPhone">Student Phone (optional)</Label>
-                    <Input id="studentPhone" type="tel" value={studentForm.studentPhone} onChange={e => setStudent("studentPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Parent / Guardian Information</CardTitle>
-                  <CardDescription>Primary contact details for the parent or guardian.</CardDescription>
+                  <CardTitle className="text-base">Classes Interested In</CardTitle>
+                  <CardDescription>Select the subjects you'd like to enrol in.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="parentName">Parent / Guardian Name <span className="text-destructive">*</span></Label>
-                      <Input id="parentName" value={studentForm.parentName} onChange={e => setStudent("parentName", e.target.value)} placeholder="e.g. Sarah Johnson" required />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="parentEmail">Parent Email <span className="text-destructive">*</span></Label>
-                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="parentPhone">Parent Phone <span className="text-destructive">*</span></Label>
-                    <Input id="parentPhone" type="tel" value={studentForm.parentPhone} onChange={e => setStudent("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" required />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Classes & Preferences</CardTitle>
-                  <CardDescription>Select the subjects you're interested in and your preferred class format.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  {/* Subject picker — shown when subjects are loaded from the school's sheet */}
                   {subjects.length > 0 ? (
                     <div className="space-y-3">
-                      <Label>Select Subjects <span className="text-destructive">*</span></Label>
                       <div className="flex flex-wrap gap-2">
                         {subjects.map(subject => {
                           const selected = selectedSubjects.includes(subject.Name);
@@ -352,14 +350,11 @@ export default function EnrollPage() {
                         })}
                       </div>
                       {selectedSubjects.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Selected: <strong>{selectedSubjects.join(", ")}</strong>
-                        </p>
+                        <p className="text-xs text-muted-foreground">Selected: <strong>{selectedSubjects.join(", ")}</strong></p>
                       )}
-                      {/* Fallback manual input */}
                       <div className="space-y-1">
                         <Label htmlFor="classesInterested" className="text-xs text-muted-foreground">
-                          Or type additional subjects not listed above
+                          Or type subjects not listed above
                         </Label>
                         <Input
                           id="classesInterested"
@@ -381,39 +376,43 @@ export default function EnrollPage() {
                       />
                     </div>
                   )}
+                </CardContent>
+              </Card>
 
-                  {/* Preferred Class Type */}
-                  <div className="space-y-2">
-                    <Label>Preferred Class Format</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Individual sessions are 1-on-1 with a teacher. Group sessions are shared with other students.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "Individual", icon: <User className="h-4 w-4" />, label: "Individual (1-on-1)", desc: "Private sessions with a teacher" },
-                        { value: "Group",      icon: <Users2 className="h-4 w-4" />, label: "Group Class", desc: "Learn alongside other students" },
-                        { value: "",           icon: <BookOpen className="h-4 w-4" />, label: "No preference", desc: "Any format is fine" },
-                      ].map(opt => (
-                        <button
-                          key={opt.value || "none"}
-                          type="button"
-                          onClick={() => setStudent("preferredClassType", opt.value)}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-all ${
-                            studentForm.preferredClassType === opt.value
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-foreground hover:border-primary/40"
-                          }`}
-                        >
-                          {opt.icon}
-                          {opt.label}
-                        </button>
-                      ))}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Parent / Guardian Contact</CardTitle>
+                  <CardDescription>Primary contact for this enrolment.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="parentEmail">Parent Email <span className="text-destructive">*</span></Label>
+                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parentPhone">Phone <span className="text-destructive">*</span></Label>
+                      <Input id="parentPhone" type="tel" value={studentForm.parentPhone} onChange={e => setStudent("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" required />
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Additional Notes</Label>
-                    <Textarea id="notes" value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder="Any special requirements, learning needs, or questions for the principal…" rows={3} />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Additional Information</CardTitle>
+                  <CardDescription>Optional — how did you hear about us, and any promotional codes.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reference">Reference (how did you hear about us?)</Label>
+                      <Input id="reference" value={studentForm.reference} onChange={e => setStudent("reference", e.target.value)} placeholder="e.g. Friend, Google, Instagram…" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="promoCode">Promo Code</Label>
+                      <Input id="promoCode" value={studentForm.promoCode} onChange={e => setStudent("promoCode", e.target.value)} placeholder="e.g. WELCOME10" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

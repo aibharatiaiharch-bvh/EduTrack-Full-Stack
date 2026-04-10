@@ -118,9 +118,11 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
 
   const {
     requestType,
-    studentName, dob, currentSchool, currentGrade,
-    parentName, parentEmail, parentPhone, studentPhone,
-    classesInterested, preferredClassType, notes, userEmail, userName,
+    studentName, studentEmail, previouslyEnrolled, currentSchool, currentGrade,
+    age, classesInterested, parentEmail, parentPhone,
+    reference, promoCode, userEmail, userName,
+    // Legacy fields — kept for backward compat with old form submissions
+    parentName,
   } = req.body;
 
   const submissionDate = new Date().toLocaleDateString('en-AU');
@@ -154,10 +156,20 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         res.status(400).json({ error: 'studentName and parentEmail are required' }); return;
       }
       await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
-        studentName, dob || '', currentSchool || '', currentGrade || '',
-        parentName || '', parentEmail, parentPhone || '', studentPhone || '',
-        classesInterested || '', notes || '', submissionDate, 'Pending', 'student',
-        preferredClassType || '',
+        studentName,
+        studentEmail || '',
+        previouslyEnrolled || 'No',
+        currentSchool || '',
+        currentGrade || '',
+        age || '',
+        classesInterested || '',
+        parentEmail,
+        parentPhone || '',
+        reference || '',
+        promoCode || '',
+        submissionDate,
+        'Pending',
+        'student',
       ]);
       // Write the parent/guardian email to the Users tab as Inactive immediately.
       // The family can sign in after this — they will see the "Awaiting Activation" screen
@@ -207,10 +219,10 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
     if (!request) { res.status(404).json({ error: 'Enrollment request not found' }); return; }
 
     const today = new Date().toLocaleDateString('en-AU');
-    const parentEmail = (request['Parent Email'] || '').toLowerCase().trim();
-    const parentName  = request['Parent Name'] || '';
-    const studentName = request['Student Name'] || '';
-    const studentPhone = request['Student Phone'] || '';
+    const parentEmail  = (request['Parent Email'] || '').toLowerCase().trim();
+    const studentName  = request['Student Name'] || '';
+    const studentEmail = (request['Student Email'] || '').toLowerCase().trim();
+    const parentPhone  = request['Parent Phone'] || '';
 
     // 1. Mark enrollment request as Approved
     const erStatusCol = colLetter('enrollment_requests', 'Status');
@@ -264,12 +276,12 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
       // 3. Register student in Users tab FIRST, then add to Students tab
       if (studentName) {
         const studentId = await generateUserId('student', sheetId);
-        // Users tab is the master ID registry — student may not have login email yet
+        // Users tab is the master ID registry
         await appendRow(sheetId, SHEET_TABS.users, [
-          studentId, '', 'student', studentName, today, 'Active',
+          studentId, studentEmail, 'student', studentName, today, 'Active',
         ]);
         await appendRow(sheetId, SHEET_TABS.students, [
-          studentId, studentName, '', '', 'Active', studentPhone, parentEmail,
+          studentId, studentName, studentEmail, '', 'Active', parentPhone, parentEmail, '',
         ]);
       }
     }
