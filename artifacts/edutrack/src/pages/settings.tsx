@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { format } from "date-fns";
 
 export default function Settings() {
@@ -22,6 +23,7 @@ export default function Settings() {
   } = useSheetConfig();
 
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const selectedFile = driveFiles.find((f) => f.id === sheetId);
 
@@ -207,6 +209,20 @@ export default function Settings() {
             <Button>Update Preferences</Button>
           </CardContent>
         </Card>
+
+        <div className="border-t pt-4">
+          <Button
+            variant="ghost"
+            className="gap-2 text-muted-foreground hover:text-purple-700"
+            onClick={() => setLocation("/admin")}
+          >
+            <Shield className="w-4 h-4" />
+            Admin / Developer Portal
+          </Button>
+          <p className="text-xs text-muted-foreground mt-1 ml-1">
+            Developer access only — manage contact details and set up sheet data.
+          </p>
+        </div>
       </div>
     </AppLayout>
   );
