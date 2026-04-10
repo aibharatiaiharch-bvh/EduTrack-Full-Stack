@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useUser } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,7 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, AlertTriangle, Users, GraduationCap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, AlertTriangle, Users, GraduationCap, BookOpen, Users2, User } from "lucide-react";
+
+type SubjectRow = {
+  _row: number;
+  SubjectID: string;
+  Name: string;
+  Type: string;
+  Teachers: string;
+  Room: string;
+  Days: string;
+  Status: string;
+};
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -33,8 +45,29 @@ export default function EnrollPage() {
     parentPhone: "",
     studentPhone: "",
     classesInterested: "",
+    preferredClassType: "",
     notes: "",
   });
+
+  // Available subjects fetched from the school's sheet
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!sheetId) return;
+    fetch(apiUrl(`/subjects?sheetId=${encodeURIComponent(sheetId)}&status=active`))
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: SubjectRow[]) => setSubjects(rows))
+      .catch(() => setSubjects([]));
+  }, [sheetId]);
+
+  function toggleSubject(name: string) {
+    setSelectedSubjects(prev => {
+      const next = prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name];
+      setStudent("classesInterested", next.join(", "));
+      return next;
+    });
+  }
 
   const [tutorForm, setTutorForm] = useState({
     applicantName: "",
@@ -88,6 +121,7 @@ export default function EnrollPage() {
         body = {
           requestType: "student",
           ...studentForm,
+          preferredClassType: studentForm.preferredClassType,
           sheetId,
           userEmail,
           userName,
@@ -270,13 +304,103 @@ export default function EnrollPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Classes & Additional Notes</CardTitle>
+                  <CardTitle className="text-base">Classes & Preferences</CardTitle>
+                  <CardDescription>Select the subjects you're interested in and your preferred class format.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
+                  {/* Subject picker — shown when subjects are loaded from the school's sheet */}
+                  {subjects.length > 0 ? (
+                    <div className="space-y-3">
+                      <Label>Select Subjects <span className="text-destructive">*</span></Label>
+                      <div className="flex flex-wrap gap-2">
+                        {subjects.map(subject => {
+                          const selected = selectedSubjects.includes(subject.Name);
+                          const typeColor = subject.Type === "Individual"
+                            ? "bg-blue-50 border-blue-200 text-blue-700"
+                            : subject.Type === "Group"
+                            ? "bg-green-50 border-green-200 text-green-700"
+                            : "bg-purple-50 border-purple-200 text-purple-700";
+                          return (
+                            <button
+                              key={subject._row}
+                              type="button"
+                              onClick={() => toggleSubject(subject.Name)}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                                selected
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5"
+                              }`}
+                            >
+                              <BookOpen className="h-3.5 w-3.5" />
+                              {subject.Name}
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${typeColor}`}>
+                                {subject.Type}
+                              </span>
+                              {selected && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selectedSubjects.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Selected: <strong>{selectedSubjects.join(", ")}</strong>
+                        </p>
+                      )}
+                      {/* Fallback manual input */}
+                      <div className="space-y-1">
+                        <Label htmlFor="classesInterested" className="text-xs text-muted-foreground">
+                          Or type additional subjects not listed above
+                        </Label>
+                        <Input
+                          id="classesInterested"
+                          value={studentForm.classesInterested}
+                          onChange={e => { setStudent("classesInterested", e.target.value); setSelectedSubjects([]); }}
+                          placeholder="e.g. Mathematics, Science"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="classesInterested"
+                        value={studentForm.classesInterested}
+                        onChange={e => setStudent("classesInterested", e.target.value)}
+                        placeholder="e.g. Mathematics, Science"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Preferred Class Type */}
                   <div className="space-y-2">
-                    <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
-                    <Input id="classesInterested" value={studentForm.classesInterested} onChange={e => setStudent("classesInterested", e.target.value)} placeholder="e.g. Mathematics, Science" required />
+                    <Label>Preferred Class Format</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Individual sessions are 1-on-1 with a teacher. Group sessions are shared with other students.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "Individual", icon: <User className="h-4 w-4" />, label: "Individual (1-on-1)", desc: "Private sessions with a teacher" },
+                        { value: "Group",      icon: <Users2 className="h-4 w-4" />, label: "Group Class", desc: "Learn alongside other students" },
+                        { value: "",           icon: <BookOpen className="h-4 w-4" />, label: "No preference", desc: "Any format is fine" },
+                      ].map(opt => (
+                        <button
+                          key={opt.value || "none"}
+                          type="button"
+                          onClick={() => setStudent("preferredClassType", opt.value)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-all ${
+                            studentForm.preferredClassType === opt.value
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {opt.icon}
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="notes">Additional Notes</Label>
                     <Textarea id="notes" value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder="Any special requirements, learning needs, or questions for the principal…" rows={3} />

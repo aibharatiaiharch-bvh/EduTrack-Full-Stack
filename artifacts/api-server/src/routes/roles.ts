@@ -120,7 +120,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     requestType,
     studentName, dob, currentSchool, currentGrade,
     parentName, parentEmail, parentPhone, studentPhone,
-    classesInterested, notes, userEmail, userName,
+    classesInterested, preferredClassType, notes, userEmail, userName,
   } = req.body;
 
   const submissionDate = new Date().toLocaleDateString('en-AU');
@@ -157,6 +157,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         studentName, dob || '', currentSchool || '', currentGrade || '',
         parentName || '', parentEmail, parentPhone || '', studentPhone || '',
         classesInterested || '', notes || '', submissionDate, 'Pending', 'student',
+        preferredClassType || '',
       ]);
       if (userEmail) {
         const existingUsers = await readUsersTab(sheetId);

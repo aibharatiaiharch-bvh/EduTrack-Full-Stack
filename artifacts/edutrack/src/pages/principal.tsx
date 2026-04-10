@@ -19,7 +19,7 @@ import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } fro
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
   XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
-  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon,
+  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -265,6 +265,27 @@ export default function PrincipalDashboard() {
     onError: (err: any) => toast({ title: "Failed to add student", description: err.message, variant: "destructive" }),
   });
 
+  // Add Subject dialog
+  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [subjectForm, setSubjectForm] = useState({ name: "", type: "Individual", teachers: "", room: "", days: "" });
+  const addSubjectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl("/subjects"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...subjectForm, sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setShowAddSubject(false);
+      setSubjectForm({ name: "", type: "Individual", teachers: "", room: "", days: "" });
+      toast({ title: "Subject created", description: `${subjectForm.name} added with ID ${data.subjectId}.` });
+    },
+    onError: (err: any) => toast({ title: "Failed to add subject", description: err.message, variant: "destructive" }),
+  });
+
   // ── User Management ─────────────────────────────────────────────────
   const [userList, setUserList] = useState<UserRow[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -406,11 +427,11 @@ export default function PrincipalDashboard() {
           </div>
         )}
 
-        {/* Quick Actions: Add Teacher / Student */}
+        {/* Quick Actions: Add Teacher / Student / Subject */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Add</CardTitle>
-            <CardDescription>Add a teacher or student directly without going through the enrolment form.</CardDescription>
+            <CardDescription>Add a teacher, student, or subject directly without going through the enrolment form.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button
@@ -429,6 +450,15 @@ export default function PrincipalDashboard() {
             >
               <GraduationCap className="w-4 h-4" />
               Add Student
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowAddSubject(true)}
+              disabled={!sheetId}
+            >
+              <BookOpen className="w-4 h-4" />
+              Add Subject
             </Button>
           </CardContent>
         </Card>
@@ -1073,6 +1103,92 @@ export default function PrincipalDashboard() {
               disabled={!studentForm.name.trim() || addStudentMutation.isPending}
             >
               {addStudentMutation.isPending ? "Adding…" : "Add Student"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Subject Dialog */}
+      <Dialog open={showAddSubject} onOpenChange={setShowAddSubject}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5 text-primary" />
+              Add Subject
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="sub-name">Subject Name <span className="text-destructive">*</span></Label>
+              <Input
+                id="sub-name"
+                placeholder="e.g. Mathematics"
+                value={subjectForm.name}
+                onChange={e => setSubjectForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Class Type <span className="text-destructive">*</span></Label>
+              <div className="flex gap-2">
+                {["Individual", "Group", "Both"].map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSubjectForm(f => ({ ...f, type: t }))}
+                    className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
+                      subjectForm.type === t
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-background text-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {subjectForm.type === "Individual" && "1-on-1 sessions with a single teacher."}
+                {subjectForm.type === "Group" && "Shared class with multiple students."}
+                {subjectForm.type === "Both" && "Students can choose Individual or Group when enrolling."}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sub-teachers">Teacher(s)</Label>
+              <Input
+                id="sub-teachers"
+                placeholder="e.g. Dr. Sarah Chen, Mr. James Taylor"
+                value={subjectForm.teachers}
+                onChange={e => setSubjectForm(f => ({ ...f, teachers: e.target.value }))}
+              />
+              <p className="text-xs text-muted-foreground">Comma-separated for multiple teachers.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="sub-room">Room / Location</Label>
+                <Input
+                  id="sub-room"
+                  placeholder="e.g. Room 101"
+                  value={subjectForm.room}
+                  onChange={e => setSubjectForm(f => ({ ...f, room: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sub-days">Days</Label>
+                <Input
+                  id="sub-days"
+                  placeholder="e.g. Mon, Wed, Fri"
+                  value={subjectForm.days}
+                  onChange={e => setSubjectForm(f => ({ ...f, days: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSubject(false)}>Cancel</Button>
+            <Button
+              onClick={() => addSubjectMutation.mutate()}
+              disabled={!subjectForm.name.trim() || addSubjectMutation.isPending}
+            >
+              {addSubjectMutation.isPending ? "Creating…" : "Create Subject"}
             </Button>
           </DialogFooter>
         </DialogContent>

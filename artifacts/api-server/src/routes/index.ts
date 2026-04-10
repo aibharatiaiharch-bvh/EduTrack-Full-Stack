@@ -15,6 +15,7 @@ import adminRouter from "./admin";
 import principalsRouter from "./principals";
 import usersRouter from "./users";
 import tutorsRouter from "./tutors";
+import subjectsRouter from "./subjects";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(adminRouter);
 router.use(principalsRouter);
 router.use(usersRouter);
 router.use(tutorsRouter);
+router.use(subjectsRouter);
 
 export default router;

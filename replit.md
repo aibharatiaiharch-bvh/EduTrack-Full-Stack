@@ -38,11 +38,18 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 - Being in the Students/Teachers tabs does NOT grant login access unless also in Users tab.
 
 ### Students Tab: `UserID, Name, Email, Classes, Status, Phone, Parent Email`
-### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status`
+### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
+### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status`
+- **SubjectID**: sequential `SUB-001`, `SUB-002`, …
+- **Type**: `Individual` | `Group` | `Both` — controls what students see when enrolling
+- **Teachers**: comma-separated teacher names (multi-teacher support)
+### Enrollments Tab: `Student Name, Class Name, Class Date, Class Time, Parent Email, Status, Override Action, Teacher, Teacher Email, Zoom Link, Class Type`
+- **Class Type**: `Individual` or `Group` — set at enrollment time
+### Enrollment Requests Tab: all prior fields + `Preferred Class Type` (last column)
 ### Archive Tab: `UserID, Email, Role, Name, Added Date, Status, Archived Date`
 - Rows copied here when a user is deactivated (Status set to Inactive).
 
-Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`
+Other tabs: `Parents`
 
 Note: The `Config` tab has been removed. Feature flags are localStorage-only. Developer contact email is set via `DEVELOPER_EMAIL` environment variable (read-only from the app).
 
