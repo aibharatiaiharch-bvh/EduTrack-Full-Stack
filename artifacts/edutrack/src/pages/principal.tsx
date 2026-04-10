@@ -491,6 +491,52 @@ export default function PrincipalDashboard() {
           </CardContent>
         </Card>
 
+        {/* Pending Student Activation */}
+        {(pendingStudents ?? []).length > 0 && (
+          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                  <CardTitle className="text-amber-900 dark:text-amber-100">Pending Activation</CardTitle>
+                  <Badge className="bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-100">
+                    {pendingStudents!.length}
+                  </Badge>
+                </div>
+              </div>
+              <CardDescription className="text-amber-700 dark:text-amber-300">
+                These students are waiting for you to confirm payment and activate their account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {pendingStudents!.map(s => (
+                <div key={s.UserID} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-amber-200 bg-white dark:bg-amber-900/20">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-amber-200 dark:bg-amber-700 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                        {(s.Name || "?")[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{s.Name || "Unknown"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{s.Email || "No email"} · Added {s["Added Date"] || "—"}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                    disabled={activateStudentMutation.isPending}
+                    onClick={() => activateStudentMutation.mutate(s.UserID)}
+                  >
+                    <UserCheck className="h-3.5 w-3.5" />
+                    Activate
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Pending Enrolment Requests */}
         <Card>
           <CardHeader>
@@ -1080,13 +1126,19 @@ export default function PrincipalDashboard() {
 
       {/* Add Student Dialog */}
       <Dialog open={showAddStudent} onOpenChange={setShowAddStudent}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Student</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/20 dark:border-amber-800 dark:text-amber-200">
+              <Clock className="h-4 w-4 mt-0.5 shrink-0" />
+              <p className="text-xs">Student will be added as <strong>Inactive</strong>. You'll see them in the Pending Activation section — activate once payment is confirmed.</p>
+            </div>
+
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student Details</p>
             <div className="space-y-2">
-              <Label htmlFor="s-name">Full Name *</Label>
+              <Label htmlFor="s-name">Full Name <span className="text-destructive">*</span></Label>
               <Input
                 id="s-name"
                 placeholder="e.g. Alex Johnson"
@@ -1105,7 +1157,7 @@ export default function PrincipalDashboard() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="s-phone">Phone</Label>
+              <Label htmlFor="s-phone">Student Phone</Label>
               <Input
                 id="s-phone"
                 placeholder="e.g. 0412 345 678"
@@ -1113,14 +1165,36 @@ export default function PrincipalDashboard() {
                 onChange={e => setStudentForm(f => ({ ...f, phone: e.target.value }))}
               />
             </div>
+
+            <div className="border-t pt-2" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent / Guardian</p>
+            <p className="text-xs text-muted-foreground -mt-2">If the parent already exists, they'll be looked up by email and linked automatically.</p>
             <div className="space-y-2">
-              <Label htmlFor="s-parent">Parent Email</Label>
+              <Label htmlFor="s-parent-email">Parent Email</Label>
               <Input
-                id="s-parent"
+                id="s-parent-email"
                 type="email"
                 placeholder="parent@email.com"
                 value={studentForm.parentEmail}
                 onChange={e => setStudentForm(f => ({ ...f, parentEmail: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-parent-name">Parent Name</Label>
+              <Input
+                id="s-parent-name"
+                placeholder="e.g. Sarah Johnson"
+                value={studentForm.parentName}
+                onChange={e => setStudentForm(f => ({ ...f, parentName: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="s-parent-phone">Parent Phone</Label>
+              <Input
+                id="s-parent-phone"
+                placeholder="e.g. 0412 000 111"
+                value={studentForm.parentPhone}
+                onChange={e => setStudentForm(f => ({ ...f, parentPhone: e.target.value }))}
               />
             </div>
           </div>
