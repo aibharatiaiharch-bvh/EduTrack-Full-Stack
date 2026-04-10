@@ -206,4 +206,106 @@ router.delete('/sheets/:tab/:row', async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/sheets/seed — write correct headers + sample data to all tabs
+router.post('/sheets/seed', async (req, res): Promise<void> => {
+  const spreadsheetId = req.headers['x-sheet-id'] as string;
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing x-sheet-id header' }); return; }
+
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+
+    // Helper: days from now as "YYYY-MM-DD"
+    function dateFromNow(days: number): string {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+
+    // Ensure all required tabs exist, add missing ones
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const existingTabs = (meta.data.sheets || []).map((s: any) => s.properties?.title as string);
+    const requiredTabs = Object.values(SHEET_TABS);
+    const missingTabs = requiredTabs.filter(t => !existingTabs.includes(t));
+
+    if (missingTabs.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: missingTabs.map(title => ({
+            addSheet: { properties: { title } },
+          })),
+        },
+      });
+    }
+
+    // Sample data for each tab
+    const studentRows = [
+      ['Emma Johnson',  'emma.j@student.com',   'Mathematics, Science',          'Active', '555-0101', 'sarah.johnson@gmail.com'],
+      ['Liam Smith',    'liam.s@student.com',    'Mathematics, English',           'Active', '555-0102', 'mike.smith@gmail.com'],
+      ['Olivia Brown',  'olivia.b@student.com',  'Science, Art',                  'Active', '555-0103', 'lisa.brown@gmail.com'],
+      ['Noah Davis',    'noah.d@student.com',     'English, Physical Education',   'Active', '555-0104', 'karen.davis@gmail.com'],
+      ['Ava Wilson',    'ava.w@student.com',      'Mathematics, Art',              'Active', '555-0105', 'sarah.johnson@gmail.com'],
+    ];
+
+    const teacherRows = [
+      ['Dr. Sarah Chen',       's.chen@edutrack.edu',    'Mathematics, Science',  'teacher',   'Active'],
+      ['Mr. James Taylor',     'j.taylor@edutrack.edu',  'English',               'teacher',   'Active'],
+      ['Ms. Rachel Kim',       'r.kim@edutrack.edu',     'Art, Physical Education','teacher',  'Active'],
+      ['Principal Anderson',   'p.anderson@edutrack.edu','',                      'principal', 'Active'],
+    ];
+
+    const subjectRows = [
+      ['Mathematics',        'Dr. Sarah Chen',   'Room 101', 'Mon, Wed, Fri', 'Active'],
+      ['Science',            'Dr. Sarah Chen',   'Room 102', 'Tue, Thu',      'Active'],
+      ['English',            'Mr. James Taylor', 'Room 201', 'Mon, Wed, Fri', 'Active'],
+      ['Art',                'Ms. Rachel Kim',   'Room 301', 'Tue, Thu',      'Active'],
+      ['Physical Education', 'Ms. Rachel Kim',   'Gym',      'Mon, Wed',      'Active'],
+    ];
+
+    const enrollmentRows = [
+      // Active — well in the future
+      ['Emma Johnson',  'Mathematics',        dateFromNow(7),  '10:00 AM', 'sarah.johnson@gmail.com', 'Active',           ''],
+      ['Emma Johnson',  'Science',            dateFromNow(8),  '02:00 PM', 'sarah.johnson@gmail.com', 'Active',           ''],
+      ['Liam Smith',    'Mathematics',        dateFromNow(5),  '10:00 AM', 'mike.smith@gmail.com',    'Active',           ''],
+      ['Liam Smith',    'English',            dateFromNow(6),  '11:00 AM', 'mike.smith@gmail.com',    'Active',           ''],
+      ['Olivia Brown',  'Science',            dateFromNow(9),  '02:00 PM', 'lisa.brown@gmail.com',    'Active',           ''],
+      ['Olivia Brown',  'Art',                dateFromNow(10), '03:00 PM', 'lisa.brown@gmail.com',    'Active',           ''],
+      ['Noah Davis',    'English',            dateFromNow(4),  '11:00 AM', 'karen.davis@gmail.com',   'Active',           ''],
+      ['Ava Wilson',    'Art',                dateFromNow(11), '03:00 PM', 'sarah.johnson@gmail.com', 'Active',           ''],
+      // Cancelled (clean — was > 24h ahead when cancelled)
+      ['Noah Davis',    'Physical Education', dateFromNow(3),  '09:00 AM', 'karen.davis@gmail.com',   'Cancelled',        ''],
+      // Late Cancellations — pending principal review
+      ['Liam Smith',    'Physical Education', dateFromNow(1),  '10:00 AM', 'mike.smith@gmail.com',    'Late Cancellation',''],
+      ['Olivia Brown',  'Mathematics',        dateFromNow(1),  '11:00 AM', 'lisa.brown@gmail.com',    'Late Cancellation',''],
+      // Resolved overrides
+      ['Emma Johnson',  'Physical Education', dateFromNow(2),  '09:00 AM', 'sarah.johnson@gmail.com', 'Fee Waived',       'Fee Waived'],
+      ['Ava Wilson',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed'],
+    ];
+
+    // Clear and rewrite each tab
+    const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
+      { tab: SHEET_TABS.students,    headers: SHEET_HEADERS.students,    rows: studentRows },
+      { tab: SHEET_TABS.teachers,    headers: SHEET_HEADERS.teachers,    rows: teacherRows },
+      { tab: SHEET_TABS.subjects,    headers: SHEET_HEADERS.subjects,    rows: subjectRows },
+      { tab: SHEET_TABS.enrollments, headers: SHEET_HEADERS.enrollments, rows: enrollmentRows },
+    ];
+
+    for (const { tab, headers, rows } of tabData) {
+      // Clear everything
+      await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${tab}!A1:Z` });
+      // Write header + data in one call
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${tab}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [headers, ...rows] },
+      });
+    }
+
+    res.json({ ok: true, tabs: tabData.map(t => t.tab) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

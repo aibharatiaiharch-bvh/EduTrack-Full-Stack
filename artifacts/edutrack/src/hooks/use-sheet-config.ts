@@ -56,6 +56,23 @@ export function useSheetConfig() {
     }
   }, []);
 
+  const [seeding, setSeeding] = useState(false);
+
+  const seedSheet = useCallback(async (id: string): Promise<void> => {
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/sheets/seed", {
+        method: "POST",
+        headers: { "x-sheet-id": id },
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err: any) {
+      throw err;
+    } finally {
+      setSeeding(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDriveFiles();
   }, [fetchDriveFiles]);
@@ -68,6 +85,8 @@ export function useSheetConfig() {
     filesError,
     creating,
     createNewSheet,
+    seeding,
+    seedSheet,
     refreshFiles: fetchDriveFiles,
   };
 }

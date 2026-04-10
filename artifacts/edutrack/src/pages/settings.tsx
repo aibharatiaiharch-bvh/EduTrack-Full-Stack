@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -18,6 +18,8 @@ export default function Settings() {
     filesError,
     creating,
     createNewSheet,
+    seeding,
+    seedSheet,
     refreshFiles,
   } = useSheetConfig();
 
@@ -40,6 +42,19 @@ export default function Settings() {
       }
     } catch (err: any) {
       toast({ title: "Failed to create spreadsheet", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSeed = async () => {
+    if (!sheetId) return;
+    try {
+      await seedSheet(sheetId);
+      toast({
+        title: "Sheet seeded successfully",
+        description: "All tabs now have correct columns and sample data.",
+      });
+    } catch (err: any) {
+      toast({ title: "Seeding failed", description: err.message, variant: "destructive" });
     }
   };
 
@@ -177,6 +192,49 @@ export default function Settings() {
                 Create new EduTrack spreadsheet
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5 text-amber-600" />
+              Set Up Columns & Sample Data
+            </CardTitle>
+            <CardDescription>
+              Writes the correct column headers to all tabs (Students, Teachers, Subjects, Enrollments)
+              and populates them with sample data. Any missing tabs will be created automatically.
+              <span className="block mt-1 font-medium text-amber-700 dark:text-amber-400">
+                This will overwrite existing data in all tabs.
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!sheetId ? (
+              <p className="text-sm text-muted-foreground">Link a Google Sheet above before seeding.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground space-y-1">
+                  <p className="font-semibold text-foreground text-sm">What will be created:</p>
+                  <p><span className="font-medium">Students</span> — Name, Email, Classes, Status, Phone, Parent Email</p>
+                  <p><span className="font-medium">Teachers</span> — Name, Email, Subjects, Role, Status</p>
+                  <p><span className="font-medium">Subjects</span> — Name, Teacher, Room, Days, Status</p>
+                  <p><span className="font-medium">Enrollments</span> — Student Name, Class Name, Class Date, Class Time, Parent Email, Status, Override Action</p>
+                </div>
+                <Button
+                  onClick={handleSeed}
+                  disabled={seeding}
+                  className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {seeding ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FlaskConical className="h-4 w-4" />
+                  )}
+                  {seeding ? "Seeding sheet…" : "Set up columns & add sample data"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
