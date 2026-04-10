@@ -63,7 +63,8 @@ export function useSheetConfig() {
     try {
       const res = await fetch("/api/sheets/seed", {
         method: "POST",
-        headers: { "x-sheet-id": id },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ spreadsheetId: id }),
       });
       if (!res.ok) throw new Error(await res.text());
     } catch (err: any) {

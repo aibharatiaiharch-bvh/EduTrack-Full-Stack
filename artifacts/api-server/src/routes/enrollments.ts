@@ -6,6 +6,12 @@ const router: IRouter = Router();
 const TAB = SHEET_TABS.enrollments;
 const HEADERS = SHEET_HEADERS.enrollments;
 
+function getSheetId(req: any): string {
+  return req.query.sheetId || req.query.spreadsheetId ||
+    req.body?.sheetId || req.body?.spreadsheetId ||
+    req.headers['x-sheet-id'] || '';
+}
+
 async function readEnrollmentRows(spreadsheetId: string): Promise<{ _row: number;[k: string]: any }[]> {
   const sheets = await getUncachableGoogleSheetClient();
   const res = await sheets.spreadsheets.values.get({
@@ -33,10 +39,10 @@ function classStartsInMoreThan24Hours(classDate: string, classTime: string): boo
   return diffMs > 24 * 60 * 60 * 1000;
 }
 
-// GET /api/enrollments — list all enrollments, optional ?parentEmail= and ?status= filters
+// GET /api/enrollments?sheetId=&parentEmail=&status=
 router.get('/enrollments', async (req, res): Promise<void> => {
-  const spreadsheetId = req.headers['x-sheet-id'] as string;
-  if (!spreadsheetId) { res.status(400).json({ error: 'Missing x-sheet-id header' }); return; }
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   try {
     let rows = await readEnrollmentRows(spreadsheetId);
@@ -56,8 +62,8 @@ router.get('/enrollments', async (req, res): Promise<void> => {
 
 // POST /api/enrollments — add a new enrollment row
 router.post('/enrollments', async (req, res): Promise<void> => {
-  const spreadsheetId = req.headers['x-sheet-id'] as string;
-  if (!spreadsheetId) { res.status(400).json({ error: 'Missing x-sheet-id header' }); return; }
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   try {
     const sheets = await getUncachableGoogleSheetClient();
@@ -81,8 +87,8 @@ router.post('/enrollments', async (req, res): Promise<void> => {
 
 // POST /api/enrollments/:row/cancel — cancel with 24-hour check
 router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
-  const spreadsheetId = req.headers['x-sheet-id'] as string;
-  if (!spreadsheetId) { res.status(400).json({ error: 'Missing x-sheet-id header' }); return; }
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   const rowNum = parseInt(req.params.row, 10);
   if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
@@ -120,8 +126,8 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
 
 // POST /api/enrollments/:row/override — principal waives or confirms fee
 router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
-  const spreadsheetId = req.headers['x-sheet-id'] as string;
-  if (!spreadsheetId) { res.status(400).json({ error: 'Missing x-sheet-id header' }); return; }
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   const rowNum = parseInt(req.params.row, 10);
   if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }

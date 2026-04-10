@@ -44,10 +44,8 @@ export default function ParentView() {
     queryKey: ["enrollments", searchedEmail, sheetId],
     enabled: !!searchedEmail && !!sheetId,
     queryFn: async () => {
-      const params = new URLSearchParams({ parentEmail: searchedEmail });
-      const res = await fetch(`/api/enrollments?${params}`, {
-        headers: sheetId ? { "x-sheet-id": sheetId } : {},
-      });
+      const params = new URLSearchParams({ parentEmail: searchedEmail, ...(sheetId ? { sheetId } : {}) });
+      const res = await fetch(`/api/enrollments?${params}`);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -57,10 +55,8 @@ export default function ParentView() {
     mutationFn: async (row: number) => {
       const res = await fetch(`/api/enrollments/${row}/cancel`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(sheetId ? { "x-sheet-id": sheetId } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();

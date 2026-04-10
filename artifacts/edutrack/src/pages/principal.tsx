@@ -29,10 +29,8 @@ export default function PrincipalDashboard() {
     queryKey: ["enrollments", "late-cancellations", sheetId],
     enabled: !!sheetId,
     queryFn: async () => {
-      const params = new URLSearchParams({ status: "Late Cancellation" });
-      const res = await fetch(`/api/enrollments?${params}`, {
-        headers: sheetId ? { "x-sheet-id": sheetId } : {},
-      });
+      const params = new URLSearchParams({ status: "Late Cancellation", ...(sheetId ? { sheetId } : {}) });
+      const res = await fetch(`/api/enrollments?${params}`);
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -42,11 +40,8 @@ export default function PrincipalDashboard() {
     mutationFn: async ({ row, action }: { row: number; action: "Fee Waived" | "Fee Confirmed" }) => {
       const res = await fetch(`/api/enrollments/${row}/override`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(sheetId ? { "x-sheet-id": sheetId } : {}),
-        },
-        body: JSON.stringify({ action }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
