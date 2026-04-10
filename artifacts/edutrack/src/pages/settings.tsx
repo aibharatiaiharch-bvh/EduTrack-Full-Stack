@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database } from "lucide-react";
+import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database, Link2, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -211,6 +211,38 @@ export default function Settings() {
                 Create new EduTrack spreadsheet
               </Button>
             </div>
+
+            {sheetId && (
+              <div className="border-t pt-4 space-y-2">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  Enrollment Link
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Share this link with new families. They can fill in their details and submit an enrollment
+                  request without needing any code — the school's sheet is embedded in the link.
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-muted rounded-md px-3 py-2 text-xs text-muted-foreground font-mono truncate border">
+                    {`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/enroll?sheetId=${sheetId}`}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 shrink-0"
+                    onClick={() => {
+                      const link = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/enroll?sheetId=${sheetId}`;
+                      navigator.clipboard.writeText(link).then(() => {
+                        toast({ title: "Link copied!", description: "Share it with families to start enrollment." });
+                      });
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="border-t pt-4 space-y-2">
               <p className="text-sm font-medium">Sync sheet structure</p>

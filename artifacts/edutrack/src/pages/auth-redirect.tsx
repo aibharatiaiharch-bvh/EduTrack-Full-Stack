@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
-import { Loader2, Clock, LogOut, ShieldCheck, UserPlus, BanIcon } from "lucide-react";
+import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const SHEET_KEY = "edutrack_sheet_id";
@@ -107,19 +107,23 @@ function PendingApprovalScreen({ name }: { name: string }) {
   );
 }
 
-// Shown when the account has been deactivated / set to Inactive
+// Shown when the account is Inactive — either new (awaiting payment) or deactivated
 function InactiveScreen({ name }: { name: string }) {
   const { signOut } = useClerk();
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md text-center space-y-5">
-        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
-          <BanIcon className="w-8 h-8 text-slate-500" />
+        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+          <Clock className="w-8 h-8 text-amber-500" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Account Deactivated</h1>
+        <h1 className="text-2xl font-bold text-foreground">Awaiting Activation</h1>
         <p className="text-muted-foreground text-sm">
-          Hi{name ? ` ${name}` : ""}. Your account has been deactivated.
-          Please contact your school's administrator if you believe this is a mistake.
+          Hi{name ? ` ${name}` : ""}! Your enrolment request has been received.
+          Your account will be activated once payment is confirmed by the principal.
+          You'll be able to sign in and access your portal once that's done.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Already paid? Contact your school's front desk or principal to confirm activation.
         </p>
         <Button
           variant="outline"

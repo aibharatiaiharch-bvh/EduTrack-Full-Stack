@@ -28,10 +28,20 @@ function apiUrl(path: string) {
 
 type RequestType = "student" | "tutor";
 
+const SHEET_KEY = "edutrack_sheet_id";
+
 export default function EnrollPage() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
-  const sheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
+
+  // Resolve sheetId: prefer URL param (shareable school link), fall back to localStorage
+  const urlSheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
+  const sheetId = urlSheetId || localStorage.getItem(SHEET_KEY) || "";
+
+  // Persist sheetId from URL into localStorage so subsequent sign-in works correctly
+  useEffect(() => {
+    if (urlSheetId) localStorage.setItem(SHEET_KEY, urlSheetId);
+  }, [urlSheetId]);
 
   const [requestType, setRequestType] = useState<RequestType | null>(null);
 

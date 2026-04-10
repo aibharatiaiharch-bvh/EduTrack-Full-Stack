@@ -159,14 +159,19 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         classesInterested || '', notes || '', submissionDate, 'Pending', 'student',
         preferredClassType || '',
       ]);
-      if (userEmail) {
+      // Write the parent/guardian email to the Users tab as Inactive immediately.
+      // The family can sign in after this — they will see the "Awaiting Activation" screen
+      // until the principal confirms payment and activates the account.
+      // Priority: use the form's parentEmail (explicitly entered). Fall back to Clerk userEmail.
+      const registrantEmail = parentEmail.toLowerCase().trim() || (userEmail || '').toLowerCase().trim();
+      if (registrantEmail) {
         const existingUsers = await readUsersTab(sheetId);
-        const alreadyExists = existingUsers.find(u => u.email === userEmail.toLowerCase().trim());
+        const alreadyExists = existingUsers.find(u => u.email === registrantEmail);
         if (!alreadyExists) {
           const userId = await generateUserId('parent', sheetId);
           await appendRow(sheetId, SHEET_TABS.users, [
-            userId, userEmail.toLowerCase().trim(), 'parent',
-            userName || parentName || '', submissionDate, 'Pending',
+            userId, registrantEmail, 'parent',
+            parentName || userName || '', submissionDate, 'Inactive',
           ]);
         }
       }
