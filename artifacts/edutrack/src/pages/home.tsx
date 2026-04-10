@@ -52,8 +52,9 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="py-6 text-center text-sm text-muted-foreground border-t border-border bg-white">
-        © {new Date().getFullYear()} EduTrack. All rights reserved.
+      <footer className="py-6 text-center text-sm text-muted-foreground border-t border-border bg-white space-y-1">
+        <p>© {new Date().getFullYear()} EduTrack. All rights reserved.</p>
+        <p>App by <a href="https://qb2bsol.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground underline underline-offset-2 transition-colors">Qb2bsol.com</a></p>
       </footer>
     </div>
   );
