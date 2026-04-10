@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck, FlaskConical } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
@@ -65,6 +65,9 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       items: [
         { name: "Parent Portal", href: "/parent", icon: UserRound },
         { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
+        ...(role === "developer" || role === "admin"
+          ? [{ name: "Developer Tools", href: "/admin", icon: FlaskConical }]
+          : []),
       ],
     },
   ];

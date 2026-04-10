@@ -3,7 +3,7 @@ import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import {
   LogOut, Shield, Settings, RefreshCw,
-  FlaskConical, AlertTriangle, Columns, ToggleLeft,
+  FlaskConical, AlertTriangle, Columns, ToggleLeft, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -105,6 +105,10 @@ export default function AdminPortal() {
               {user?.primaryEmailAddress?.emailAddress}
             </span>
             <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">Developer</Badge>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setLocation("/principal")}>
+              <ShieldCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Principal Dashboard</span>
+            </Button>
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => signOut({ redirectUrl: "/" })}>
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Sign Out</span>
