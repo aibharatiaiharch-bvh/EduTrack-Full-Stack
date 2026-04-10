@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Dsvjreu76A9egeImcYM7z"
+uri = "file://exports/EduTrack-Documentation.md"
+type = "text"
+title = "EduTrack — Complete Documentation"
