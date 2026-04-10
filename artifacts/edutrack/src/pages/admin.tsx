@@ -3,9 +3,11 @@ import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import {
   Mail, LogOut, ExternalLink, Shield, Users, BookOpen,
-  Settings, RefreshCw, Copy, Check, Phone
+  Settings, RefreshCw, Copy, Check, Phone, Pencil, X, Save
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -35,19 +37,66 @@ export default function AdminPortal() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const [contact, setContact] = useState<ContactInfo | null>(null);
-  const [stats, setStats] = useState<SheetStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
-  const [copied, setCopied] = useState(false);
-
   const sheetId = localStorage.getItem(SHEET_KEY) || "";
 
-  useEffect(() => {
-    fetch(apiUrl("/admin/contact"))
+  // Contact state
+  const [contact, setContact] = useState<ContactInfo | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editEmail, setEditEmail] = useState("");
+  const [editName, setEditName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Stats state
+  const [stats, setStats] = useState<SheetStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  function loadContact() {
+    const qs = sheetId ? `?sheetId=${encodeURIComponent(sheetId)}` : "";
+    fetch(apiUrl(`/admin/contact${qs}`))
       .then((r) => r.json())
-      .then((d) => setContact(d))
+      .then((d) => { if (d.email) setContact(d); })
       .catch(() => {});
-  }, []);
+  }
+
+  useEffect(() => { loadContact(); }, [sheetId]);
+
+  function startEdit() {
+    setEditEmail(contact?.email || "");
+    setEditName(contact?.name || "");
+    setEditing(true);
+  }
+
+  async function saveContact() {
+    if (!editEmail.trim()) return;
+    if (!sheetId) {
+      toast({ title: "No sheet linked", description: "Go to Settings to link your Google Sheet first.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(apiUrl(`/admin/contact?sheetId=${encodeURIComponent(sheetId)}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: editEmail.trim(), name: editName.trim() }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setContact({ email: editEmail.trim(), name: editName.trim() || "App Developer" });
+      setEditing(false);
+      toast({ title: "Contact updated", description: "Your developer contact details have been saved to the sheet." });
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function copyEmail() {
+    if (!contact?.email) return;
+    navigator.clipboard.writeText(contact.email);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   function loadStats() {
     if (!sheetId) return;
@@ -71,21 +120,6 @@ export default function AdminPortal() {
   }
 
   useEffect(() => { loadStats(); }, [sheetId]);
-
-  function copyEmail() {
-    if (!contact?.email) return;
-    navigator.clipboard.writeText(contact.email);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function openMailto() {
-    if (!contact?.email) return;
-    window.open(
-      `mailto:${contact.email}?subject=EduTrack Support Request&body=Hi ${contact.name},%0A%0A`,
-      "_blank"
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -134,17 +168,60 @@ export default function AdminPortal() {
         {/* Developer Contact Card */}
         <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Mail className="w-4 h-4 text-purple-600" />
-              Developer Contact
-            </CardTitle>
-            <CardDescription>
-              This contact is shown to clients so they can reach you directly.
-              To change it, update the <strong>DEVELOPER_EMAIL</strong> value in the Replit Secrets panel.
-            </CardDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Mail className="w-4 h-4 text-purple-600" />
+                  Developer Contact
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Shown to clients on their dashboard so they can reach you. Stored in your Google Sheet — only admins can edit this.
+                </CardDescription>
+              </div>
+              {!editing && (
+                <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={startEdit}>
+                  <Pencil className="w-3 h-3" />
+                  Edit
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            {contact ? (
+            {editing ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dev-name">Your Name</Label>
+                    <Input
+                      id="dev-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="App Developer"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="dev-email">Your Email</Label>
+                    <Input
+                      id="dev-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={saveContact} disabled={saving || !editEmail.trim()}>
+                    {saving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    {saving ? "Saving…" : "Save"}
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-2" onClick={() => setEditing(false)} disabled={saving}>
+                    <X className="w-3 h-3" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : contact ? (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <div className="flex-1">
                   <p className="font-semibold text-foreground">{contact.name}</p>
@@ -155,16 +232,26 @@ export default function AdminPortal() {
                     {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                     {copied ? "Copied" : "Copy"}
                   </Button>
-                  <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={openMailto}>
+                  <Button
+                    size="sm"
+                    className="gap-2 bg-purple-600 hover:bg-purple-700"
+                    onClick={() => window.open(`mailto:${contact.email}?subject=EduTrack Support Request&body=Hi ${contact.name},%0A%0A`, "_blank")}
+                  >
                     <Mail className="w-3 h-3" />
                     Send Email
                   </Button>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground italic">
-                DEVELOPER_EMAIL not configured — add it in the Replit Secrets panel.
-              </p>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground italic">
+                  No developer contact set yet. Click Edit to add your details — they'll be saved to your Google Sheet.
+                </p>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={startEdit}>
+                  <Pencil className="w-3 h-3" />
+                  Add Contact Details
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -173,22 +260,16 @@ export default function AdminPortal() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-foreground">Platform Overview</h2>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-2"
-              onClick={loadStats}
-              disabled={loadingStats}
-            >
+            <Button size="sm" variant="outline" className="gap-2" onClick={loadStats} disabled={loadingStats}>
               <RefreshCw className={`w-3 h-3 ${loadingStats ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: "Students", value: stats?.students, icon: BookOpen, color: "text-blue-600 bg-blue-50" },
-              { label: "Teachers", value: stats?.teachers, icon: Users, color: "text-green-600 bg-green-50" },
-              { label: "Parents", value: stats?.parents, icon: Phone, color: "text-orange-600 bg-orange-50" },
+              { label: "Students",    value: stats?.students,    icon: BookOpen, color: "text-blue-600 bg-blue-50" },
+              { label: "Teachers",    value: stats?.teachers,    icon: Users,    color: "text-green-600 bg-green-50" },
+              { label: "Parents",     value: stats?.parents,     icon: Phone,    color: "text-orange-600 bg-orange-50" },
               { label: "Enrollments", value: stats?.enrollments, icon: BookOpen, color: "text-purple-600 bg-purple-50" },
             ].map(({ label, value, icon: Icon, color }) => (
               <Card key={label}>
@@ -206,45 +287,34 @@ export default function AdminPortal() {
           </div>
         </div>
 
-        {/* Quick Links */}
+        {/* Quick Actions */}
         <div>
           <h2 className="text-base font-semibold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex-col gap-2 text-left"
-              onClick={() => setLocation("/settings")}
-            >
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setLocation("/settings")}>
               <Settings className="w-5 h-5 text-muted-foreground" />
-              <div>
+              <div className="text-center">
                 <p className="font-medium text-sm">Settings</p>
                 <p className="text-xs text-muted-foreground">Manage sheet, seed data</p>
               </div>
             </Button>
-            <Button
-              variant="outline"
-              className="h-auto py-4 flex-col gap-2 text-left"
-              onClick={() => setLocation("/principal")}
-            >
+            <Button variant="outline" className="h-auto py-4 flex-col gap-2" onClick={() => setLocation("/principal")}>
               <Shield className="w-5 h-5 text-muted-foreground" />
-              <div>
+              <div className="text-center">
                 <p className="font-medium text-sm">Principal Dashboard</p>
                 <p className="text-xs text-muted-foreground">View as principal</p>
               </div>
             </Button>
             <Button
               variant="outline"
-              className="h-auto py-4 flex-col gap-2 text-left"
+              className="h-auto py-4 flex-col gap-2"
               onClick={() => {
-                if (sheetId) {
-                  window.open(`https://docs.google.com/spreadsheets/d/${sheetId}`, "_blank");
-                } else {
-                  toast({ title: "No sheet linked", description: "Go to Settings to link a sheet." });
-                }
+                if (sheetId) window.open(`https://docs.google.com/spreadsheets/d/${sheetId}`, "_blank");
+                else toast({ title: "No sheet linked", description: "Go to Settings to link a sheet." });
               }}
             >
               <ExternalLink className="w-5 h-5 text-muted-foreground" />
-              <div>
+              <div className="text-center">
                 <p className="font-medium text-sm">Open Google Sheet</p>
                 <p className="text-xs text-muted-foreground">View raw data</p>
               </div>
@@ -252,13 +322,13 @@ export default function AdminPortal() {
           </div>
         </div>
 
-        {/* How to contact info */}
+        {/* Info note */}
         <Card className="bg-amber-50/40 border-amber-200">
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-amber-800 mb-1">How clients contact you</p>
+            <p className="text-sm font-medium text-amber-800 mb-1">Who can edit this contact?</p>
             <p className="text-sm text-amber-700">
-              The Principal Dashboard includes a <strong>"Contact Developer"</strong> button that opens a pre-filled
-              email to your address above. Only you can change this email — clients have no way to edit it.
+              Only users with role <strong>admin</strong> in the Users tab of the Google Sheet can access this portal and edit the developer contact.
+              Principals and tutors see a read-only "Contact Developer" button — they cannot change the email address.
             </p>
           </CardContent>
         </Card>

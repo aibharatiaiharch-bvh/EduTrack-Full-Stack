@@ -85,11 +85,12 @@ export default function PrincipalDashboard() {
 
   const [devEmail, setDevEmail] = useState<string | null>(null);
   useEffect(() => {
-    fetch(apiUrl("/admin/contact"))
+    const qs = sheetId ? `?sheetId=${encodeURIComponent(sheetId)}` : "";
+    fetch(apiUrl(`/admin/contact${qs}`))
       .then((r) => r.json())
       .then((d) => { if (d.email) setDevEmail(d.email); })
       .catch(() => {});
-  }, []);
+  }, [sheetId]);
 
   return (
     <AppLayout>
