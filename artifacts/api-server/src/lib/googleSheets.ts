@@ -74,10 +74,10 @@ export const SHEET_TABS = {
 export const SHEET_HEADERS = {
   students: ['UserID', 'Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email'],
   teachers: ['UserID', 'Name', 'Email', 'Subjects', 'Role', 'Status', 'Zoom Link'],
-  subjects: ['Name', 'Teacher', 'Room', 'Days', 'Status'],
-  enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action', 'Teacher', 'Teacher Email', 'Zoom Link'],
+  subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status'],
+  enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action', 'Teacher', 'Teacher Email', 'Zoom Link', 'Class Type'],
   users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
-  enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status', 'Request Type'],
+  enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status', 'Request Type', 'Preferred Class Type'],
   parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status'],
   archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
 };
