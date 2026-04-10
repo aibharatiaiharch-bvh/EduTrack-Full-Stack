@@ -149,21 +149,21 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['SUB-008', 'Physical Education', 'Group',      'Ms. Rachel Kim',   'Gym',      'Mon, Fri',      'Active', '12'],
     ];
 
-    // Enrollments: ['Student Name','Class Name','Class Date','Class Time','Parent Email','Status','Override Action','Teacher','Teacher Email','Zoom Link','Class Type']
+    // Enrollments: ['Student Name','Student Email','Class Name','Class Date','Class Time','Parent Email','Status','Override Action','Teacher','Teacher Email','Zoom Link','Class Type']
     const enrollmentRows = [
-      ['Emma Johnson',  'Mathematics',        dateFromNow(7),  '10:00 AM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
-      ['Emma Johnson',  'Science',            dateFromNow(8),  '02:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
-      ['Liam Smith',    'Mathematics',        dateFromNow(5),  '10:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
-      ['Liam Smith',    'English',            dateFromNow(6),  '11:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
-      ['Olivia Brown',  'Science',            dateFromNow(9),  '02:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
-      ['Olivia Brown',  'Art',                dateFromNow(10), '03:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
-      ['Noah Davis',    'English',            dateFromNow(4),  '11:00 AM', 'karen.davis@gmail.com',   'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
-      ['Ava Wilson',    'Art',                dateFromNow(11), '03:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Individual'],
-      ['Noah Davis',    'Physical Education', dateFromNow(3),  '09:00 AM', 'karen.davis@gmail.com',   'Cancelled',        '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
-      ['Liam Smith',    'Physical Education', dateFromNow(1),  '10:00 AM', 'mike.smith@gmail.com',    'Late Cancellation','', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
-      ['Olivia Brown',  'Mathematics',        dateFromNow(1),  '11:00 AM', 'lisa.brown@gmail.com',    'Late Cancellation','', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
-      ['Emma Johnson',  'Physical Education', dateFromNow(2),  '09:00 AM', 'sarah.johnson@gmail.com', 'Fee Waived',       'Fee Waived', 'Ms. Rachel Kim', 'r.kim@edutrack.edu', '',                    'Group'],
-      ['Ava Wilson',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual'],
+      ['Emma Johnson',  'emma.j@student.com',   'Mathematics',        dateFromNow(7),  '10:00 AM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Emma Johnson',  'emma.j@student.com',   'Science',            dateFromNow(8),  '02:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
+      ['Liam Smith',    'liam.s@student.com',   'Mathematics',        dateFromNow(5),  '10:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Liam Smith',    'liam.s@student.com',   'English',            dateFromNow(6),  '11:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
+      ['Olivia Brown',  'olivia.b@student.com', 'Science',            dateFromNow(9),  '02:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
+      ['Olivia Brown',  'olivia.b@student.com', 'Art',                dateFromNow(10), '03:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Noah Davis',    'noah.d@student.com',   'English',            dateFromNow(4),  '11:00 AM', 'karen.davis@gmail.com',   'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
+      ['Ava Wilson',    'ava.w@student.com',    'Art',                dateFromNow(11), '03:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Individual'],
+      ['Noah Davis',    'noah.d@student.com',   'Physical Education', dateFromNow(3),  '09:00 AM', 'karen.davis@gmail.com',   'Cancelled',        '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Liam Smith',    'liam.s@student.com',   'Physical Education', dateFromNow(1),  '10:00 AM', 'mike.smith@gmail.com',    'Late Cancellation','', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Olivia Brown',  'olivia.b@student.com', 'Mathematics',        dateFromNow(1),  '11:00 AM', 'lisa.brown@gmail.com',    'Late Cancellation','', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Emma Johnson',  'emma.j@student.com',   'Physical Education', dateFromNow(2),  '09:00 AM', 'sarah.johnson@gmail.com', 'Fee Waived',       'Fee Waived',    'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Ava Wilson',    'ava.w@student.com',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual'],
     ];
 
     const today = new Date().toLocaleDateString('en-AU');
@@ -180,6 +180,12 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['PAR-004', 'karen.davis@gmail.com',   'parent',    'Karen Davis',        today, 'Active'],
       // Inactive — pending principal activation (payment not yet confirmed)
       ['PAR-005', 'james.martin@gmail.com',  'parent',    'James Martin',       today, 'Inactive'],
+      // Students — each gets their own login
+      ['STU-001', 'emma.j@student.com',      'student',   'Emma Johnson',       today, 'Active'],
+      ['STU-002', 'liam.s@student.com',      'student',   'Liam Smith',         today, 'Active'],
+      ['STU-003', 'olivia.b@student.com',    'student',   'Olivia Brown',       today, 'Active'],
+      ['STU-004', 'noah.d@student.com',      'student',   'Noah Davis',         today, 'Active'],
+      ['STU-005', 'ava.w@student.com',       'student',   'Ava Wilson',         today, 'Inactive'],
     ];
 
     // Enrollment Requests: ['Student Name','Student Email','Previously Enrolled','Current School','Current Grade','Age','Classes Interested','Parent Email','Parent Phone','Reference','Promo Code','Notes','Submission Date','Status','Request Type']
@@ -225,6 +231,11 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
         requestBody: { values: [headers, ...rows] },
       });
     }
+
+    // Apply dropdown validation to all status columns (non-fatal — seed data is already written)
+    try {
+      await applyDropdownValidation(sheets, spreadsheetId);
+    } catch {}
 
     res.json({ ok: true, tabs: tabData.map(t => t.tab) });
   } catch (err: any) {
@@ -319,6 +330,98 @@ router.post('/sheets/ensure-headers', async (req, res): Promise<void> => {
       headersAdded: headerWrites.map(h => h.range),
       columnsInserted,
     });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Shared helper — applies dropdown validation to all status/controlled columns.
+// Uses SHEET_HEADERS to derive column indices so it stays in sync with the schema.
+// ---------------------------------------------------------------------------
+const TAB_KEY_MAP: Record<string, keyof typeof SHEET_HEADERS> = {
+  [SHEET_TABS.students]:            'students',
+  [SHEET_TABS.teachers]:            'teachers',
+  [SHEET_TABS.subjects]:            'subjects',
+  [SHEET_TABS.enrollments]:         'enrollments',
+  [SHEET_TABS.users]:               'users',
+  [SHEET_TABS.enrollment_requests]: 'enrollment_requests',
+  [SHEET_TABS.parents]:             'parents',
+  [SHEET_TABS.archive]:             'archive',
+  [SHEET_TABS.announcements]:       'announcements',
+};
+
+const DROPDOWN_RULES: Array<{ tab: string; col: string; values: string[] }> = [
+  { tab: SHEET_TABS.students,            col: 'Status',         values: ['Active', 'Inactive'] },
+  { tab: SHEET_TABS.teachers,            col: 'Status',         values: ['Active', 'Inactive'] },
+  { tab: SHEET_TABS.subjects,            col: 'Status',         values: ['Active', 'Inactive'] },
+  { tab: SHEET_TABS.enrollments,         col: 'Status',         values: ['Active', 'Cancelled', 'Late Cancellation', 'Fee Waived', 'Fee Confirmed'] },
+  { tab: SHEET_TABS.enrollments,         col: 'Override Action',values: ['Fee Waived', 'Fee Confirmed'] },
+  { tab: SHEET_TABS.users,               col: 'Status',         values: ['Active', 'Inactive', 'Pending'] },
+  { tab: SHEET_TABS.enrollment_requests, col: 'Status',         values: ['Pending', 'Approved', 'Rejected'] },
+  { tab: SHEET_TABS.parents,             col: 'Status',         values: ['Active', 'Inactive'] },
+  { tab: SHEET_TABS.announcements,       col: 'Priority',       values: ['Standard', 'Urgent'] },
+  { tab: SHEET_TABS.announcements,       col: 'IsActive',       values: ['true', 'false'] },
+];
+
+async function applyDropdownValidation(sheetsClient: any, spreadsheetId: string): Promise<number> {
+  const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
+  const sheetIdMap: Record<string, number> = {};
+  (meta.data.sheets || []).forEach((s: any) => {
+    const title = s.properties?.title;
+    const id    = s.properties?.sheetId;
+    if (title !== undefined && id !== undefined) sheetIdMap[title] = id;
+  });
+
+  const requests: any[] = [];
+  for (const rule of DROPDOWN_RULES) {
+    const numericId = sheetIdMap[rule.tab];
+    if (numericId === undefined) continue;
+    const headerKey = TAB_KEY_MAP[rule.tab];
+    if (!headerKey) continue;
+    const hdrs = SHEET_HEADERS[headerKey] as string[];
+    const colIdx = hdrs.indexOf(rule.col);
+    if (colIdx === -1) continue;
+
+    requests.push({
+      setDataValidation: {
+        range: {
+          sheetId: numericId,
+          startRowIndex: 1,   // skip header row (0-indexed)
+          endRowIndex: 2000,
+          startColumnIndex: colIdx,
+          endColumnIndex: colIdx + 1,
+        },
+        rule: {
+          condition: {
+            type: 'ONE_OF_LIST',
+            values: rule.values.map(v => ({ userEnteredValue: v })),
+          },
+          showCustomUi: true,
+          strict: false,       // allow blank (don't block empty cells)
+        },
+      },
+    });
+  }
+
+  if (requests.length > 0) {
+    await sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+  }
+  return requests.length;
+}
+
+// POST /api/sheets/apply-validation — applies dropdown rules to all status columns
+// Must be BEFORE /api/sheets/:tab to avoid Express matching "apply-validation" as :tab
+router.post('/sheets/apply-validation', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing spreadsheetId' }); return; }
+  try {
+    const sheetsClient = await getUncachableGoogleSheetClient();
+    const count = await applyDropdownValidation(sheetsClient, spreadsheetId);
+    res.json({ ok: true, rulesApplied: count });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

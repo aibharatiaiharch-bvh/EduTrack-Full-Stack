@@ -52,7 +52,7 @@ function classStartsInMoreThan24Hours(classDate: string, classTime: string): boo
   return diffMs > 24 * 60 * 60 * 1000;
 }
 
-// GET /api/enrollments?sheetId=&parentEmail=&teacherEmail=&status=
+// GET /api/enrollments?sheetId=&parentEmail=&teacherEmail=&studentEmail=&studentName=&status=
 router.get('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -66,6 +66,14 @@ router.get('/enrollments', async (req, res): Promise<void> => {
     if (req.query.teacherEmail) {
       const email = (req.query.teacherEmail as string).toLowerCase();
       rows = rows.filter(r => (r['Teacher Email'] || '').toLowerCase() === email);
+    }
+    if (req.query.studentEmail) {
+      const email = (req.query.studentEmail as string).toLowerCase();
+      rows = rows.filter(r => (r['Student Email'] || '').toLowerCase() === email);
+    }
+    if (req.query.studentName) {
+      const name = (req.query.studentName as string).toLowerCase();
+      rows = rows.filter(r => (r['Student Name'] || '').toLowerCase().includes(name));
     }
     if (req.query.status) {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
@@ -83,7 +91,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
-  const { studentName, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink, room } = req.body;
+  const { studentName, studentEmail, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink } = req.body;
   if (!studentName || !subjectName) {
     res.status(400).json({ error: 'studentName and subjectName are required' }); return;
   }
@@ -91,17 +99,18 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
   try {
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
-      if (h === 'Student Name')   return studentName || '';
-      if (h === 'Class Name')     return subjectName || '';
-      if (h === 'Class Date')     return 'TBD';
-      if (h === 'Class Time')     return 'TBD';
-      if (h === 'Parent Email')   return parentEmail || '';
-      if (h === 'Status')         return 'Active';
+      if (h === 'Student Name')    return studentName || '';
+      if (h === 'Student Email')   return studentEmail || '';
+      if (h === 'Class Name')      return subjectName || '';
+      if (h === 'Class Date')      return 'TBD';
+      if (h === 'Class Time')      return 'TBD';
+      if (h === 'Parent Email')    return parentEmail || '';
+      if (h === 'Status')          return 'Active';
       if (h === 'Override Action') return '';
-      if (h === 'Teacher')        return teacherName || '';
-      if (h === 'Teacher Email')  return teacherEmail || '';
-      if (h === 'Zoom Link')      return zoomLink || '';
-      if (h === 'Class Type')     return subjectType || '';
+      if (h === 'Teacher')         return teacherName || '';
+      if (h === 'Teacher Email')   return teacherEmail || '';
+      if (h === 'Zoom Link')       return zoomLink || '';
+      if (h === 'Class Type')      return subjectType || '';
       return '';
     });
     await sheets.spreadsheets.values.append({

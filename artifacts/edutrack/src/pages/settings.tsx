@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database, Link2, Copy } from "lucide-react";
+import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database, Link2, Copy, ListChecks } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -30,6 +30,7 @@ export default function Settings() {
   const [, setLocation] = useLocation();
   const [syncingHeaders, setSyncingHeaders] = useState(false);
   const [seedingData, setSeedingData] = useState(false);
+  const [applyingDropdowns, setApplyingDropdowns] = useState(false);
 
   const selectedFile = driveFiles.find((f) => f.id === sheetId);
 
@@ -74,6 +75,28 @@ export default function Settings() {
       toast({ title: "Seed failed", description: err.message, variant: "destructive" });
     } finally {
       setSeedingData(false);
+    }
+  };
+
+  const handleApplyDropdowns = async () => {
+    if (!sheetId) {
+      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
+      return;
+    }
+    setApplyingDropdowns(true);
+    try {
+      const res = await fetch(apiUrl("/sheets/apply-validation"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to apply dropdowns");
+      toast({ title: "Dropdowns applied", description: `${data.rulesApplied} dropdown rules set on all status columns.` });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setApplyingDropdowns(false);
     }
   };
 
@@ -289,7 +312,7 @@ export default function Settings() {
               </div>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
-                  Load demo data — <strong className="text-destructive">clears all existing data</strong> and fills every tab with sample students, teachers, subjects, and enrollments so you can test the platform.
+                  Load demo data — <strong className="text-destructive">clears all existing data</strong> and fills every tab with sample students, teachers, subjects, and enrollments so you can test the platform. Dropdowns are applied automatically.
                 </p>
                 <Button
                   variant="outline"
@@ -303,6 +326,24 @@ export default function Settings() {
                     <RefreshCw className="h-4 w-4" />
                   )}
                   Load Demo Data
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Set up dropdown lists on all Status, Priority, and controlled columns across every tab — prevents typing errors when editing the sheet directly.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleApplyDropdowns}
+                  disabled={applyingDropdowns || !sheetId}
+                  className="gap-2"
+                >
+                  {applyingDropdowns ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ListChecks className="h-4 w-4" />
+                  )}
+                  Setup Dropdowns
                 </Button>
               </div>
             </div>
