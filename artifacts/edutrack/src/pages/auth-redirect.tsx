@@ -58,12 +58,12 @@ function SetupRequiredScreen() {
         </div>
         <h1 className="text-2xl font-bold text-foreground">Sheet Setup Required</h1>
         <p className="text-muted-foreground text-sm">
-          Your Google Sheet hasn't been set up yet. Go to the Admin Portal to initialise the sheet,
+          Your Google Sheet hasn't been set up yet. Go to the Developer Portal to initialise the sheet,
           then sign in again.
         </p>
         <div className="grid grid-cols-1 gap-3">
           <Button className="w-full" onClick={() => window.location.href = `${BASE}/admin`}>
-            Go to Admin Portal
+            Go to Developer Portal
           </Button>
           <Button
             variant="ghost"
@@ -190,8 +190,8 @@ export default function AuthRedirect() {
 
         // Active user — route by role
         const role: string = data.role;
-        if (role === "admin") {
-          setStatusMsg("Welcome, Admin. Redirecting…");
+        if (role === "developer" || role === "admin") {
+          setStatusMsg("Welcome, Developer. Redirecting…");
           setTimeout(() => setLocation("/admin"), 500);
         } else if (role === "principal") {
           setStatusMsg("Welcome, Principal. Redirecting…");

@@ -93,7 +93,7 @@ router.get('/roles/check', async (req, res): Promise<void> => {
     const devEmail = (process.env.DEVELOPER_EMAIL || '').toLowerCase().trim();
     if (devEmail && email === devEmail) {
       res.json({
-        role: 'admin',
+        role: 'developer',
         name: process.env.DEVELOPER_NAME || 'Developer',
         status: 'active',
         userId: 'ADM-DEV',

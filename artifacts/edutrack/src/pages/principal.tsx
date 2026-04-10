@@ -604,7 +604,7 @@ export default function PrincipalDashboard() {
                     onChange={e => setUserRoleFilter(e.target.value)}
                   >
                     <option value="all">All Roles</option>
-                    <option value="admin">Admin</option>
+                    <option value="developer">Developer</option>
                     <option value="principal">Principal</option>
                     <option value="tutor">Tutor</option>
                     <option value="parent">Parent</option>

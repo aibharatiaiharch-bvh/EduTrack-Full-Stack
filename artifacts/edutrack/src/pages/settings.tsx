@@ -217,7 +217,7 @@ export default function Settings() {
             onClick={() => setLocation("/admin")}
           >
             <Shield className="w-4 h-4" />
-            Admin / Developer Portal
+            Developer Portal
           </Button>
           <p className="text-xs text-muted-foreground mt-1 ml-1">
             Developer access only — manage contact details and set up sheet data.

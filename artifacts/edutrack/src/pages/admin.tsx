@@ -204,7 +204,7 @@ export default function AdminPortal() {
               <Shield className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="font-semibold text-sm leading-none">Admin Portal</p>
+              <p className="font-semibold text-sm leading-none">Developer Portal</p>
               <p className="text-xs text-muted-foreground mt-0.5">Developer Access</p>
             </div>
           </div>
@@ -212,7 +212,7 @@ export default function AdminPortal() {
             <span className="text-sm text-muted-foreground hidden sm:block">
               {user?.primaryEmailAddress?.emailAddress}
             </span>
-            <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">Admin</Badge>
+            <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">Developer</Badge>
             <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => signOut({ redirectUrl: "/" })}>
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Sign Out</span>
@@ -228,7 +228,7 @@ export default function AdminPortal() {
           <h1 className="text-2xl font-bold text-foreground">
             Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Developer & Admin overview for EduTrack</p>
+          <p className="text-muted-foreground text-sm mt-1">Developer tools & configuration for EduTrack</p>
         </div>
 
         {/* Admin Email */}
@@ -238,7 +238,7 @@ export default function AdminPortal() {
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Mail className="w-4 h-4 text-purple-600" />
-                  Admin Email
+                  Developer Email
                 </CardTitle>
                 <CardDescription className="mt-1">
                   Shown to principals as the "Contact Developer" button. Stored in your Google Sheet.
@@ -293,7 +293,7 @@ export default function AdminPortal() {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground italic">No admin email set. Click Edit to add your details.</p>
+                <p className="text-sm text-muted-foreground italic">No developer email set. Click Edit to add your details.</p>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={startEdit}>
                   <Pencil className="w-3 h-3" />Add Contact Details
                 </Button>

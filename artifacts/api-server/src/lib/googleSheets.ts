@@ -94,7 +94,7 @@ export function colLetter(tabKey: keyof typeof SHEET_HEADERS, field: string): st
 
 const ROLE_PREFIXES: Record<string, string> = {
   student: 'STU', tutor: 'TCH', teacher: 'TCH',
-  parent: 'PAR', principal: 'PRN', admin: 'ADM',
+  parent: 'PAR', principal: 'PRN', admin: 'ADM', developer: 'DEV',
 };
 
 /**
