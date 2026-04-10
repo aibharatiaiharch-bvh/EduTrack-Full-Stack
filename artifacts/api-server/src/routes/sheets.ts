@@ -210,13 +210,18 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/sheets/ensure-headers — safe: adds missing tabs/headers WITHOUT wiping data
+// POST /api/sheets/ensure-headers — safe: adds missing tabs, writes headers to blank tabs,
+// and inserts the UserID column at position A for tabs that already have data but are missing it.
+const USER_ID_TABS = new Set(['students', 'teachers', 'users']);
+
 router.post('/sheets/ensure-headers', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing spreadsheetId' }); return; }
   try {
     const sheets = await getUncachableGoogleSheetClient();
-    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+
+    // Step 1: Add any missing tabs
+    let meta = await sheets.spreadsheets.get({ spreadsheetId });
     const existingTabs = (meta.data.sheets || []).map((s: any) => s.properties?.title as string);
     const requiredTabs = Object.values(SHEET_TABS);
     const missingTabs = requiredTabs.filter(t => !existingTabs.includes(t));
@@ -224,25 +229,54 @@ router.post('/sheets/ensure-headers', async (req, res): Promise<void> => {
     if (missingTabs.length > 0) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
-        requestBody: {
-          requests: missingTabs.map(title => ({ addSheet: { properties: { title } } })),
-        },
+        requestBody: { requests: missingTabs.map(title => ({ addSheet: { properties: { title } } })) },
       });
+      // Refresh meta so we have sheetIds for newly added tabs
+      meta = await sheets.spreadsheets.get({ spreadsheetId });
     }
 
+    // Step 2: For each tab, check existing headers and fix as needed
     const tabKeys = Object.keys(SHEET_TABS) as (keyof typeof SHEET_TABS)[];
     const headerWrites: { range: string; values: string[][] }[] = [];
+    const columnsInserted: string[] = [];
+
     for (const key of tabKeys) {
       const tabTitle = tabName(key);
       const hdrs = headers(key);
       if (!hdrs || !hdrs.length) continue;
+
       try {
         const existing = await sheets.spreadsheets.values.get({
-          spreadsheetId, range: `${tabTitle}!A1:A1`,
+          spreadsheetId, range: `${tabTitle}!A1:Z1`,
         });
-        const firstCell = (existing.data.values?.[0]?.[0] || '').toString().trim();
+        const existingRow = (existing.data.values?.[0] || []).map(String);
+        const firstCell = existingRow[0]?.trim() || '';
+
         if (!firstCell) {
+          // Blank tab — write full header row
           headerWrites.push({ range: `${tabTitle}!A1`, values: [hdrs] });
+        } else if (USER_ID_TABS.has(key) && firstCell !== 'UserID') {
+          // Existing tab with data but missing UserID in column A — insert column before existing data
+          const sheetGid = (meta.data.sheets || []).find((s: any) => s.properties?.title === tabTitle)?.properties?.sheetId;
+          if (sheetGid !== undefined) {
+            await sheets.spreadsheets.batchUpdate({
+              spreadsheetId,
+              requestBody: {
+                requests: [{
+                  insertDimension: {
+                    range: { sheetId: sheetGid, dimension: 'COLUMNS', startIndex: 0, endIndex: 1 },
+                    inheritFromBefore: false,
+                  },
+                }],
+              },
+            });
+            await sheets.spreadsheets.values.update({
+              spreadsheetId, range: `${tabTitle}!A1`,
+              valueInputOption: 'RAW',
+              requestBody: { values: [['UserID']] },
+            });
+            columnsInserted.push(tabTitle);
+          }
         }
       } catch {}
     }
@@ -257,7 +291,12 @@ router.post('/sheets/ensure-headers', async (req, res): Promise<void> => {
       });
     }
 
-    res.json({ ok: true, tabsAdded: missingTabs, headersAdded: headerWrites.map(h => h.range) });
+    res.json({
+      ok: true,
+      tabsAdded: missingTabs,
+      headersAdded: headerWrites.map(h => h.range),
+      columnsInserted,
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

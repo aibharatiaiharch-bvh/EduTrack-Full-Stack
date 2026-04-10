@@ -5,7 +5,6 @@ import {
   Mail, LogOut, ExternalLink, Shield, Users, BookOpen,
   Settings, RefreshCw, Copy, Check, Phone, Pencil, X, Save,
   FlaskConical, AlertTriangle, Columns, ToggleLeft,
-  UserCheck, UserX, Trash2, ChevronDown, Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,29 +24,6 @@ interface ContactInfo { email: string; name: string; }
 interface SheetStats { students: number; teachers: number; parents: number; enrollments: number; }
 type FeatureState = Record<FeatureKey, boolean>;
 
-interface UserRow {
-  _row: number;
-  userId: string;
-  email: string;
-  role: string;
-  name: string;
-  addedDate: string;
-  status: string;
-}
-
-const ROLE_COLORS: Record<string, string> = {
-  admin:     "bg-purple-100 text-purple-700",
-  principal: "bg-blue-100 text-blue-700",
-  tutor:     "bg-green-100 text-green-700",
-  parent:    "bg-orange-100 text-orange-700",
-  student:   "bg-cyan-100 text-cyan-700",
-};
-const STATUS_COLORS: Record<string, string> = {
-  active:   "bg-green-100 text-green-700",
-  inactive: "bg-slate-100 text-slate-600",
-  pending:  "bg-amber-100 text-amber-700",
-};
-
 const FEATURE_KEYS = Object.keys(FEATURE_META) as FeatureKey[];
 const DEFAULT_FEATURES: FeatureState = { assessments: true, billing: true, schedule: true };
 
@@ -59,82 +35,6 @@ export default function AdminPortal() {
   const sheetId = localStorage.getItem(SHEET_KEY) || "";
   const { seeding, seedSheet } = useSheetConfig();
   const [seedConfirm, setSeedConfirm] = useState(false);
-
-  // ── User Management ──────────────────────────────────────────────────
-  const [userList, setUserList] = useState<UserRow[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
-  const [userSearch, setUserSearch] = useState("");
-  const [userRoleFilter, setUserRoleFilter] = useState("all");
-  const [userStatusFilter, setUserStatusFilter] = useState("all");
-  const [actioningUser, setActioningUser] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
-  function loadUsers() {
-    if (!sheetId) return;
-    setLoadingUsers(true);
-    fetch(apiUrl(`/users?sheetId=${encodeURIComponent(sheetId)}`))
-      .then(r => r.json())
-      .then(d => Array.isArray(d) ? setUserList(d) : setUserList([]))
-      .catch(() => setUserList([]))
-      .finally(() => setLoadingUsers(false));
-  }
-  useEffect(() => { loadUsers(); }, [sheetId]);
-
-  async function deactivateUser(userId: string) {
-    setActioningUser(userId);
-    try {
-      const res = await fetch(apiUrl(`/users/deactivate?sheetId=${encodeURIComponent(sheetId)}`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, sheetId }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setUserList(prev => prev.map(u => u.userId === userId ? { ...u, status: "Inactive" } : u));
-      toast({ title: "User deactivated", description: "Access revoked. A copy has been saved to the Archive tab." });
-    } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    } finally { setActioningUser(null); }
-  }
-
-  async function reactivateUser(userId: string) {
-    setActioningUser(userId);
-    try {
-      const res = await fetch(apiUrl(`/users/reactivate?sheetId=${encodeURIComponent(sheetId)}`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, sheetId }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setUserList(prev => prev.map(u => u.userId === userId ? { ...u, status: "Active" } : u));
-      toast({ title: "User reactivated", description: "Access restored." });
-    } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    } finally { setActioningUser(null); }
-  }
-
-  async function deleteUser(userId: string) {
-    setActioningUser(userId);
-    try {
-      const res = await fetch(apiUrl(`/users/${encodeURIComponent(userId)}?sheetId=${encodeURIComponent(sheetId)}`), {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setUserList(prev => prev.filter(u => u.userId !== userId));
-      setDeleteConfirm(null);
-      toast({ title: "User deleted", description: "Row removed from Users tab. Access revoked immediately." });
-    } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    } finally { setActioningUser(null); }
-  }
-
-  const filteredUsers = userList.filter(u => {
-    const matchesRole = userRoleFilter === "all" || u.role.toLowerCase() === userRoleFilter;
-    const matchesStatus = userStatusFilter === "all" || u.status.toLowerCase() === userStatusFilter;
-    const matchesSearch = !userSearch || [u.name, u.email, u.userId].some(
-      v => v.toLowerCase().includes(userSearch.toLowerCase())
-    );
-    return matchesRole && matchesStatus && matchesSearch;
-  });
 
   // ── Admin email / developer contact ─────────────────────────────────
   const [contact, setContact] = useState<ContactInfo | null>(null);
@@ -470,152 +370,6 @@ export default function AdminPortal() {
               </Card>
             ))}
           </div>
-        </div>
-
-        {/* User Management */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-foreground">User Management</h2>
-            <Button size="sm" variant="outline" className="gap-2" onClick={loadUsers} disabled={loadingUsers}>
-              <RefreshCw className={`w-3 h-3 ${loadingUsers ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-
-          {!sheetId ? (
-            <Card>
-              <CardContent className="p-6 text-sm text-muted-foreground">
-                Link a Google Sheet in Settings to manage users.
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardDescription>
-                  All entries in the Users tab. Role determines which portal they access.
-                  Deactivating revokes access immediately and archives the record.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Filters */}
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <Input
-                      className="pl-8 h-8 text-sm"
-                      placeholder="Search name, email, or ID…"
-                      value={userSearch}
-                      onChange={e => setUserSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="relative">
-                      <select
-                        className="h-8 pl-2 pr-6 text-xs rounded-md border bg-background appearance-none cursor-pointer"
-                        value={userRoleFilter}
-                        onChange={e => setUserRoleFilter(e.target.value)}
-                      >
-                        <option value="all">All Roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="principal">Principal</option>
-                        <option value="tutor">Tutor</option>
-                        <option value="parent">Parent</option>
-                        <option value="student">Student</option>
-                      </select>
-                      <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                    </div>
-                    <div className="relative">
-                      <select
-                        className="h-8 pl-2 pr-6 text-xs rounded-md border bg-background appearance-none cursor-pointer"
-                        value={userStatusFilter}
-                        onChange={e => setUserStatusFilter(e.target.value)}
-                      >
-                        <option value="all">All Statuses</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="pending">Pending</option>
-                      </select>
-                      <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* User list */}
-                {loadingUsers ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">Loading users…</p>
-                ) : filteredUsers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    {userList.length === 0 ? "No users found in the Users tab." : "No users match the current filters."}
-                  </p>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {filteredUsers.map(u => {
-                      const statusKey = u.status.toLowerCase();
-                      const roleKey = u.role.toLowerCase();
-                      const isActioning = actioningUser === u.userId;
-                      const isDeleting = deleteConfirm === u.userId;
-                      return (
-                        <div key={u.userId} className="py-3 first:pt-0 last:pb-0">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm text-foreground">{u.name || u.email}</span>
-                                <Badge className={`text-xs px-1.5 py-0 ${ROLE_COLORS[roleKey] || "bg-muted text-muted-foreground"}`}>
-                                  {u.role || "—"}
-                                </Badge>
-                                <Badge className={`text-xs px-1.5 py-0 ${STATUS_COLORS[statusKey] || "bg-muted text-muted-foreground"}`}>
-                                  {u.status || "—"}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                                <span className="font-mono">{u.userId || "—"}</span>
-                                <span>·</span>
-                                <span>{u.email}</span>
-                                {u.addedDate && <><span>·</span><span>Added {u.addedDate}</span></>}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {isDeleting ? (
-                                <>
-                                  <Button size="sm" className="h-7 text-xs gap-1 bg-red-600 hover:bg-red-700" onClick={() => deleteUser(u.userId)} disabled={isActioning}>
-                                    {isActioning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                                    Confirm Delete
-                                  </Button>
-                                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setDeleteConfirm(null)} disabled={isActioning}>Cancel</Button>
-                                </>
-                              ) : (
-                                <>
-                                  {statusKey !== "inactive" ? (
-                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-amber-700 border-amber-200 hover:bg-amber-50" onClick={() => deactivateUser(u.userId)} disabled={isActioning}>
-                                      {isActioning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserX className="w-3 h-3" />}
-                                      Deactivate
-                                    </Button>
-                                  ) : (
-                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-green-700 border-green-200 hover:bg-green-50" onClick={() => reactivateUser(u.userId)} disabled={isActioning}>
-                                      {isActioning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
-                                      Reactivate
-                                    </Button>
-                                  )}
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600" onClick={() => setDeleteConfirm(u.userId)}>
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <p className="text-xs text-muted-foreground pt-1">
-                  {filteredUsers.length} of {userList.length} user{userList.length !== 1 ? "s" : ""} shown
-                  {userList.length > 0 && " · Changes take effect on next sign-in"}
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Quick Actions */}
