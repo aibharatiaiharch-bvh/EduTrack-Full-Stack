@@ -1,21 +1,44 @@
 /**
- * Feature flags — controlled by the developer.
- *
- * Set a feature to `false` to hide it from the sidebar and mark it as
- * unavailable. Flip it to `true` when you're ready to include it in the
- * plan/upgrade tier offered to this customer.
- *
- * Changes here take effect on the next page load (no restart needed in dev).
+ * Feature flags — controlled by the developer via the Admin Portal.
+ * Stored in Google Sheet Config tab and cached in localStorage.
+ * Changes take effect on next page load.
  */
-export const FEATURES = {
-  /** Grade tracking, assessment reports, and student evaluations. */
+
+const FEATURES_STORAGE_KEY = 'edutrack_features';
+
+export const FEATURE_DEFAULTS = {
   assessments: true,
-
-  /** Invoices, payment tracking, and billing history. */
   billing: true,
-
-  /** Class scheduling and calendar view. */
   schedule: true,
 } as const;
 
-export type FeatureKey = keyof typeof FEATURES;
+export type FeatureKey = keyof typeof FEATURE_DEFAULTS;
+
+export const FEATURE_META: Record<FeatureKey, { label: string; description: string }> = {
+  assessments: { label: "Assessments", description: "Grade tracking, assessment reports, and student evaluations" },
+  billing:     { label: "Billing",     description: "Invoices, payment tracking, and billing history" },
+  schedule:    { label: "Schedule",    description: "Class scheduling, calendar view, and timetable management" },
+};
+
+/** Read current feature flags from localStorage (set by Admin Portal), fall back to defaults. */
+export function getFeatures(): typeof FEATURE_DEFAULTS {
+  try {
+    const stored = localStorage.getItem(FEATURES_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return { ...FEATURE_DEFAULTS, ...parsed };
+    }
+  } catch {}
+  return { ...FEATURE_DEFAULTS };
+}
+
+/** Persist feature flags to localStorage. */
+export function setStoredFeatures(updates: Partial<typeof FEATURE_DEFAULTS>): void {
+  try {
+    const current = getFeatures();
+    localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify({ ...current, ...updates }));
+  } catch {}
+}
+
+/** Backward-compatible static export — use getFeatures() for dynamic access. */
+export const FEATURES = FEATURE_DEFAULTS;

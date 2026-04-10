@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { FEATURES } from "@/config/features";
+import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } from "@/config/features";
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
   XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
@@ -24,11 +24,11 @@ import {
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
-const FEATURE_META = [
-  { key: "assessments" as const, label: "Assessments", description: "Grade tracking, assessment reports, and student evaluations" },
-  { key: "billing" as const, label: "Billing", description: "Invoices, payment tracking, and billing history" },
-  { key: "schedule" as const, label: "Schedule", description: "Class scheduling, calendar view, and timetable management" },
-];
+const FEATURE_META = (Object.keys(FEATURE_META_CONFIG) as FeatureKey[]).map(key => ({
+  key,
+  label: FEATURE_META_CONFIG[key].label,
+  description: FEATURE_META_CONFIG[key].description,
+}));
 
 const SHEET_KEY = "edutrack_sheet_id";
 
@@ -455,7 +455,7 @@ export default function PrincipalDashboard() {
           </CardHeader>
           <CardContent className="divide-y divide-border">
             {FEATURE_META.map((feat, i) => {
-              const active = FEATURES[feat.key];
+              const active = getFeatures()[feat.key];
               return (
                 <div key={feat.key} className={`flex items-center justify-between gap-4 py-3 ${i === 0 ? "pt-0" : ""}`}>
                   <div className="flex items-center gap-3 min-w-0">

@@ -210,6 +210,59 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/sheets/ensure-headers — safe: adds missing tabs/headers WITHOUT wiping data
+router.post('/sheets/ensure-headers', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing spreadsheetId' }); return; }
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const existingTabs = (meta.data.sheets || []).map((s: any) => s.properties?.title as string);
+    const requiredTabs = Object.values(SHEET_TABS);
+    const missingTabs = requiredTabs.filter(t => !existingTabs.includes(t));
+
+    if (missingTabs.length > 0) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: missingTabs.map(title => ({ addSheet: { properties: { title } } })),
+        },
+      });
+    }
+
+    const tabKeys = Object.keys(SHEET_TABS) as (keyof typeof SHEET_TABS)[];
+    const headerWrites: { range: string; values: string[][] }[] = [];
+    for (const key of tabKeys) {
+      const tabTitle = tabName(key);
+      const hdrs = headers(key);
+      if (!hdrs || !hdrs.length) continue;
+      try {
+        const existing = await sheets.spreadsheets.values.get({
+          spreadsheetId, range: `${tabTitle}!A1:A1`,
+        });
+        const firstCell = (existing.data.values?.[0]?.[0] || '').toString().trim();
+        if (!firstCell) {
+          headerWrites.push({ range: `${tabTitle}!A1`, values: [hdrs] });
+        }
+      } catch {}
+    }
+
+    if (headerWrites.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: headerWrites.map(({ range, values }) => ({ range, values })),
+        },
+      });
+    }
+
+    res.json({ ok: true, tabsAdded: missingTabs, headersAdded: headerWrites.map(h => h.range) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/sheets/:tab — list all rows
 router.get('/sheets/:tab', async (req, res): Promise<void> => {
   const { tab } = req.params;

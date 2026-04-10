@@ -51,6 +51,40 @@ async function upsertConfigKey(spreadsheetId: string, key: string, value: string
   }
 }
 
+// GET /api/admin/features?sheetId=X
+// Returns current feature flag states from Config tab
+router.get('/admin/features', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  const defaults = { assessments: true, billing: true, schedule: true };
+  if (!sheetId) { res.json(defaults); return; }
+  try {
+    const config = await readConfig(sheetId);
+    res.json({
+      assessments: config['feature_assessments'] !== 'false',
+      billing:     config['feature_billing']     !== 'false',
+      schedule:    config['feature_schedule']    !== 'false',
+    });
+  } catch {
+    res.json(defaults);
+  }
+});
+
+// PUT /api/admin/features?sheetId=X
+// Saves feature flag states to Config tab
+router.put('/admin/features', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  const features = req.body as Record<string, boolean>;
+  try {
+    for (const [key, value] of Object.entries(features)) {
+      await upsertConfigKey(sheetId, `feature_${key}`, String(value));
+    }
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/admin/contact?sheetId=X
 // Reads from Config tab in Google Sheet; falls back to env var
 router.get('/admin/contact', async (req, res): Promise<void> => {
