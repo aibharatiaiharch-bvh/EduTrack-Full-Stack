@@ -113,7 +113,7 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/users/reactivate — set Status=Active in Users tab
+// POST /api/users/reactivate — set Status=Active in Users tab (and Students tab if role=student)
 router.post('/users/reactivate', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const { userId } = req.body;
@@ -124,8 +124,26 @@ router.post('/users/reactivate', async (req, res): Promise<void> => {
     const user = rows.find(r => r['UserID'] === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
+    // 1. Update Users tab — this is the login gate
     const statusCol = colLetter('users', 'Status');
     await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${user._row}`, 'Active');
+
+    // 2. If this user is a student, also activate their Students tab record
+    //    so both tabs stay in sync (login is controlled by Users tab only)
+    if ((user['Role'] || '').toLowerCase().trim() === 'student') {
+      const studentRows = await readRows(sheetId, SHEET_TABS.students);
+      const emailNorm = (user['Email'] || '').toLowerCase().trim();
+
+      // Match by UserID first; fall back to email match
+      const studentRow = studentRows.find(r =>
+        (r['UserID'] || '') === userId ||
+        (emailNorm && (r['Email'] || '').toLowerCase().trim() === emailNorm)
+      );
+      if (studentRow) {
+        const studentStatusCol = colLetter('students', 'Status');
+        await updateCell(sheetId, `${SHEET_TABS.students}!${studentStatusCol}${studentRow._row}`, 'Active');
+      }
+    }
 
     res.json({ ok: true });
   } catch (err: any) {

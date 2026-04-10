@@ -294,7 +294,8 @@ export default function PrincipalDashboard() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
-      toast({ title: "Student activated", description: "The student's account is now Active." });
+      loadUsers();
+      toast({ title: "Student activated", description: "The student's account is now Active and can log in." });
     },
     onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
   });
