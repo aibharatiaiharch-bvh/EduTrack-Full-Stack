@@ -5,7 +5,26 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { FEATURES } from "@/config/features";
+import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock } from "lucide-react";
+
+const FEATURE_META = [
+  {
+    key: "assessments" as const,
+    label: "Assessments",
+    description: "Grade tracking, assessment reports, and student evaluations",
+  },
+  {
+    key: "billing" as const,
+    label: "Billing",
+    description: "Invoices, payment tracking, and billing history",
+  },
+  {
+    key: "schedule" as const,
+    label: "Schedule",
+    description: "Class scheduling, calendar view, and timetable management",
+  },
+];
 
 const SHEET_KEY = "edutrack_sheet_id";
 
@@ -79,6 +98,53 @@ export default function PrincipalDashboard() {
             <p className="text-sm">No Google Sheet linked. Please go to Settings to link your data source first.</p>
           </div>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Features & Upgrades</CardTitle>
+            <CardDescription>
+              See which features are active on your plan. Request an upgrade to unlock additional modules.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="divide-y divide-border">
+            {FEATURE_META.map((feat, i) => {
+              const active = FEATURES[feat.key];
+              return (
+                <div key={feat.key} className={`flex items-center justify-between gap-4 py-3 ${i === 0 ? "pt-0" : ""}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+                      {active ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm">{feat.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
+                    </div>
+                  </div>
+                  {active ? (
+                    <Badge variant="secondary" className="text-xs shrink-0 text-green-700 bg-green-100 dark:bg-green-950 dark:text-green-400">
+                      Active
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1.5 text-primary border-primary/40 hover:bg-primary/5"
+                      onClick={() => {
+                        toast({
+                          title: "Upgrade request sent",
+                          description: `Your interest in ${feat.label} has been noted. Your account manager will be in touch shortly.`,
+                        });
+                      }}
+                    >
+                      <Rocket className="h-3.5 w-3.5" />
+                      Request Upgrade
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
