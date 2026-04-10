@@ -110,44 +110,64 @@ router.get('/roles/check', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/roles/enroll — submit an enrollment request; add parent to Users as Pending
+// POST /api/roles/enroll — submit an enrollment/application request
+// requestType: 'student' (default) or 'tutor'
 router.post('/roles/enroll', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
 
   const {
+    requestType,
     studentName, dob, currentSchool, currentGrade,
     parentName, parentEmail, parentPhone, studentPhone,
     classesInterested, notes, userEmail, userName,
   } = req.body;
 
-  if (!studentName || !parentEmail) {
-    res.status(400).json({ error: 'studentName and parentEmail are required' });
-    return;
-  }
+  const submissionDate = new Date().toLocaleDateString('en-AU');
 
   try {
-    const submissionDate = new Date().toLocaleDateString('en-AU');
-
-    await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
-      studentName, dob || '', currentSchool || '', currentGrade || '',
-      parentName || '', parentEmail, parentPhone || '', studentPhone || '',
-      classesInterested || '', notes || '', submissionDate, 'Pending',
-    ]);
-
-    if (userEmail) {
+    if (requestType === 'tutor') {
+      // Tutor / staff application
+      const applicantName = studentName || userName || '';
+      const applicantEmail = (parentEmail || userEmail || '').toLowerCase().trim();
+      if (!applicantName || !applicantEmail) {
+        res.status(400).json({ error: 'Name and email are required for tutor applications' }); return;
+      }
+      // Write to Enrollment Requests tab — repurpose existing columns
+      // studentName=applicant name, parentEmail=applicant email, classesInterested=subjects
+      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+        applicantName, '', '', '', '', applicantEmail, parentPhone || '',
+        '', classesInterested || '', notes || '', submissionDate, 'Pending', 'tutor',
+      ]);
+      // Add to Users tab as tutor/Pending so they see the "Pending Approval" screen
       const existingUsers = await readUsersTab(sheetId);
-      const alreadyExists = existingUsers.find(u => u.email === userEmail.toLowerCase().trim());
+      const alreadyExists = existingUsers.find(u => u.email === applicantEmail);
       if (!alreadyExists) {
-        const userId = await generateUserId('parent', sheetId);
+        const userId = await generateUserId('tutor', sheetId);
         await appendRow(sheetId, SHEET_TABS.users, [
-          userId,
-          userEmail.toLowerCase().trim(),
-          'parent',
-          userName || parentName || '',
-          submissionDate,
-          'Pending',
+          userId, applicantEmail, 'tutor', applicantName, submissionDate, 'Pending',
         ]);
+      }
+    } else {
+      // Student / family enrollment (default)
+      if (!studentName || !parentEmail) {
+        res.status(400).json({ error: 'studentName and parentEmail are required' }); return;
+      }
+      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+        studentName, dob || '', currentSchool || '', currentGrade || '',
+        parentName || '', parentEmail, parentPhone || '', studentPhone || '',
+        classesInterested || '', notes || '', submissionDate, 'Pending', 'student',
+      ]);
+      if (userEmail) {
+        const existingUsers = await readUsersTab(sheetId);
+        const alreadyExists = existingUsers.find(u => u.email === userEmail.toLowerCase().trim());
+        if (!alreadyExists) {
+          const userId = await generateUserId('parent', sheetId);
+          await appendRow(sheetId, SHEET_TABS.users, [
+            userId, userEmail.toLowerCase().trim(), 'parent',
+            userName || parentName || '', submissionDate, 'Pending',
+          ]);
+        }
       }
     }
 
@@ -190,27 +210,58 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
     const erStatusCol = colLetter('enrollment_requests', 'Status');
     await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${erStatusCol}${rowNum}`, 'Active');
 
-    // 2. Add / activate parent in Users tab
-    if (parentEmail) {
-      const users = await readUsersTab(sheetId);
-      const existing = users.find(u => u.email === parentEmail);
-      if (!existing) {
-        const userId = await generateUserId('parent', sheetId);
-        await appendRow(sheetId, SHEET_TABS.users, [
-          userId, parentEmail, 'parent', parentName, today, 'Active',
-        ]);
-      } else if (existing.status !== 'active') {
-        const statusCol = colLetter('users', 'Status');
-        await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${existing._row}`, 'Active');
-      }
-    }
+    const requestType = (request['Request Type'] || 'student').toLowerCase().trim();
 
-    // 3. Add student to Students tab with a unique UserID
-    if (studentName) {
-      const studentId = await generateUserId('student', sheetId);
-      await appendRow(sheetId, SHEET_TABS.students, [
-        studentId, studentName, '', '', 'Active', studentPhone, parentEmail,
-      ]);
+    if (requestType === 'tutor') {
+      // ── Tutor / staff approval ───────────────────────────────────────
+      const applicantName = request['Student Name'] || '';
+      const applicantEmail = (request['Parent Email'] || '').toLowerCase().trim();
+      const subjects = request['Classes Interested'] || '';
+
+      // Generate tutor UserID and add to Teachers tab
+      if (applicantName) {
+        const teacherId = await generateUserId('tutor', sheetId);
+        await appendRow(sheetId, SHEET_TABS.teachers, [
+          teacherId, applicantName, applicantEmail, subjects, 'Tutor', 'Active',
+        ]);
+        // Activate / create the Users tab entry
+        if (applicantEmail) {
+          const users = await readUsersTab(sheetId);
+          const existing = users.find(u => u.email === applicantEmail);
+          if (!existing) {
+            await appendRow(sheetId, SHEET_TABS.users, [
+              teacherId, applicantEmail, 'tutor', applicantName, today, 'Active',
+            ]);
+          } else {
+            const statusCol = colLetter('users', 'Status');
+            await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${existing._row}`, 'Active');
+          }
+        }
+      }
+    } else {
+      // ── Student / family approval (default) ─────────────────────────
+      // 2. Add / activate parent in Users tab
+      if (parentEmail) {
+        const users = await readUsersTab(sheetId);
+        const existing = users.find(u => u.email === parentEmail);
+        if (!existing) {
+          const userId = await generateUserId('parent', sheetId);
+          await appendRow(sheetId, SHEET_TABS.users, [
+            userId, parentEmail, 'parent', parentName, today, 'Active',
+          ]);
+        } else if (existing.status !== 'active') {
+          const statusCol = colLetter('users', 'Status');
+          await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${existing._row}`, 'Active');
+        }
+      }
+
+      // 3. Add student to Students tab with a unique UserID
+      if (studentName) {
+        const studentId = await generateUserId('student', sheetId);
+        await appendRow(sheetId, SHEET_TABS.students, [
+          studentId, studentName, '', '', 'Active', studentPhone, parentEmail,
+        ]);
+      }
     }
 
     res.json({ ok: true });

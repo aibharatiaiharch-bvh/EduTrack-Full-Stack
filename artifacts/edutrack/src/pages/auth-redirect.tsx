@@ -188,8 +188,12 @@ export default function AuthRedirect() {
           return;
         }
 
-        // Active user — route by role
+        // Active user — store role for portal-aware UI, then route
         const role: string = data.role;
+        localStorage.setItem("edutrack_user_role", role);
+        if (data.name) localStorage.setItem("edutrack_user_name", data.name);
+        if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
+
         if (role === "developer" || role === "admin") {
           setStatusMsg("Welcome, Developer. Redirecting…");
           setTimeout(() => setLocation("/admin"), 500);

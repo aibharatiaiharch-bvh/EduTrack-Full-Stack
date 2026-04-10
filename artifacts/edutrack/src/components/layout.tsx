@@ -5,13 +5,38 @@ import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
 
-export function AppSidebar() {
-  const [location] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const features = getFeatures();
+function getStoredRole(): string {
+  return localStorage.getItem("edutrack_user_role") || "tutor";
+}
 
-  const navigation = [
+function buildNavigation(role: string, features: ReturnType<typeof getFeatures>) {
+  if (role === "tutor") {
+    return [
+      {
+        label: "My Portal",
+        items: [
+          { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { name: "Check-in", href: "/checkin", icon: CheckSquare },
+          ...(features.schedule ? [{ name: "Schedule", href: "/schedule", icon: Calendar }] : []),
+        ],
+      },
+      {
+        label: "Academics",
+        items: [
+          { name: "Classes", href: "/classes", icon: BookOpen },
+          ...(features.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
+        ],
+      },
+      {
+        label: "Account",
+        items: [
+          { name: "Settings", href: "/settings", icon: Settings },
+        ],
+      },
+    ];
+  }
+
+  return [
     {
       label: "Overview",
       items: [
@@ -43,6 +68,15 @@ export function AppSidebar() {
       ],
     },
   ];
+}
+
+export function AppSidebar() {
+  const [location] = useLocation();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const features = getFeatures();
+  const role = getStoredRole();
+  const navigation = buildNavigation(role, features);
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -87,7 +121,7 @@ export function AppSidebar() {
               <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{user?.fullName || "Admin"}</span>
+              <span className="text-sm font-medium truncate">{user?.fullName || "User"}</span>
               <span className="text-xs text-sidebar-foreground/60 truncate">{user?.primaryEmailAddress?.emailAddress}</span>
             </div>
           </div>

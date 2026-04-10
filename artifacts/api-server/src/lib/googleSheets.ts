@@ -77,7 +77,7 @@ export const SHEET_HEADERS = {
   subjects: ['Name', 'Teacher', 'Room', 'Days', 'Status'],
   enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action'],
   users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
-  enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status'],
+  enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status', 'Request Type'],
   parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status'],
   archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
 };
@@ -104,7 +104,8 @@ export async function generateUserId(role: string, spreadsheetId: string): Promi
   const sheets = await getUncachableGoogleSheetClient();
   const allIds: string[] = [];
 
-  for (const tab of [SHEET_TABS.users, SHEET_TABS.archive]) {
+  // Scan all tabs that hold UserIDs so numbers never repeat across any tab
+  for (const tab of [SHEET_TABS.users, SHEET_TABS.archive, SHEET_TABS.students, SHEET_TABS.teachers]) {
     try {
       const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A2:A` });
       (res.data.values || []).forEach((row: any[]) => { if (row[0]) allIds.push(String(row[0])); });

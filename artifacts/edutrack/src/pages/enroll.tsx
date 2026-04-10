@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Users, GraduationCap } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -14,12 +14,16 @@ function apiUrl(path: string) {
   return `${BASE}/api${path}`;
 }
 
+type RequestType = "student" | "tutor";
+
 export default function EnrollPage() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
   const sheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
 
-  const [form, setForm] = useState({
+  const [requestType, setRequestType] = useState<RequestType | null>(null);
+
+  const [studentForm, setStudentForm] = useState({
     studentName: "",
     dob: "",
     currentSchool: "",
@@ -32,12 +36,24 @@ export default function EnrollPage() {
     notes: "",
   });
 
+  const [tutorForm, setTutorForm] = useState({
+    applicantName: "",
+    applicantEmail: "",
+    applicantPhone: "",
+    subjects: "",
+    notes: "",
+  });
+
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  function set(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  function setStudent(field: string, value: string) {
+    setStudentForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function setTutor(field: string, value: string) {
+    setTutorForm((prev) => ({ ...prev, [field]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,10 +69,35 @@ export default function EnrollPage() {
     try {
       const userEmail = user?.primaryEmailAddress?.emailAddress || "";
       const userName = user?.fullName || "";
+
+      let body: Record<string, string>;
+
+      if (requestType === "tutor") {
+        body = {
+          requestType: "tutor",
+          studentName: tutorForm.applicantName,
+          parentEmail: tutorForm.applicantEmail || userEmail,
+          parentPhone: tutorForm.applicantPhone,
+          classesInterested: tutorForm.subjects,
+          notes: tutorForm.notes,
+          sheetId,
+          userEmail,
+          userName,
+        };
+      } else {
+        body = {
+          requestType: "student",
+          ...studentForm,
+          sheetId,
+          userEmail,
+          userName,
+        };
+      }
+
       const res = await fetch(apiUrl("/roles/enroll"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, sheetId, userEmail, userName }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
@@ -82,9 +123,13 @@ export default function EnrollPage() {
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Enrolment Submitted!</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {requestType === "tutor" ? "Application Submitted!" : "Enrolment Submitted!"}
+            </h1>
             <p className="text-muted-foreground">
-              Thank you. Your enrolment request has been received and will be reviewed by the principal. You will be contacted shortly.
+              {requestType === "tutor"
+                ? "Thank you. Your application has been received and will be reviewed by the principal. You will be contacted once your account is activated."
+                : "Thank you. Your enrolment request has been received and will be reviewed by the principal. You will be contacted shortly."}
             </p>
             <Button variant="outline" onClick={() => setLocation("/")}>Return to Home</Button>
           </div>
@@ -105,9 +150,9 @@ export default function EnrollPage() {
       <main className="flex-1 flex justify-center p-4 md:p-8">
         <div className="w-full max-w-2xl space-y-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">New Student Enrolment</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Join EduTrack</h1>
             <p className="text-muted-foreground mt-1">
-              Fill in the details below to submit your enrolment request. The principal will review and be in touch.
+              Select how you are applying below, fill in your details, and the principal will review your request.
             </p>
           </div>
 
@@ -118,90 +163,186 @@ export default function EnrollPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Student Information</CardTitle>
-                <CardDescription>Details about the student enrolling.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="studentName">Student Full Name <span className="text-destructive">*</span></Label>
-                    <Input id="studentName" value={form.studentName} onChange={e => set("studentName", e.target.value)} placeholder="e.g. Emma Johnson" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dob">Date of Birth</Label>
-                    <Input id="dob" type="date" value={form.dob} onChange={e => set("dob", e.target.value)} />
-                  </div>
+          {/* Role selector */}
+          {!requestType && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setRequestType("student")}
+                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currentSchool">Current School <span className="text-destructive">*</span></Label>
-                    <Input id="currentSchool" value={form.currentSchool} onChange={e => set("currentSchool", e.target.value)} placeholder="e.g. Greenwood Primary" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="currentGrade">Current Year / Grade <span className="text-destructive">*</span></Label>
-                    <Input id="currentGrade" value={form.currentGrade} onChange={e => set("currentGrade", e.target.value)} placeholder="e.g. Year 5" required />
-                  </div>
+                <div>
+                  <p className="font-semibold text-foreground">Student / Family</p>
+                  <p className="text-sm text-muted-foreground mt-1">Enrol a student and set up a parent account.</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="studentPhone">Student Phone (optional)</Label>
-                  <Input id="studentPhone" type="tel" value={form.studentPhone} onChange={e => set("studentPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
-                </div>
-              </CardContent>
-            </Card>
+              </button>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Parent / Guardian Information</CardTitle>
-                <CardDescription>Primary contact details for the parent or guardian.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="parentName">Parent / Guardian Name <span className="text-destructive">*</span></Label>
-                    <Input id="parentName" value={form.parentName} onChange={e => set("parentName", e.target.value)} placeholder="e.g. Sarah Johnson" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="parentEmail">Parent Email <span className="text-destructive">*</span></Label>
-                    <Input id="parentEmail" type="email" value={form.parentEmail} onChange={e => set("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" required />
-                  </div>
+              <button
+                type="button"
+                onClick={() => setRequestType("tutor")}
+                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+              >
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-green-600" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="parentPhone">Parent Phone <span className="text-destructive">*</span></Label>
-                  <Input id="parentPhone" type="tel" value={form.parentPhone} onChange={e => set("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" required />
+                <div>
+                  <p className="font-semibold text-foreground">Tutor / Staff</p>
+                  <p className="text-sm text-muted-foreground mt-1">Apply to join as a tutor or staff member.</p>
                 </div>
-              </CardContent>
-            </Card>
+              </button>
+            </div>
+          )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Classes & Additional Notes</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
-                  <Input id="classesInterested" value={form.classesInterested} onChange={e => set("classesInterested", e.target.value)} placeholder="e.g. Mathematics, Science" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes</Label>
-                  <Textarea id="notes" value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Any special requirements, learning needs, or questions for the principal…" rows={3} />
-                </div>
-              </CardContent>
-            </Card>
-
-            {error && (
-              <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
-                <AlertTriangle className="h-5 w-5 shrink-0" />
-                <p className="text-sm">{error}</p>
+          {/* Selected role badge + back link */}
+          {requestType && (
+            <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${requestType === "tutor" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                {requestType === "tutor" ? <GraduationCap className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                {requestType === "tutor" ? "Tutor / Staff Application" : "Student Enrolment"}
               </div>
-            )}
+              <button type="button" onClick={() => setRequestType(null)} className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2">
+                Change
+              </button>
+            </div>
+          )}
 
-            <Button type="submit" className="w-full" disabled={submitting || !sheetId}>
-              {submitting ? "Submitting…" : "Submit Enrolment Request"}
-            </Button>
-          </form>
+          {/* Student / Family form */}
+          {requestType === "student" && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Student Information</CardTitle>
+                  <CardDescription>Details about the student enrolling.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="studentName">Student Full Name <span className="text-destructive">*</span></Label>
+                      <Input id="studentName" value={studentForm.studentName} onChange={e => setStudent("studentName", e.target.value)} placeholder="e.g. Emma Johnson" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dob">Date of Birth</Label>
+                      <Input id="dob" type="date" value={studentForm.dob} onChange={e => setStudent("dob", e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentSchool">Current School <span className="text-destructive">*</span></Label>
+                      <Input id="currentSchool" value={studentForm.currentSchool} onChange={e => setStudent("currentSchool", e.target.value)} placeholder="e.g. Greenwood Primary" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="currentGrade">Current Year / Grade <span className="text-destructive">*</span></Label>
+                      <Input id="currentGrade" value={studentForm.currentGrade} onChange={e => setStudent("currentGrade", e.target.value)} placeholder="e.g. Year 5" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="studentPhone">Student Phone (optional)</Label>
+                    <Input id="studentPhone" type="tel" value={studentForm.studentPhone} onChange={e => setStudent("studentPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Parent / Guardian Information</CardTitle>
+                  <CardDescription>Primary contact details for the parent or guardian.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="parentName">Parent / Guardian Name <span className="text-destructive">*</span></Label>
+                      <Input id="parentName" value={studentForm.parentName} onChange={e => setStudent("parentName", e.target.value)} placeholder="e.g. Sarah Johnson" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parentEmail">Parent Email <span className="text-destructive">*</span></Label>
+                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="parentPhone">Parent Phone <span className="text-destructive">*</span></Label>
+                    <Input id="parentPhone" type="tel" value={studentForm.parentPhone} onChange={e => setStudent("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" required />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Classes & Additional Notes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
+                    <Input id="classesInterested" value={studentForm.classesInterested} onChange={e => setStudent("classesInterested", e.target.value)} placeholder="e.g. Mathematics, Science" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Additional Notes</Label>
+                    <Textarea id="notes" value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder="Any special requirements, learning needs, or questions for the principal…" rows={3} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {error && (
+                <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={submitting || !sheetId}>
+                {submitting ? "Submitting…" : "Submit Enrolment Request"}
+              </Button>
+            </form>
+          )}
+
+          {/* Tutor / Staff form */}
+          {requestType === "tutor" && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Your Details</CardTitle>
+                  <CardDescription>Your application will be reviewed by the principal before your account is activated.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="applicantName">Full Name <span className="text-destructive">*</span></Label>
+                      <Input id="applicantName" value={tutorForm.applicantName} onChange={e => setTutor("applicantName", e.target.value)} placeholder="e.g. James Smith" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="applicantEmail">Email Address <span className="text-destructive">*</span></Label>
+                      <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail || user?.primaryEmailAddress?.emailAddress || ""} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="applicantPhone">Phone Number</Label>
+                    <Input id="applicantPhone" type="tel" value={tutorForm.applicantPhone} onChange={e => setTutor("applicantPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subjects">Subjects / Areas You Teach <span className="text-destructive">*</span></Label>
+                    <Input id="subjects" value={tutorForm.subjects} onChange={e => setTutor("subjects", e.target.value)} placeholder="e.g. Mathematics, Physics, Chemistry" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tutorNotes">Experience & Qualifications</Label>
+                    <Textarea id="tutorNotes" value={tutorForm.notes} onChange={e => setTutor("notes", e.target.value)} placeholder="Tell us about your teaching background, qualifications, and availability…" rows={4} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {error && (
+                <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <p className="text-sm">{error}</p>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={submitting || !sheetId}>
+                {submitting ? "Submitting…" : "Submit Application"}
+              </Button>
+            </form>
+          )}
         </div>
       </main>
 

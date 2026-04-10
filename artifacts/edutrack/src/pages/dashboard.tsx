@@ -1,81 +1,203 @@
+import { useEffect, useState } from "react";
+import { useUser } from "@clerk/react";
 import { AppLayout } from "@/components/layout";
-import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, BookOpen, FileText } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Users, BookOpen, CalendarCheck, Clock, CheckSquare } from "lucide-react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function apiUrl(path: string) {
+  return `${BASE}/api${path}`;
+}
+
+interface TutorDashboardData {
+  tutor: Record<string, string> | null;
+  todayEnrollments: Record<string, string>[];
+  todayCount: number;
+  activeEnrollmentCount: number;
+  uniqueStudentCount: number;
+  activeStudentCount: number;
+}
 
 export default function Dashboard() {
-  const { data: summary, isLoading } = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
+  const { user } = useUser();
+  const [data, setData] = useState<TutorDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const sheetId = localStorage.getItem("edutrack_sheet_id") || "";
+  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const storedName = localStorage.getItem("edutrack_user_name") || user?.fullName || "";
+
+  useEffect(() => {
+    if (!email || !sheetId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    fetch(apiUrl(`/tutors/me?email=${encodeURIComponent(email)}&sheetId=${encodeURIComponent(sheetId)}`))
+      .then(r => r.json())
+      .then(d => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Unable to load dashboard data. Please refresh.");
+        setLoading(false);
+      });
+  }, [email, sheetId]);
+
+  const tutorName = data?.tutor?.["Name"] || storedName || email;
+  const subjects = data?.tutor?.["Subjects"] || "";
+  const tutorRole = data?.tutor?.["Role"] || "Tutor";
 
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 md:space-y-8">
-        <header>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of your institute's performance today.</p>
+        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+              Welcome, {tutorName.split(" ")[0]}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {subjects ? `${tutorRole} · ${subjects}` : tutorRole}
+            </p>
+          </div>
+          <Link href="/checkin">
+            <Button className="gap-2">
+              <CheckSquare className="w-4 h-4" />
+              Start Check-in
+            </Button>
+          </Link>
         </header>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-xl" />
+        {/* Summary cards */}
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
             ))}
           </div>
-        ) : summary ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{summary.totalStudents}</div>
-              </CardContent>
-            </Card>
-
+        ) : error ? (
+          <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-sm">{error}</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Classes Today</CardTitle>
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{summary.classesToday}</div>
+                <div className="text-2xl font-bold">{data?.todayCount ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">scheduled for today</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Billings</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Active Enrolments</CardTitle>
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{summary.pendingBillings}</div>
+                <div className="text-2xl font-bold">{data?.activeEnrollmentCount ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">enrolled classes</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Students</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data?.uniqueStudentCount ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">across all classes</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Active Students</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{data?.activeStudentCount ?? 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">in the system</p>
               </CardContent>
             </Card>
           </div>
-        ) : null}
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="flex flex-col h-96">
-            <CardHeader>
-              <CardTitle>Today's Check-ins</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm border-2 border-dashed border-border rounded-md">
-                Feature coming soon.
+        {/* Today's schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              Today's Classes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
               </div>
-            </CardContent>
+            ) : !data || data.todayEnrollments.length === 0 ? (
+              <div className="flex items-center justify-center h-32 border-2 border-dashed border-border rounded-lg text-muted-foreground text-sm">
+                No classes scheduled for today.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {data.todayEnrollments.map((enr, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                    <div>
+                      <p className="font-medium text-sm">{enr["Class Name"] || "—"}</p>
+                      <p className="text-xs text-muted-foreground">{enr["Student Name"]}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {enr["Class Time"] && (
+                        <span className="text-xs text-muted-foreground">{enr["Class Time"]}</span>
+                      )}
+                      <Badge variant="secondary" className="text-xs">{enr["Status"]}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick links */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <Link href="/checkin">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-primary" />
+                  Class Check-in
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">Record student attendance for today's classes.</p>
+              </CardContent>
+            </Link>
           </Card>
 
-          <Card className="flex flex-col h-96">
-            <CardHeader>
-              <CardTitle>Class Performance</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1">
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm border-2 border-dashed border-border rounded-md">
-                Feature coming soon.
-              </div>
-            </CardContent>
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <Link href="/classes">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  View All Classes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-muted-foreground">See all enrolled classes and upcoming sessions.</p>
+              </CardContent>
+            </Link>
           </Card>
         </div>
       </div>
