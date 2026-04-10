@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_TABS, generateUserId } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -20,10 +20,7 @@ async function appendRow(spreadsheetId: string, tab: string, values: string[]): 
 
 async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
   const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${tab}!A1:Z`,
-  });
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });
   const rows = res.data.values || [];
   if (rows.length < 1) return [];
   const headerRow = rows[0] as string[];
@@ -35,7 +32,7 @@ async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: num
 }
 
 // POST /api/principals/add-teacher
-// Adds a teacher to the Teachers tab and to the Users tab (role: tutor)
+// Adds a teacher to the Teachers tab (with UserID) and creates a Users tab entry (role: tutor)
 router.post('/principals/add-teacher', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
@@ -47,41 +44,43 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
   if (!name) { res.status(400).json({ error: 'name is required' }); return; }
 
   const today = new Date().toLocaleDateString('en-AU');
+  const emailNorm = (email || '').trim().toLowerCase();
 
   try {
-    // Add to Teachers tab: Name, Email, Subjects, Role, Status
-    await appendRow(sheetId, 'Teachers', [
+    // Generate a unique teacher UserID
+    const userId = await generateUserId('tutor', sheetId);
+
+    // Add to Teachers tab: UserID, Name, Email, Subjects, Role, Status
+    await appendRow(sheetId, SHEET_TABS.teachers, [
+      userId,
       name.trim(),
-      (email || '').trim(),
+      emailNorm,
       (subjects || '').trim(),
       (teacherRole || 'Tutor').trim(),
       'Active',
     ]);
 
-    // Add to Users tab if an email was provided (so they can log in)
-    if (email && email.trim()) {
-      const users = await readRows(sheetId, 'Users');
-      const emailNorm = email.trim().toLowerCase();
+    // Add to Users tab so they can log in (skip if email already exists)
+    if (emailNorm) {
+      const users = await readRows(sheetId, SHEET_TABS.users);
       const exists = users.find(u => (u['Email'] || '').toLowerCase().trim() === emailNorm);
       if (!exists) {
-        await appendRow(sheetId, 'Users', [
-          emailNorm,
-          'tutor',
-          name.trim(),
-          today,
-          'Active',
+        // Reuse same UserID so Users tab and Teachers tab share the same ID
+        await appendRow(sheetId, SHEET_TABS.users, [
+          userId, emailNorm, 'tutor', name.trim(), today, 'Active',
         ]);
       }
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, userId });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/principals/add-student
-// Adds a student to the Students tab
+// Adds a student to the Students tab with a unique UserID.
+// If an email is provided, also creates a Users tab entry (role: student) so they can log in later.
 router.post('/principals/add-student', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
@@ -92,18 +91,36 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
 
   if (!name) { res.status(400).json({ error: 'name is required' }); return; }
 
+  const emailNorm = (email || '').trim().toLowerCase();
+  const today = new Date().toLocaleDateString('en-AU');
+
   try {
-    // Add to Students tab: Name, Email, Classes, Status, Phone, Parent Email
-    await appendRow(sheetId, 'Students', [
+    // Generate a unique student UserID
+    const userId = await generateUserId('student', sheetId);
+
+    // Add to Students tab: UserID, Name, Email, Classes, Status, Phone, Parent Email
+    await appendRow(sheetId, SHEET_TABS.students, [
+      userId,
       name.trim(),
-      (email || '').trim(),
+      emailNorm,
       '',
       'Active',
       (phone || '').trim(),
       (parentEmail || '').trim(),
     ]);
 
-    res.json({ ok: true });
+    // If a student email was given, also add to Users tab (role: student) so they can log in
+    if (emailNorm) {
+      const users = await readRows(sheetId, SHEET_TABS.users);
+      const exists = users.find(u => (u['Email'] || '').toLowerCase().trim() === emailNorm);
+      if (!exists) {
+        await appendRow(sheetId, SHEET_TABS.users, [
+          userId, emailNorm, 'student', name.trim(), today, 'Active',
+        ]);
+      }
+    }
+
+    res.json({ ok: true, userId });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

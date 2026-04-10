@@ -2,57 +2,76 @@
 
 ## Overview
 
-Full-stack tutoring and coaching platform management app. Manages students, teachers, classes, check-ins, assessments, billing, and schedules. Multi-user with Clerk authentication.
+Full-stack tutoring and coaching platform management app. Multi-role portal app with Clerk authentication and Google Sheets as the primary data store.
 
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
 - **Node.js version**: 24
 - **Package manager**: pnpm
-- **TypeScript version**: 5.9
 - **Frontend**: React + Vite (`artifacts/edutrack/`) at path `/`
-- **API framework**: Express 5 (`artifacts/api-server/`) at path `/api`
+- **API**: Express 5 (`artifacts/api-server/`) at path `/api`
 - **Authentication**: Clerk (multi-user login/signup)
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Database**: Google Sheets (via Replit Google Sheets integration)
 
-## Key Features
+## Portals & Role Routing
 
-- **Dashboard**: Summary metrics, today's check-ins, class performance
-- **Check-in / Check-out**: Real-time student attendance tracking
-- **Schedule**: Weekly class schedule with color-coded slots
-- **Classes**: CRUD for classes with teacher assignment
-- **Assessments**: Student grade tracking with class averages
-- **Teachers**: Teacher management with role and subject tracking
-- **Billing**: Fee tracking with late cancellation handling
-- **Settings**: Platform configuration
+Sign in → `/auth-redirect` → `/roles/check` → portal based on Users tab Role:
+- `admin` → `/admin` (Developer Admin Portal)
+- `principal` → `/principal` (Principal Dashboard)
+- `tutor` → `/dashboard` (Tutor/Staff Portal)
+- `parent` → `/parent` (Parent Portal)
+- `student` → `/parent` (currently shares Parent Portal)
 
-## Database Tables
+**Developer email bypass**: If email is NOT found in the Users tab AND matches `DEVELOPER_EMAIL` env var → admin access without a Users tab entry. If the developer IS in the Users tab, their Users tab role takes precedence.
 
-- `students` — Student records
-- `teachers` — Teacher records (principal/teacher roles)
-- `classes` — Class definitions with teacher assignment
-- `checkins` — Attendance check-in/out records
-- `assessments` — Student grades and scores
-- `billing` — Billing records and payment tracking
-- `schedule` — Weekly schedule slots per class
+## Google Sheet Schema
+
+All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.ts`.
+
+### Users Tab: `UserID, Email, Role, Name, Added Date, Status`
+- **UserID**: role-prefixed sequential ID (`STU-001`, `TCH-001`, `PAR-001`, `PRN-001`, `ADM-001`)
+- **Status**: `Active` / `Inactive` / `Pending` — Inactive = access denied immediately
+- Users tab is the **single source of truth** for portal access. Role here = which portal.
+- Being in the Students/Teachers tabs does NOT grant login access unless also in Users tab.
+
+### Students Tab: `UserID, Name, Email, Classes, Status, Phone, Parent Email`
+### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status`
+### Archive Tab: `UserID, Email, Role, Name, Added Date, Status, Archived Date`
+- Rows copied here when a user is deactivated (Status set to Inactive).
+
+Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`, `Config`
+
+## Key API Routes
+
+- `GET /api/roles/check` — role lookup, returns role + status + userId
+- `POST /api/roles/enroll` — submit enrollment request
+- `GET/POST /api/enrollment-requests` — principal approval flow
+- `POST /api/principals/add-teacher` — creates Users + Teachers rows with UserID
+- `POST /api/principals/add-student` — creates Students row (+ Users if email given) with UserID
+- `GET /api/users` — list all Users tab entries
+- `POST /api/users/deactivate` — revoke access + archive record
+- `POST /api/users/reactivate` — restore access
+- `DELETE /api/users/:userId` — hard delete from Users tab
+- `GET /api/users/archive` — list archived users
+- `GET/PUT /api/admin/features` — feature flag management
+- `GET/PUT /api/admin/contact` — developer contact info
+- `POST /api/sheets/ensure-headers` — safe: add missing tabs/headers only
+
+## Helper Functions in googleSheets.ts
+
+- `colLetter(tabKey, field)` — returns A1 column letter for a named field (avoids hardcoded column references)
+- `generateUserId(role, spreadsheetId)` — generates next sequential UserID for a role, checking both Users and Archive tabs so numbers never repeat
+
+## Features System
+
+Feature flags (`assessments`, `billing`, `schedule`) are stored in:
+1. Google Sheet Config tab (persisted, shared)
+2. `localStorage` (cached for fast sidebar rendering)
+
+`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → both are updated together when admin toggles a feature.
 
 ## Key Commands
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
-- `pnpm --filter @workspace/edutrack run dev` — run frontend locally
-
-## Environment Variables (Auto-Provisioned)
-
-- `DATABASE_URL` — PostgreSQL connection string
-- `CLERK_SECRET_KEY` — Clerk server secret key
-- `CLERK_PUBLISHABLE_KEY` — Clerk publishable key
-- `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key for frontend
-
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+- `pnpm --filter @workspace/api-server run dev` — API server
+- `pnpm --filter @workspace/edutrack run dev` — frontend

@@ -13,6 +13,7 @@ import enrollmentsRouter from "./enrollments";
 import rolesRouter from "./roles";
 import adminRouter from "./admin";
 import principalsRouter from "./principals";
+import usersRouter from "./users";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(enrollmentsRouter);
 router.use(rolesRouter);
 router.use(adminRouter);
 router.use(principalsRouter);
+router.use(usersRouter);
 
 export default router;

@@ -69,15 +69,57 @@ export const SHEET_TABS = {
   enrollment_requests: 'Enrollment Requests',
   parents: 'Parents',
   config: 'Config',
+  archive: 'Archive',
 };
 
 export const SHEET_HEADERS = {
-  students: ['Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email'],
-  teachers: ['Name', 'Email', 'Subjects', 'Role', 'Status'],
+  students: ['UserID', 'Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email'],
+  teachers: ['UserID', 'Name', 'Email', 'Subjects', 'Role', 'Status'],
   subjects: ['Name', 'Teacher', 'Room', 'Days', 'Status'],
   enrollments: ['Student Name', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action'],
-  users: ['Email', 'Role', 'Name', 'Added Date', 'Status'],
+  users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
   enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status'],
   parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status'],
   config: ['Key', 'Value', 'Updated Date'],
+  archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
 };
+
+/** Return the A1 column letter for a named field within a tab's header row. */
+export function colLetter(tabKey: keyof typeof SHEET_HEADERS, field: string): string {
+  const hdrs = SHEET_HEADERS[tabKey];
+  const idx = hdrs.indexOf(field);
+  if (idx < 0) throw new Error(`Field "${field}" not found in ${tabKey} headers`);
+  return String.fromCharCode(65 + idx);
+}
+
+const ROLE_PREFIXES: Record<string, string> = {
+  student: 'STU', tutor: 'TCH', teacher: 'TCH',
+  parent: 'PAR', principal: 'PRN', admin: 'ADM',
+};
+
+/**
+ * Generate the next sequential UserID for a given role.
+ * Reads existing IDs from Users + Archive tabs so numbers never repeat even after archiving.
+ */
+export async function generateUserId(role: string, spreadsheetId: string): Promise<string> {
+  const prefix = ROLE_PREFIXES[role.toLowerCase()] || 'USR';
+  const sheets = await getUncachableGoogleSheetClient();
+  const allIds: string[] = [];
+
+  for (const tab of [SHEET_TABS.users, SHEET_TABS.archive]) {
+    try {
+      const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A2:A` });
+      (res.data.values || []).forEach((row: any[]) => { if (row[0]) allIds.push(String(row[0])); });
+    } catch {}
+  }
+
+  const pfx = prefix + '-';
+  let max = 0;
+  for (const id of allIds) {
+    if (id.startsWith(pfx)) {
+      const num = parseInt(id.slice(pfx.length), 10);
+      if (!isNaN(num) && num > max) max = num;
+    }
+  }
+  return `${pfx}${String(max + 1).padStart(3, '0')}`;
+}
