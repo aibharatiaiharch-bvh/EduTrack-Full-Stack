@@ -178,11 +178,6 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['karen.davis@gmail.com',   'Karen Davis',   '555-0204', 'Noah Davis',               today, 'Active'],
     ];
 
-    const configRows = [
-      ['developer_email', process.env.DEVELOPER_EMAIL || 'aibharatiaiharch@gmail.com', today],
-      ['developer_name',  process.env.DEVELOPER_NAME  || 'App Developer',              today],
-    ];
-
     const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
       { tab: SHEET_TABS.students,             headers: SHEET_HEADERS.students,             rows: studentRows },
       { tab: SHEET_TABS.teachers,             headers: SHEET_HEADERS.teachers,             rows: teacherRows },
@@ -191,7 +186,6 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       { tab: SHEET_TABS.users,                headers: SHEET_HEADERS.users,                rows: userRows },
       { tab: SHEET_TABS.enrollment_requests,  headers: SHEET_HEADERS.enrollment_requests,  rows: enrollmentRequestRows },
       { tab: SHEET_TABS.parents,              headers: SHEET_HEADERS.parents,              rows: parentRows },
-      { tab: SHEET_TABS.config,               headers: SHEET_HEADERS.config,               rows: configRows },
     ];
 
     for (const { tab, headers, rows } of tabData) {

@@ -17,13 +17,15 @@ Full-stack tutoring and coaching platform management app. Multi-role portal app 
 ## Portals & Role Routing
 
 Sign in → `/auth-redirect` → `/roles/check` → portal based on Users tab Role:
-- `admin` → `/admin` (Developer Admin Portal)
-- `principal` → `/principal` (Principal Dashboard)
+- `developer` (or legacy `admin`) → `/admin` (Developer Portal — no client data access)
+- `principal` → `/principal` (Principal Dashboard — full client data)
 - `tutor` → `/dashboard` (Tutor/Staff Portal)
 - `parent` → `/parent` (Parent Portal)
 - `student` → `/parent` (currently shares Parent Portal)
 
-**Developer email bypass**: If email is NOT found in the Users tab AND matches `DEVELOPER_EMAIL` env var → admin access without a Users tab entry. If the developer IS in the Users tab, their Users tab role takes precedence.
+**Developer email bypass**: If email NOT in Users tab AND matches `DEVELOPER_EMAIL` env var → `developer` role, no Users tab entry required. If developer IS in the Users tab, Users tab role takes precedence.
+
+**Data boundary**: Developer Portal has zero access to client data (students, teachers, enrollments, parents). All client data lives exclusively in the Principal Dashboard. When distributing the app, developer and principal must be separate accounts.
 
 ## Google Sheet Schema
 
@@ -40,7 +42,9 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 ### Archive Tab: `UserID, Email, Role, Name, Added Date, Status, Archived Date`
 - Rows copied here when a user is deactivated (Status set to Inactive).
 
-Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`, `Config`
+Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`
+
+Note: The `Config` tab has been removed. Feature flags are localStorage-only. Developer contact email is set via `DEVELOPER_EMAIL` environment variable (read-only from the app).
 
 ## Key API Routes
 
@@ -54,8 +58,8 @@ Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`, `Config
 - `POST /api/users/reactivate` — restore access
 - `DELETE /api/users/:userId` — hard delete from Users tab
 - `GET /api/users/archive` — list archived users
-- `GET/PUT /api/admin/features` — feature flag management
-- `GET/PUT /api/admin/contact` — developer contact info
+- `GET /api/admin/features` — returns feature defaults (localStorage manages actual state)
+- `GET /api/admin/contact` — returns developer contact from `DEVELOPER_EMAIL` env var only
 - `POST /api/sheets/ensure-headers` — safe: add missing tabs/headers only
 
 ## Helper Functions in googleSheets.ts
@@ -65,11 +69,9 @@ Other tabs: `Subjects`, `Enrollments`, `Enrollment Requests`, `Parents`, `Config
 
 ## Features System
 
-Feature flags (`assessments`, `billing`, `schedule`) are stored in:
-1. Google Sheet Config tab (persisted, shared)
-2. `localStorage` (cached for fast sidebar rendering)
+Feature flags (`assessments`, `billing`, `schedule`) are stored in **localStorage only** (no sheet dependency).
 
-`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → both are updated together when admin toggles a feature.
+`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → Developer Portal toggles call these directly with no API round-trip.
 
 ## Key Commands
 

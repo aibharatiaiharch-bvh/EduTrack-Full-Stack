@@ -68,7 +68,6 @@ export const SHEET_TABS = {
   users: 'Users',
   enrollment_requests: 'Enrollment Requests',
   parents: 'Parents',
-  config: 'Config',
   archive: 'Archive',
 };
 
@@ -80,7 +79,6 @@ export const SHEET_HEADERS = {
   users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
   enrollment_requests: ['Student Name', 'Date of Birth', 'Current School', 'Current Grade', 'Parent Name', 'Parent Email', 'Parent Phone', 'Student Phone', 'Classes Interested', 'Notes', 'Submission Date', 'Status'],
   parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status'],
-  config: ['Key', 'Value', 'Updated Date'],
   archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
 };
 
