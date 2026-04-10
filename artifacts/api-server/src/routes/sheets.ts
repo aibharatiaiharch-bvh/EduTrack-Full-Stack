@@ -136,17 +136,17 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['PRN-001', 'Principal Anderson', 'p.anderson@edutrack.edu','',                        'principal', 'Active', ''],
     ];
 
-    // Subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status']
+    // Subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status', 'MaxCapacity']
     // Each row = one unique class offering (one teacher + one class type)
     const subjectRows = [
-      ['SUB-001', 'Mathematics',        'Individual', 'Dr. Sarah Chen',   'Room 101', 'Mon, Wed',      'Active'],
-      ['SUB-002', 'Mathematics',        'Group',      'Dr. Sarah Chen',   'Room 101', 'Tue, Thu',      'Active'],
-      ['SUB-003', 'English',            'Individual', 'Mr. James Taylor', 'Room 201', 'Mon, Wed',      'Active'],
-      ['SUB-004', 'English',            'Group',      'Mr. James Taylor', 'Room 201', 'Tue, Thu, Fri', 'Active'],
-      ['SUB-005', 'Science',            'Group',      'Dr. Sarah Chen',   'Lab 1',    'Fri',           'Active'],
-      ['SUB-006', 'Art',                'Individual', 'Ms. Rachel Kim',   'Studio',   'Wed',           'Active'],
-      ['SUB-007', 'Art',                'Group',      'Ms. Rachel Kim',   'Studio',   'Thu',           'Active'],
-      ['SUB-008', 'Physical Education', 'Group',      'Ms. Rachel Kim',   'Gym',      'Mon, Fri',      'Active'],
+      ['SUB-001', 'Mathematics',        'Individual', 'Dr. Sarah Chen',   'Room 101', 'Mon, Wed',      'Active', '6'],
+      ['SUB-002', 'Mathematics',        'Group',      'Dr. Sarah Chen',   'Room 101', 'Tue, Thu',      'Active', '8'],
+      ['SUB-003', 'English',            'Individual', 'Mr. James Taylor', 'Room 201', 'Mon, Wed',      'Active', '6'],
+      ['SUB-004', 'English',            'Group',      'Mr. James Taylor', 'Room 201', 'Tue, Thu, Fri', 'Active', '10'],
+      ['SUB-005', 'Science',            'Group',      'Dr. Sarah Chen',   'Lab 1',    'Fri',           'Active', '8'],
+      ['SUB-006', 'Art',                'Individual', 'Ms. Rachel Kim',   'Studio',   'Wed',           'Active', '4'],
+      ['SUB-007', 'Art',                'Group',      'Ms. Rachel Kim',   'Studio',   'Thu',           'Active', '8'],
+      ['SUB-008', 'Physical Education', 'Group',      'Ms. Rachel Kim',   'Gym',      'Mon, Fri',      'Active', '12'],
     ];
 
     // Enrollments: ['Student Name','Class Name','Class Date','Class Time','Parent Email','Status','Override Action','Teacher','Teacher Email','Zoom Link','Class Type']
@@ -199,6 +199,12 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['james.martin@gmail.com',  'James Martin',  '555-0301', 'Sophia Martin',            today, 'Inactive', 'PAR-005'],
     ];
 
+    // Announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive']
+    const announcementRows = [
+      ['ANN-001', 'Term 2 Enrolments Open', 'Term 2 enrolments are now open. Contact us to secure your spot before places fill up!', 'Standard', 'true'],
+      ['ANN-002', 'Public Holiday Closure', 'EduTrack will be closed on Monday 22 April for the public holiday. All classes are cancelled.', 'Urgent', 'true'],
+    ];
+
     const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
       { tab: SHEET_TABS.students,             headers: SHEET_HEADERS.students,             rows: studentRows },
       { tab: SHEET_TABS.teachers,             headers: SHEET_HEADERS.teachers,             rows: teacherRows },
@@ -207,6 +213,7 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       { tab: SHEET_TABS.users,                headers: SHEET_HEADERS.users,                rows: userRows },
       { tab: SHEET_TABS.enrollment_requests,  headers: SHEET_HEADERS.enrollment_requests,  rows: enrollmentRequestRows },
       { tab: SHEET_TABS.parents,              headers: SHEET_HEADERS.parents,              rows: parentRows },
+      { tab: SHEET_TABS.announcements,        headers: SHEET_HEADERS.announcements,        rows: announcementRows },
     ];
 
     for (const { tab, headers, rows } of tabData) {

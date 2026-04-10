@@ -52,7 +52,7 @@ function classStartsInMoreThan24Hours(classDate: string, classTime: string): boo
   return diffMs > 24 * 60 * 60 * 1000;
 }
 
-// GET /api/enrollments?sheetId=&parentEmail=&status=
+// GET /api/enrollments?sheetId=&parentEmail=&teacherEmail=&status=
 router.get('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -63,11 +63,55 @@ router.get('/enrollments', async (req, res): Promise<void> => {
       const email = (req.query.parentEmail as string).toLowerCase();
       rows = rows.filter(r => (r['Parent Email'] || '').toLowerCase() === email);
     }
+    if (req.query.teacherEmail) {
+      const email = (req.query.teacherEmail as string).toLowerCase();
+      rows = rows.filter(r => (r['Teacher Email'] || '').toLowerCase() === email);
+    }
     if (req.query.status) {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
       rows = rows.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
     }
     res.json(rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/enrollments/join — student joins a class from the class browser
+// Must be registered BEFORE /enrollments/:row to avoid Express matching "join" as :row
+router.post('/enrollments/join', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+
+  const { studentName, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink, room } = req.body;
+  if (!studentName || !subjectName) {
+    res.status(400).json({ error: 'studentName and subjectName are required' }); return;
+  }
+
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const rowValues = HEADERS.map(h => {
+      if (h === 'Student Name')   return studentName || '';
+      if (h === 'Class Name')     return subjectName || '';
+      if (h === 'Class Date')     return 'TBD';
+      if (h === 'Class Time')     return 'TBD';
+      if (h === 'Parent Email')   return parentEmail || '';
+      if (h === 'Status')         return 'Active';
+      if (h === 'Override Action') return '';
+      if (h === 'Teacher')        return teacherName || '';
+      if (h === 'Teacher Email')  return teacherEmail || '';
+      if (h === 'Zoom Link')      return zoomLink || '';
+      if (h === 'Class Type')     return subjectType || '';
+      return '';
+    });
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${TAB}!A1`,
+      valueInputOption: 'RAW',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [rowValues] },
+    });
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

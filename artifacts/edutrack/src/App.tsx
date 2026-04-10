@@ -17,6 +17,8 @@ import PrincipalDashboard from "@/pages/principal";
 import AuthRedirect from "@/pages/auth-redirect";
 import EnrollPage from "@/pages/enroll";
 import AdminPortal from "@/pages/admin";
+import MySchedule from "@/pages/my-schedule";
+import BrowseClasses from "@/pages/browse-classes";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -117,10 +119,10 @@ function ClerkProviderWithRoutes() {
             <ProtectedRoute component={Checkin} />
           </Route>
           <Route path="/schedule">
-            <ProtectedRoute component={Dashboard} />
+            <ProtectedRoute component={MySchedule} />
           </Route>
           <Route path="/classes">
-            <ProtectedRoute component={Dashboard} />
+            <ProtectedRoute component={BrowseClasses} />
           </Route>
           <Route path="/assessments">
             <ProtectedRoute component={Dashboard} />

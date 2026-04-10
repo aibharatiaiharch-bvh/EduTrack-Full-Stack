@@ -1,0 +1,170 @@
+import { useUser } from "@clerk/react";
+import { AppLayout } from "@/components/layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { Calendar, Clock, BookOpen, Users, User, AlertTriangle, Video } from "lucide-react";
+
+const SHEET_KEY = "edutrack_sheet_id";
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+function apiUrl(path: string) { return `${BASE}/api${path}`; }
+
+type EnrollmentRow = {
+  _row: number;
+  "Student Name": string;
+  "Class Name": string;
+  "Class Date": string;
+  "Class Time": string;
+  "Parent Email": string;
+  "Status": string;
+  "Override Action": string;
+  "Teacher": string;
+  "Teacher Email": string;
+  "Zoom Link": string;
+  "Class Type": string;
+};
+
+function statusColor(status: string) {
+  if (status === "Active") return "default";
+  if (status === "Cancelled") return "secondary";
+  if (status === "Late Cancellation") return "destructive";
+  if (status === "Fee Waived") return "secondary";
+  if (status === "Fee Confirmed") return "destructive";
+  return "outline";
+}
+
+export default function MySchedule() {
+  const { user } = useUser();
+  const sheetId = localStorage.getItem(SHEET_KEY);
+  const email = user?.primaryEmailAddress?.emailAddress || "";
+
+  const { data: classes, isLoading, error } = useQuery<EnrollmentRow[]>({
+    queryKey: ["my-schedule", email, sheetId],
+    enabled: !!email && !!sheetId,
+    queryFn: async () => {
+      const params = new URLSearchParams({ teacherEmail: email, sheetId: sheetId! });
+      const res = await fetch(apiUrl(`/enrollments?${params}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const active = classes?.filter(c => c["Status"] === "Active") ?? [];
+  const other = classes?.filter(c => c["Status"] !== "Active") ?? [];
+
+  return (
+    <AppLayout>
+      <div className="p-4 md:p-8 space-y-6 max-w-4xl">
+        <header>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Schedule</h1>
+          <p className="text-muted-foreground mt-1">
+            Classes assigned to <span className="font-medium text-foreground">{email}</span>
+          </p>
+        </header>
+
+        {!sheetId && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">No Google Sheet linked. Go to Settings to link your data source.</p>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">Failed to load schedule. Please try again.</p>
+          </div>
+        )}
+
+        {!isLoading && !error && classes && (
+          <>
+            {active.length === 0 && other.length === 0 ? (
+              <div className="text-center py-16 border border-dashed rounded-xl flex flex-col items-center gap-3 text-muted-foreground">
+                <Calendar className="h-10 w-10 opacity-30" />
+                <p className="font-medium">No classes assigned to your account yet</p>
+                <p className="text-sm">Classes assigned to {email} will appear here.</p>
+              </div>
+            ) : (
+              <>
+                {active.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-base font-semibold text-foreground">Active Classes</h2>
+                      <Badge variant="secondary">{active.length}</Badge>
+                    </div>
+                    {active.map(cls => <ClassCard key={cls._row} cls={cls} />)}
+                  </section>
+                )}
+
+                {other.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="text-base font-semibold text-muted-foreground">Past / Cancelled</h2>
+                    {other.map(cls => <ClassCard key={cls._row} cls={cls} muted />)}
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </AppLayout>
+  );
+}
+
+function ClassCard({ cls, muted }: { cls: EnrollmentRow; muted?: boolean }) {
+  const typeIcon = cls["Class Type"] === "Individual"
+    ? <User className="h-4 w-4" />
+    : <Users className="h-4 w-4" />;
+
+  return (
+    <Card className={muted ? "opacity-60" : ""}>
+      <CardContent className="p-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <div className="space-y-1 min-w-0">
+              <p className="font-semibold text-foreground">{cls["Class Name"]}</p>
+              <p className="text-sm text-muted-foreground">Student: <span className="text-foreground">{cls["Student Name"]}</span></p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                {cls["Class Date"] && cls["Class Date"] !== "TBD" && (
+                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{cls["Class Date"]}</span>
+                )}
+                {cls["Class Time"] && cls["Class Time"] !== "TBD" && (
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{cls["Class Time"]}</span>
+                )}
+                {cls["Class Type"] && (
+                  <span className="flex items-center gap-1">{typeIcon}{cls["Class Type"]}</span>
+                )}
+              </div>
+              {cls["Zoom Link"] && (
+                <a
+                  href={cls["Zoom Link"]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
+                >
+                  <Video className="h-3 w-3" />
+                  Join Zoom
+                </a>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Badge variant={statusColor(cls["Status"])}>{cls["Status"]}</Badge>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

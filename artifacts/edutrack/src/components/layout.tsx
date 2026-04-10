@@ -5,6 +5,7 @@ import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
 import { DevModeBanner } from "@/components/dev-mode-banner";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 
 function getStoredRole(): string {
   return localStorage.getItem("edutrack_user_role") || "tutor";
@@ -148,6 +149,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <span className="text-sm font-semibold text-foreground">EduTrack</span>
           </div>
+          <AnnouncementBanner />
           {children}
         </main>
       </div>

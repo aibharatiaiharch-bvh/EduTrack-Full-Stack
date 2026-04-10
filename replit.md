@@ -39,15 +39,20 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 
 ### Students Tab: `UserID, Name, Email, Classes, Status, Phone, Parent Email`
 ### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
-### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status`
+### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity`
 - **SubjectID**: sequential `SUB-001`, `SUB-002`, …
 - **Type**: `Individual` | `Group` | `Both` — controls what students see when enrolling
 - **Teachers**: comma-separated teacher names (multi-teacher support)
+- **MaxCapacity**: integer, defaults to `8` when omitted. Used by `/subjects/with-capacity`.
 ### Enrollments Tab: `Student Name, Class Name, Class Date, Class Time, Parent Email, Status, Override Action, Teacher, Teacher Email, Zoom Link, Class Type`
 - **Class Type**: `Individual` or `Group` — set at enrollment time
-### Enrollment Requests Tab: all prior fields + `Preferred Class Type` (last column)
+- **Status**: `Active`, `Cancelled`, `Late Cancellation`, `Fee Waived`, `Fee Confirmed`
+### Enrollment Requests Tab: `Student Name, Student Email, Previously Enrolled, Current School, Current Grade, Age, Classes Interested, Parent Email, Parent Phone, Reference, Promo Code, Notes, Submission Date, Status, Request Type`
 ### Archive Tab: `UserID, Email, Role, Name, Added Date, Status, Archived Date`
 - Rows copied here when a user is deactivated (Status set to Inactive).
+### Announcements Tab: `AnnouncementID, Title, Message, Priority, IsActive`
+- **Priority**: `Urgent` (red persistent banner) or `Standard` (amber dismissible banner)
+- **IsActive**: `true` / `false` string — only `true` rows are surfaced by the API
 
 Other tabs: `Parents`
 
@@ -68,6 +73,33 @@ Note: The `Config` tab has been removed. Feature flags are localStorage-only. De
 - `GET /api/admin/features` — returns feature defaults (localStorage manages actual state)
 - `GET /api/admin/contact` — returns developer contact from `DEVELOPER_EMAIL` env var only
 - `POST /api/sheets/ensure-headers` — safe: add missing tabs/headers only
+- `GET /api/enrollments?teacherEmail=&parentEmail=&status=` — filter enrollments by teacher/parent/status
+- `POST /api/enrollments/:row/cancel` — 24-hour cancellation check; sets `Cancelled` or `Late Cancellation`
+- `POST /api/enrollments/:row/override` — principal waives/confirms late-cancel fee
+- `POST /api/enrollments/join` — student/parent joins a class from the Browse Classes page
+- `GET /api/subjects/with-capacity` — subjects list enriched with `currentEnrolled`, `MaxCapacity`, `isFull`
+- `GET /api/announcements` — active announcements from the Announcements tab
+
+## Pages
+
+| Route | Component | Who sees it |
+|---|---|---|
+| `/` | `home.tsx` | Everyone |
+| `/dashboard` | `dashboard.tsx` | Tutors |
+| `/schedule` | `my-schedule.tsx` | Tutors — classes filtered by their email |
+| `/classes` | `browse-classes.tsx` | All logged-in — class list with capacity badges + Join button |
+| `/checkin` | `checkin.tsx` | Tutors |
+| `/parent` | `parent.tsx` | Parents — cancel classes, view schedule |
+| `/principal` | `principal.tsx` | Principal — enrollment requests, late-cancel overrides |
+| `/admin` | `admin.tsx` | Developer Portal |
+| `/settings` | `settings.tsx` | All — link sheet, toggle features |
+| `/enroll` | `enroll.tsx` | Public — new student enrollment form |
+
+## Announcement Banner
+
+`AnnouncementBanner` (in `layout.tsx` AppLayout) fetches `/api/announcements` at render and displays:
+- **Urgent** — solid red bar, no close button (always visible)
+- **Standard** — amber bar with dismiss button (localStorage key: `edutrack_dismissed_ann_{id}`)
 
 ## Helper Functions in googleSheets.ts
 

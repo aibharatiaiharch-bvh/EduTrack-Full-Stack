@@ -37,6 +37,55 @@ async function generateSubjectId(spreadsheetId: string): Promise<string> {
   return `SUB-${String(max + 1).padStart(3, '0')}`;
 }
 
+// GET /api/subjects/with-capacity?sheetId= — returns subjects with live enrollment counts
+// Must be registered BEFORE /subjects to avoid route conflicts
+router.get('/subjects/with-capacity', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+
+    // Read subjects
+    let subjects = await readSubjectRows(spreadsheetId);
+    if (req.query.status) {
+      const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
+      subjects = subjects.filter(s => statuses.includes((s['Status'] || '').toLowerCase()));
+    }
+
+    // Read enrollments to count active seats per class
+    let enrollmentRows: any[] = [];
+    try {
+      const eRes = await sheets.spreadsheets.values.get({
+        spreadsheetId, range: `${SHEET_TABS.enrollments}!A1:Z`,
+      });
+      const eData = eRes.data.values || [];
+      if (eData.length > 0) {
+        const eHeaders = eData[0] as string[];
+        enrollmentRows = eData.slice(1).map(row => {
+          const obj: any = {};
+          eHeaders.forEach((h, i) => { obj[h] = (row as string[])[i] || ''; });
+          return obj;
+        }).filter(r => (r['Status'] || '').toLowerCase() === 'active');
+      }
+    } catch {}
+
+    const withCapacity = subjects.map(s => {
+      const maxCap = parseInt(s['MaxCapacity'] || '8', 10) || 8;
+      const enrolled = enrollmentRows.filter(e =>
+        (e['Class Name'] || '').toLowerCase() === (s['Name'] || '').toLowerCase() &&
+        (e['Class Type'] || '').toLowerCase() === (s['Type'] || '').toLowerCase() &&
+        (e['Teacher'] || '').toLowerCase() === (s['Teachers'] || '').toLowerCase()
+      ).length;
+      return { ...s, MaxCapacity: maxCap, currentEnrolled: enrolled, isFull: enrolled >= maxCap };
+    });
+
+    res.json(withCapacity);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/subjects?sheetId=&status=
 // Returns all (or filtered) subjects. No auth required — used by the enrollment form.
 router.get('/subjects', async (req, res): Promise<void> => {
@@ -59,8 +108,8 @@ router.post('/subjects', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
-  const { name, type, teachers, room, days } = req.body as {
-    name?: string; type?: string; teachers?: string; room?: string; days?: string;
+  const { name, type, teachers, room, days, maxCapacity } = req.body as {
+    name?: string; type?: string; teachers?: string; room?: string; days?: string; maxCapacity?: string;
   };
 
   if (!name?.trim()) { res.status(400).json({ error: 'Subject name is required' }); return; }
@@ -77,8 +126,9 @@ router.post('/subjects', async (req, res): Promise<void> => {
       if (h === 'Type')      return type;
       if (h === 'Teachers')  return (teachers || '').trim();
       if (h === 'Room')      return (room || '').trim();
-      if (h === 'Days')      return (days || '').trim();
-      if (h === 'Status')    return 'Active';
+      if (h === 'Days')        return (days || '').trim();
+      if (h === 'Status')      return 'Active';
+      if (h === 'MaxCapacity') return (maxCapacity || '8').trim();
       return '';
     });
     await sheets.spreadsheets.values.append({
