@@ -3,13 +3,12 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
+import { FEATURES } from "@/config/features";
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { flags } = useFeatureFlags();
 
   const navigation = [
     {
@@ -17,21 +16,21 @@ export function AppSidebar() {
       items: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "Check-in", href: "/checkin", icon: CheckSquare },
-        { name: "Schedule", href: "/schedule", icon: Calendar },
+        ...(FEATURES.schedule ? [{ name: "Schedule", href: "/schedule", icon: Calendar }] : []),
       ],
     },
     {
       label: "Academics",
       items: [
         { name: "Classes", href: "/classes", icon: BookOpen },
-        ...(flags.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
+        ...(FEATURES.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
       ],
     },
     {
       label: "Management",
       items: [
         { name: "Teachers", href: "/teachers", icon: Users },
-        ...(flags.billing ? [{ name: "Billing", href: "/billing", icon: CreditCard }] : []),
+        ...(FEATURES.billing ? [{ name: "Billing", href: "/billing", icon: CreditCard }] : []),
         { name: "Settings", href: "/settings", icon: Settings },
       ],
     },

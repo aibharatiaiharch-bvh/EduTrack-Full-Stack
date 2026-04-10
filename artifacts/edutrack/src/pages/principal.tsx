@@ -3,11 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useFeatureFlags } from "@/hooks/use-feature-flags";
-import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, SlidersHorizontal } from "lucide-react";
+import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
 
@@ -26,7 +24,6 @@ export default function PrincipalDashboard() {
   const sheetId = localStorage.getItem(SHEET_KEY);
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { flags, setFlag } = useFeatureFlags();
 
   const { data: requests, isLoading } = useQuery<Enrollment[]>({
     queryKey: ["enrollments", "late-cancellations", sheetId],
@@ -82,42 +79,6 @@ export default function PrincipalDashboard() {
             <p className="text-sm">No Google Sheet linked. Please go to Settings to link your data source first.</p>
           </div>
         )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <SlidersHorizontal className="h-4 w-4" />
-              Feature Visibility
-            </CardTitle>
-            <CardDescription>
-              Toggle features on or off for all users. Disabled features are hidden from the sidebar.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-2 border-b border-border">
-              <div>
-                <p className="font-medium text-sm">Assessments</p>
-                <p className="text-xs text-muted-foreground">Grade tracking, reports, and evaluations</p>
-              </div>
-              <Switch
-                checked={flags.assessments}
-                onCheckedChange={(v) => setFlag("assessments", v)}
-                aria-label="Toggle Assessments"
-              />
-            </div>
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="font-medium text-sm">Billing</p>
-                <p className="text-xs text-muted-foreground">Invoices, payments, and billing history</p>
-              </div>
-              <Switch
-                checked={flags.billing}
-                onCheckedChange={(v) => setFlag("billing", v)}
-                aria-label="Toggle Billing"
-              />
-            </div>
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader>
