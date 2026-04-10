@@ -22,13 +22,13 @@ export default function Home() {
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-3xl space-y-6">
-          <h1 className="text-5xl font-bold tracking-tight text-foreground sm:text-6xl">
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-foreground">
             The control room for <span className="text-primary">tutors & coaches</span>.
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
             Manage students, classes, attendance, assessments, and billing all from one calm, organized, and information-dense dashboard. Professional grade software for your business.
           </p>
-          <div className="pt-4 flex items-center justify-center gap-4">
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link href="/sign-up" className="text-base font-medium bg-primary text-primary-foreground px-6 py-3 rounded-md hover:bg-primary/90 transition-colors">
               Start Free Trial
             </Link>

@@ -60,9 +60,9 @@ export default function Settings() {
 
   return (
     <AppLayout>
-      <div className="p-8 space-y-8 max-w-4xl">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
           <p className="text-muted-foreground mt-1">Manage your platform preferences and institution details.</p>
         </header>
 
@@ -71,7 +71,7 @@ export default function Settings() {
             <CardTitle>Institution Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Institution Name</label>
                 <Input defaultValue="EduTrack Academy" />

@@ -36,10 +36,10 @@ export default function Checkin() {
 
   return (
     <AppLayout>
-      <div className="p-8 space-y-8 max-w-5xl mx-auto w-full">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-5xl mx-auto w-full">
         <header className="flex justify-between items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Check-in / Out</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Check-in / Out</h1>
             <p className="text-muted-foreground mt-1">Manage today's attendance: {format(new Date(), 'MMMM d, yyyy')}</p>
           </div>
         </header>

@@ -82,9 +82,9 @@ export default function ParentView() {
 
   return (
     <AppLayout>
-      <div className="p-8 space-y-8 max-w-4xl">
+      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Parent Portal</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Parent Portal</h1>
           <p className="text-muted-foreground mt-1">View and manage your child's class enrollments.</p>
         </header>
 
@@ -100,18 +100,18 @@ export default function ParentView() {
             <CardTitle className="text-base">Look up enrollments by parent email</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Input
                 placeholder="parent@example.com"
                 type="email"
                 value={parentEmail}
                 onChange={(e) => setParentEmail(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") setSearchedEmail(parentEmail); }}
-                className="max-w-sm"
+                className="flex-1"
               />
-              <Button onClick={() => setSearchedEmail(parentEmail)} disabled={!parentEmail} className="gap-2">
+              <Button onClick={() => setSearchedEmail(parentEmail)} disabled={!parentEmail} className="gap-2 shrink-0">
                 <Search className="h-4 w-4" />
-                Search
+                <span className="hidden sm:inline">Search</span>
               </Button>
             </div>
           </CardContent>
