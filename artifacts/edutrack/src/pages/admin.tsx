@@ -3,7 +3,8 @@ import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import {
   Mail, LogOut, ExternalLink, Shield, Users, BookOpen,
-  Settings, RefreshCw, Copy, Check, Phone, Pencil, X, Save
+  Settings, RefreshCw, Copy, Check, Phone, Pencil, X, Save,
+  FlaskConical, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useSheetConfig } from "@/hooks/use-sheet-config";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -38,6 +40,25 @@ export default function AdminPortal() {
   const { toast } = useToast();
 
   const sheetId = localStorage.getItem(SHEET_KEY) || "";
+
+  // Seeding
+  const { seeding, seedSheet } = useSheetConfig();
+  const [seedConfirm, setSeedConfirm] = useState(false);
+
+  async function handleSeed() {
+    if (!sheetId) {
+      toast({ title: "No sheet linked", description: "Go to Settings to link a Google Sheet first.", variant: "destructive" });
+      return;
+    }
+    if (!seedConfirm) { setSeedConfirm(true); return; }
+    try {
+      await seedSheet(sheetId);
+      setSeedConfirm(false);
+      toast({ title: "Sheet set up successfully", description: "All tabs now have correct columns and sample data." });
+    } catch (err: any) {
+      toast({ title: "Setup failed", description: err.message, variant: "destructive" });
+    }
+  }
 
   // Contact state
   const [contact, setContact] = useState<ContactInfo | null>(null);
@@ -320,6 +341,62 @@ export default function AdminPortal() {
               </div>
             </Button>
           </div>
+        </div>
+
+        {/* Developer Tools — Seed */}
+        <div>
+          <h2 className="text-base font-semibold text-foreground mb-4">Developer Tools</h2>
+          <Card className="border-amber-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FlaskConical className="w-4 h-4 text-amber-600" />
+                Set Up Columns &amp; Sample Data
+              </CardTitle>
+              <CardDescription>
+                Creates all required tabs and writes correct column headers. Populates sample data so you can test the app immediately.
+                <span className="block mt-1 font-medium text-amber-700">
+                  Warning: this overwrites all existing data in every tab.
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!sheetId ? (
+                <p className="text-sm text-muted-foreground">Link a Google Sheet in Settings first.</p>
+              ) : seedConfirm ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-700">
+                      This will <strong>overwrite all data</strong> in your Google Sheet. Are you sure?
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-2 bg-red-600 hover:bg-red-700"
+                      onClick={handleSeed}
+                      disabled={seeding}
+                    >
+                      {seeding ? <RefreshCw className="w-3 h-3 animate-spin" /> : <FlaskConical className="w-3 h-3" />}
+                      {seeding ? "Setting up…" : "Yes, overwrite everything"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setSeedConfirm(false)} disabled={seeding}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleSeed}
+                >
+                  <FlaskConical className="w-3 h-3" />
+                  Set up columns &amp; add sample data
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Info note */}

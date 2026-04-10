@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { FEATURES } from "@/config/features";
-import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock, Mail } from "lucide-react";
+import { ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2, XCircle, Rocket, Lock, Mail, Download, RefreshCw } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
@@ -83,6 +83,50 @@ export default function PrincipalDashboard() {
 
   const pending = requests ?? [];
 
+  const [backingUp, setBackingUp] = useState(false);
+
+  async function downloadBackup() {
+    if (!sheetId) return;
+    setBackingUp(true);
+    const tabs = [
+      { key: 'students', label: 'Students' },
+      { key: 'teachers', label: 'Teachers' },
+      { key: 'subjects', label: 'Subjects' },
+      { key: 'enrollments', label: 'Enrollments' },
+      { key: 'parents', label: 'Parents' },
+      { key: 'users', label: 'Users' },
+    ];
+
+    function toCSV(rows: any[]): string {
+      if (!rows.length) return '';
+      const headers = Object.keys(rows[0]).filter(k => k !== '_row');
+      const escape = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      return [headers.map(escape).join(','), ...rows.map(r => headers.map(h => escape(r[h])).join(','))].join('\n');
+    }
+
+    try {
+      const parts: string[] = [];
+      for (const { key, label } of tabs) {
+        const res = await fetch(apiUrl(`/sheets/${key}?sheetId=${encodeURIComponent(sheetId)}`));
+        const rows = await res.json();
+        if (Array.isArray(rows)) parts.push(`### ${label}\n${toCSV(rows)}`);
+      }
+      const blob = new Blob([parts.join('\n\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `edutrack-backup-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: "Backup failed", description: err.message, variant: "destructive" });
+    } finally {
+      setBackingUp(false);
+    }
+  }
+
   const [devEmail, setDevEmail] = useState<string | null>(null);
   useEffect(() => {
     const qs = sheetId ? `?sheetId=${encodeURIComponent(sheetId)}` : "";
@@ -95,14 +139,30 @@ export default function PrincipalDashboard() {
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
-        <header className="flex items-start gap-4">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary flex items-center justify-center text-white shrink-0">
-            <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary flex items-center justify-center text-white shrink-0">
+              <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Principal Dashboard</h1>
+              <p className="text-muted-foreground mt-1">Review and resolve late cancellation requests.</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Principal Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Review and resolve late cancellation requests.</p>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 shrink-0"
+            onClick={downloadBackup}
+            disabled={backingUp || !sheetId}
+            title={!sheetId ? "No sheet linked" : "Download all data as CSV"}
+          >
+            {backingUp
+              ? <RefreshCw className="w-4 h-4 animate-spin" />
+              : <Download className="w-4 h-4" />
+            }
+            <span className="hidden sm:inline">{backingUp ? "Downloading…" : "Download Backup"}</span>
+          </Button>
         </header>
 
         {!sheetId && (
