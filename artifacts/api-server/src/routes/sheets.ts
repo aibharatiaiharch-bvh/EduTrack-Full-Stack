@@ -119,47 +119,51 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       });
     }
 
-    // Students: ['UserID', 'Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email']
+    // Students: ['UserID', 'Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email', 'Parent ID']
     const studentRows = [
-      ['STU-001', 'Emma Johnson',  'emma.j@student.com',  'Mathematics, Science',        'Active', '555-0101', 'sarah.johnson@gmail.com'],
-      ['STU-002', 'Liam Smith',    'liam.s@student.com',  'Mathematics, English',         'Active', '555-0102', 'mike.smith@gmail.com'],
-      ['STU-003', 'Olivia Brown',  'olivia.b@student.com','Science, Art',                'Active', '555-0103', 'lisa.brown@gmail.com'],
-      ['STU-004', 'Noah Davis',    'noah.d@student.com',  'English, Physical Education',  'Active', '555-0104', 'karen.davis@gmail.com'],
-      ['STU-005', 'Ava Wilson',    'ava.w@student.com',   'Mathematics, Art',             'Active', '555-0105', 'sarah.johnson@gmail.com'],
+      ['STU-001', 'Emma Johnson',  'emma.j@student.com',  'Mathematics (Individual) with Dr. Sarah Chen; Science (Group) with Dr. Sarah Chen', 'Active',   '555-0101', 'sarah.johnson@gmail.com', 'PAR-001'],
+      ['STU-002', 'Liam Smith',    'liam.s@student.com',  'Mathematics (Individual) with Dr. Sarah Chen; English (Group) with Mr. James Taylor', 'Active',   '555-0102', 'mike.smith@gmail.com',    'PAR-002'],
+      ['STU-003', 'Olivia Brown',  'olivia.b@student.com','Science (Group) with Dr. Sarah Chen; Art (Group) with Ms. Rachel Kim',               'Active',   '555-0103', 'lisa.brown@gmail.com',    'PAR-003'],
+      ['STU-004', 'Noah Davis',    'noah.d@student.com',  'English (Group) with Mr. James Taylor',                                              'Active',   '555-0104', 'karen.davis@gmail.com',   'PAR-004'],
+      ['STU-005', 'Ava Wilson',    'ava.w@student.com',   'Art (Individual) with Ms. Rachel Kim',                                               'Inactive', '555-0105', 'sarah.johnson@gmail.com', 'PAR-001'],
     ];
 
     // Teachers: ['UserID', 'Name', 'Email', 'Subjects', 'Role', 'Status', 'Zoom Link']
     const teacherRows = [
-      ['TCH-001', 'Dr. Sarah Chen',     's.chen@edutrack.edu',    'Mathematics, Science',   'teacher',   'Active', ''],
-      ['TCH-002', 'Mr. James Taylor',   'j.taylor@edutrack.edu',  'English',                'teacher',   'Active', ''],
-      ['TCH-003', 'Ms. Rachel Kim',     'r.kim@edutrack.edu',     'Art, Physical Education','teacher',   'Active', ''],
-      ['PRN-001', 'Principal Anderson', 'p.anderson@edutrack.edu','',                       'principal', 'Active', ''],
+      ['TCH-001', 'Dr. Sarah Chen',     's.chen@edutrack.edu',    'Mathematics, Science',    'teacher',   'Active', 'https://zoom.us/j/555001'],
+      ['TCH-002', 'Mr. James Taylor',   'j.taylor@edutrack.edu',  'English',                 'teacher',   'Active', 'https://zoom.us/j/555002'],
+      ['TCH-003', 'Ms. Rachel Kim',     'r.kim@edutrack.edu',     'Art, Physical Education', 'teacher',   'Active', ''],
+      ['PRN-001', 'Principal Anderson', 'p.anderson@edutrack.edu','',                        'principal', 'Active', ''],
     ];
 
     // Subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status']
+    // Each row = one unique class offering (one teacher + one class type)
     const subjectRows = [
-      ['SUB-001', 'Mathematics',        'Individual', 'Dr. Sarah Chen',   'Room 101', 'Mon, Wed, Fri', 'Active'],
-      ['SUB-002', 'Science',            'Group',      'Dr. Sarah Chen',   'Room 102', 'Tue, Thu',      'Active'],
-      ['SUB-003', 'English',            'Both',       'Mr. James Taylor', 'Room 201', 'Mon, Wed, Fri', 'Active'],
-      ['SUB-004', 'Art',                'Group',      'Ms. Rachel Kim',   'Room 301', 'Tue, Thu',      'Active'],
-      ['SUB-005', 'Physical Education', 'Group',      'Ms. Rachel Kim',   'Gym',      'Mon, Wed',      'Active'],
+      ['SUB-001', 'Mathematics',        'Individual', 'Dr. Sarah Chen',   'Room 101', 'Mon, Wed',      'Active'],
+      ['SUB-002', 'Mathematics',        'Group',      'Dr. Sarah Chen',   'Room 101', 'Tue, Thu',      'Active'],
+      ['SUB-003', 'English',            'Individual', 'Mr. James Taylor', 'Room 201', 'Mon, Wed',      'Active'],
+      ['SUB-004', 'English',            'Group',      'Mr. James Taylor', 'Room 201', 'Tue, Thu, Fri', 'Active'],
+      ['SUB-005', 'Science',            'Group',      'Dr. Sarah Chen',   'Lab 1',    'Fri',           'Active'],
+      ['SUB-006', 'Art',                'Individual', 'Ms. Rachel Kim',   'Studio',   'Wed',           'Active'],
+      ['SUB-007', 'Art',                'Group',      'Ms. Rachel Kim',   'Studio',   'Thu',           'Active'],
+      ['SUB-008', 'Physical Education', 'Group',      'Ms. Rachel Kim',   'Gym',      'Mon, Fri',      'Active'],
     ];
 
     // Enrollments: ['Student Name','Class Name','Class Date','Class Time','Parent Email','Status','Override Action','Teacher','Teacher Email','Zoom Link','Class Type']
     const enrollmentRows = [
-      ['Emma Johnson',  'Mathematics',        dateFromNow(7),  '10:00 AM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   '', 'Individual'],
-      ['Emma Johnson',  'Science',            dateFromNow(8),  '02:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   '', 'Group'],
-      ['Liam Smith',    'Mathematics',        dateFromNow(5),  '10:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   '', 'Individual'],
-      ['Liam Smith',    'English',            dateFromNow(6),  '11:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', '', 'Group'],
-      ['Olivia Brown',  'Science',            dateFromNow(9),  '02:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   '', 'Group'],
-      ['Olivia Brown',  'Art',                dateFromNow(10), '03:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '', 'Group'],
-      ['Noah Davis',    'English',            dateFromNow(4),  '11:00 AM', 'karen.davis@gmail.com',   'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', '', 'Group'],
-      ['Ava Wilson',    'Art',                dateFromNow(11), '03:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '', 'Individual'],
-      ['Noah Davis',    'Physical Education', dateFromNow(3),  '09:00 AM', 'karen.davis@gmail.com',   'Cancelled',        '', '',                 '',                      '', 'Group'],
-      ['Liam Smith',    'Physical Education', dateFromNow(1),  '10:00 AM', 'mike.smith@gmail.com',    'Late Cancellation','', '',                 '',                      '', 'Group'],
-      ['Olivia Brown',  'Mathematics',        dateFromNow(1),  '11:00 AM', 'lisa.brown@gmail.com',    'Late Cancellation','', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   '', 'Individual'],
-      ['Emma Johnson',  'Physical Education', dateFromNow(2),  '09:00 AM', 'sarah.johnson@gmail.com', 'Fee Waived',       'Fee Waived', '',        '',                      '', 'Group'],
-      ['Ava Wilson',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed', 'Mr. James Taylor', 'j.taylor@edutrack.edu', '', 'Individual'],
+      ['Emma Johnson',  'Mathematics',        dateFromNow(7),  '10:00 AM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Emma Johnson',  'Science',            dateFromNow(8),  '02:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
+      ['Liam Smith',    'Mathematics',        dateFromNow(5),  '10:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Liam Smith',    'English',            dateFromNow(6),  '11:00 AM', 'mike.smith@gmail.com',    'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
+      ['Olivia Brown',  'Science',            dateFromNow(9),  '02:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group'],
+      ['Olivia Brown',  'Art',                dateFromNow(10), '03:00 PM', 'lisa.brown@gmail.com',    'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Noah Davis',    'English',            dateFromNow(4),  '11:00 AM', 'karen.davis@gmail.com',   'Active',           '', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group'],
+      ['Ava Wilson',    'Art',                dateFromNow(11), '03:00 PM', 'sarah.johnson@gmail.com', 'Active',           '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Individual'],
+      ['Noah Davis',    'Physical Education', dateFromNow(3),  '09:00 AM', 'karen.davis@gmail.com',   'Cancelled',        '', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Liam Smith',    'Physical Education', dateFromNow(1),  '10:00 AM', 'mike.smith@gmail.com',    'Late Cancellation','', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group'],
+      ['Olivia Brown',  'Mathematics',        dateFromNow(1),  '11:00 AM', 'lisa.brown@gmail.com',    'Late Cancellation','', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual'],
+      ['Emma Johnson',  'Physical Education', dateFromNow(2),  '09:00 AM', 'sarah.johnson@gmail.com', 'Fee Waived',       'Fee Waived', 'Ms. Rachel Kim', 'r.kim@edutrack.edu', '',                    'Group'],
+      ['Ava Wilson',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual'],
     ];
 
     const today = new Date().toLocaleDateString('en-AU');
@@ -172,15 +176,27 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['TCH-003', 'r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     today, 'Active'],
       ['PAR-001', 'sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      today, 'Active'],
       ['PAR-002', 'mike.smith@gmail.com',    'parent',    'Mike Smith',         today, 'Active'],
+      ['PAR-003', 'lisa.brown@gmail.com',    'parent',    'Lisa Brown',         today, 'Active'],
+      ['PAR-004', 'karen.davis@gmail.com',   'parent',    'Karen Davis',        today, 'Active'],
+      // Inactive — pending principal activation (payment not yet confirmed)
+      ['PAR-005', 'james.martin@gmail.com',  'parent',    'James Martin',       today, 'Inactive'],
     ];
 
-    const enrollmentRequestRows: string[][] = [];
+    // Enrollment Requests: ['Student Name','Student Email','Previously Enrolled','Current School','Current Grade','Age','Classes Interested','Parent Email','Parent Phone','Reference','Promo Code','Notes','Submission Date','Status','Request Type']
+    const enrollmentRequestRows = [
+      ['Sophia Martin', 'sophia.m@student.com', 'No', 'Westfield Primary', 'Year 4', '9',
+       'Mathematics (Individual) with Dr. Sarah Chen', 'james.martin@gmail.com', '555-0301',
+       'Google', 'WELCOME10', 'Sophia struggles with fractions — would love extra support.',
+       today, 'Pending', 'student'],
+    ];
 
+    // Parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status', 'ParentID']
     const parentRows = [
-      ['sarah.johnson@gmail.com', 'Sarah Johnson', '555-0201', 'Emma Johnson; Ava Wilson', today, 'Active'],
-      ['mike.smith@gmail.com',    'Mike Smith',    '555-0202', 'Liam Smith',               today, 'Active'],
-      ['lisa.brown@gmail.com',    'Lisa Brown',    '555-0203', 'Olivia Brown',             today, 'Active'],
-      ['karen.davis@gmail.com',   'Karen Davis',   '555-0204', 'Noah Davis',               today, 'Active'],
+      ['sarah.johnson@gmail.com', 'Sarah Johnson', '555-0201', 'Emma Johnson; Ava Wilson', today, 'Active',   'PAR-001'],
+      ['mike.smith@gmail.com',    'Mike Smith',    '555-0202', 'Liam Smith',               today, 'Active',   'PAR-002'],
+      ['lisa.brown@gmail.com',    'Lisa Brown',    '555-0203', 'Olivia Brown',             today, 'Active',   'PAR-003'],
+      ['karen.davis@gmail.com',   'Karen Davis',   '555-0204', 'Noah Davis',               today, 'Active',   'PAR-004'],
+      ['james.martin@gmail.com',  'James Martin',  '555-0301', 'Sophia Martin',            today, 'Inactive', 'PAR-005'],
     ];
 
     const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [

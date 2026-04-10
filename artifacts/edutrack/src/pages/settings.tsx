@@ -29,6 +29,7 @@ export default function Settings() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [syncingHeaders, setSyncingHeaders] = useState(false);
+  const [seedingData, setSeedingData] = useState(false);
 
   const selectedFile = driveFiles.find((f) => f.id === sheetId);
 
@@ -51,6 +52,28 @@ export default function Settings() {
       toast({ title: "Sync failed", description: err.message, variant: "destructive" });
     } finally {
       setSyncingHeaders(false);
+    }
+  };
+
+  const handleSeedData = async () => {
+    if (!sheetId) {
+      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
+      return;
+    }
+    setSeedingData(true);
+    try {
+      const res = await fetch(apiUrl("/sheets/seed"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Seed failed");
+      toast({ title: "Demo data loaded", description: "All tabs have been cleared and filled with sample data." });
+    } catch (err: any) {
+      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSeedingData(false);
     }
   };
 
@@ -244,25 +267,44 @@ export default function Settings() {
               </div>
             )}
 
-            <div className="border-t pt-4 space-y-2">
-              <p className="text-sm font-medium">Sync sheet structure</p>
-              <p className="text-xs text-muted-foreground">
-                After updating EduTrack, run this to ensure all tabs have the latest column headers.
-                Only adds missing columns — existing data is never overwritten.
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleSyncHeaders}
-                disabled={syncingHeaders || !sheetId}
-                className="gap-2"
-              >
-                {syncingHeaders ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Database className="h-4 w-4" />
-                )}
-                Sync Sheet Headers
-              </Button>
+            <div className="border-t pt-4 space-y-3">
+              <p className="text-sm font-medium">Sheet tools</p>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Sync sheet structure — adds missing tabs and columns without touching existing data.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleSyncHeaders}
+                  disabled={syncingHeaders || !sheetId}
+                  className="gap-2"
+                >
+                  {syncingHeaders ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Database className="h-4 w-4" />
+                  )}
+                  Sync Sheet Headers
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Load demo data — <strong className="text-destructive">clears all existing data</strong> and fills every tab with sample students, teachers, subjects, and enrollments so you can test the platform.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleSeedData}
+                  disabled={seedingData || !sheetId}
+                  className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
+                >
+                  {seedingData ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                  Load Demo Data
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

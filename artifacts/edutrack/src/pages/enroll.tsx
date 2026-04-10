@@ -332,12 +332,18 @@ export default function EnrollPage() {
                       >
                         <option value="" disabled>Select a class…</option>
                         {subjects
-                          .filter(s => !selectedSubjects.includes(s.Name))
-                          .map(s => (
-                            <option key={s._row} value={s.Name}>
-                              {s.Name}{s.Type ? ` (${s.Type})` : ""}
-                            </option>
-                          ))}
+                          .filter(s => {
+                            const label = `${s.Name} (${s.Type}) with ${s.Teachers}`;
+                            return !selectedSubjects.includes(label);
+                          })
+                          .map(s => {
+                            const label = `${s.Name} (${s.Type}) with ${s.Teachers}`;
+                            return (
+                              <option key={s._row} value={label}>
+                                {s.Name} ({s.Type}){s.Teachers ? ` — ${s.Teachers}` : ""}
+                              </option>
+                            );
+                          })}
                       </select>
                       {selectedSubjects.length > 0 && (
                         <div className="flex flex-wrap gap-2">
