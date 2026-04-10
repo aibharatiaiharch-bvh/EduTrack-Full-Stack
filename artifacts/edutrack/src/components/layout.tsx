@@ -3,11 +3,13 @@ import { Link, useLocation } from "wouter";
 import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 
 export function AppSidebar() {
   const [location] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { flags } = useFeatureFlags();
 
   const navigation = [
     {
@@ -22,14 +24,14 @@ export function AppSidebar() {
       label: "Academics",
       items: [
         { name: "Classes", href: "/classes", icon: BookOpen },
-        { name: "Assessments", href: "/assessments", icon: FileText },
+        ...(flags.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
       ],
     },
     {
       label: "Management",
       items: [
         { name: "Teachers", href: "/teachers", icon: Users },
-        { name: "Billing", href: "/billing", icon: CreditCard },
+        ...(flags.billing ? [{ name: "Billing", href: "/billing", icon: CreditCard }] : []),
         { name: "Settings", href: "/settings", icon: Settings },
       ],
     },
@@ -55,23 +57,25 @@ export function AppSidebar() {
 
       <SidebarContent>
         {navigation.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton asChild isActive={location === item.href}>
-                      <Link href={item.href} className="flex items-center gap-3 w-full">
-                        <item.icon className="w-4 h-4" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+          group.items.length > 0 && (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton asChild isActive={location === item.href}>
+                        <Link href={item.href} className="flex items-center gap-3 w-full">
+                          <item.icon className="w-4 h-4" />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )
         ))}
       </SidebarContent>
 
