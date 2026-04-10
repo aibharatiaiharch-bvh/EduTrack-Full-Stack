@@ -104,7 +104,9 @@ export async function generateUserId(role: string, spreadsheetId: string): Promi
   const sheets = await getUncachableGoogleSheetClient();
   const allIds: string[] = [];
 
-  // Scan all tabs that hold UserIDs so numbers never repeat across any tab
+  // Users tab is the master ID registry. Archive preserves retired IDs.
+  // Students/Teachers are scanned as a safety net for any legacy records
+  // that predate the Users-tab-first architecture.
   for (const tab of [SHEET_TABS.users, SHEET_TABS.archive, SHEET_TABS.students, SHEET_TABS.teachers]) {
     try {
       const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A2:A` });

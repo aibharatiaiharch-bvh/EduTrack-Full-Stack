@@ -255,9 +255,13 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
         }
       }
 
-      // 3. Add student to Students tab with a unique UserID
+      // 3. Register student in Users tab FIRST, then add to Students tab
       if (studentName) {
         const studentId = await generateUserId('student', sheetId);
+        // Users tab is the master ID registry — student may not have login email yet
+        await appendRow(sheetId, SHEET_TABS.users, [
+          studentId, '', 'student', studentName, today, 'Active',
+        ]);
         await appendRow(sheetId, SHEET_TABS.students, [
           studentId, studentName, '', '', 'Active', studentPhone, parentEmail,
         ]);
