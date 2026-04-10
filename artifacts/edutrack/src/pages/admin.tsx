@@ -131,6 +131,74 @@ export default function AdminPortal() {
           </p>
         </div>
 
+        {/* Role Preview */}
+        <Card className="border-purple-200 bg-purple-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-purple-800">
+              <FlaskConical className="w-4 h-4" />
+              Preview as Role
+            </CardTitle>
+            <CardDescription>
+              Switch into any portal to test the UI and functionality as that user type.
+              A banner will appear so you can exit back to Developer Tools at any time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => {
+                  localStorage.setItem("edutrack_dev_role_override", "tutor");
+                  localStorage.setItem("edutrack_user_role", "tutor");
+                  setLocation("/dashboard");
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg border border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <GraduationCap className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm text-foreground">Tutor</p>
+                  <p className="text-xs text-muted-foreground">Staff dashboard</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  localStorage.setItem("edutrack_dev_role_override", "parent");
+                  localStorage.setItem("edutrack_user_role", "parent");
+                  setLocation("/parent");
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg border border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <UserRound className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm text-foreground">Parent</p>
+                  <p className="text-xs text-muted-foreground">Parent portal</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  localStorage.setItem("edutrack_dev_role_override", "principal");
+                  localStorage.setItem("edutrack_user_role", "principal");
+                  setLocation("/principal");
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg border border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm text-foreground">Principal</p>
+                  <p className="text-xs text-muted-foreground">Admin dashboard</p>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Feature Toggles */}
         <Card>
           <CardHeader>
@@ -267,6 +335,7 @@ export default function AdminPortal() {
         </div>
 
       </main>
+      <DevModeBanner />
     </div>
   );
 }
