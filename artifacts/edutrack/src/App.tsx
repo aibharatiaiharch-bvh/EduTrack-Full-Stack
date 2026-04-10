@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -14,6 +14,8 @@ import Settings from "@/pages/settings";
 import Checkin from "@/pages/checkin";
 import ParentView from "@/pages/parent";
 import PrincipalDashboard from "@/pages/principal";
+import AuthRedirect from "@/pages/auth-redirect";
+import EnrollPage from "@/pages/enroll";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -32,7 +34,12 @@ if (!clerkPubKey) {
 function SignInPage() {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        forceRedirectUrl={`${basePath}/auth-redirect`}
+      />
     </div>
   );
 }
@@ -40,7 +47,12 @@ function SignInPage() {
 function SignUpPage() {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        forceRedirectUrl={`${basePath}/auth-redirect`}
+      />
     </div>
   );
 }
@@ -50,16 +62,10 @@ function HomeRedirect() {
 }
 
 function ProtectedRoute({ component: Component }: { component: any }) {
-  return (
-    <>
-      <Show when="signed-in">
-        <Component />
-      </Show>
-      <Show when="signed-out">
-        <Redirect to="/" />
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return null;
+  if (!isSignedIn) return <Redirect to="/" />;
+  return <Component />;
 }
 
 function ClerkQueryClientCacheInvalidator() {
@@ -100,6 +106,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/auth-redirect" component={AuthRedirect} />
+          <Route path="/enroll" component={EnrollPage} />
           
           <Route path="/dashboard">
             <ProtectedRoute component={Dashboard} />

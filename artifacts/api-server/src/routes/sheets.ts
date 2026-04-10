@@ -158,11 +158,26 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       ['Ava Wilson',    'English',            dateFromNow(2),  '11:00 AM', 'sarah.johnson@gmail.com', 'Fee Confirmed',    'Fee Confirmed'],
     ];
 
+    const today = new Date().toLocaleDateString('en-AU');
+
+    const userRows = [
+      ['p.anderson@edutrack.edu', 'principal', 'Principal Anderson', today],
+      ['s.chen@edutrack.edu',     'tutor',     'Dr. Sarah Chen',     today],
+      ['j.taylor@edutrack.edu',   'tutor',     'Mr. James Taylor',   today],
+      ['r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     today],
+      ['sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      today],
+      ['mike.smith@gmail.com',    'parent',    'Mike Smith',         today],
+    ];
+
+    const enrollmentRequestRows: string[][] = [];
+
     const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
-      { tab: SHEET_TABS.students,    headers: SHEET_HEADERS.students,    rows: studentRows },
-      { tab: SHEET_TABS.teachers,    headers: SHEET_HEADERS.teachers,    rows: teacherRows },
-      { tab: SHEET_TABS.subjects,    headers: SHEET_HEADERS.subjects,    rows: subjectRows },
-      { tab: SHEET_TABS.enrollments, headers: SHEET_HEADERS.enrollments, rows: enrollmentRows },
+      { tab: SHEET_TABS.students,             headers: SHEET_HEADERS.students,             rows: studentRows },
+      { tab: SHEET_TABS.teachers,             headers: SHEET_HEADERS.teachers,             rows: teacherRows },
+      { tab: SHEET_TABS.subjects,             headers: SHEET_HEADERS.subjects,             rows: subjectRows },
+      { tab: SHEET_TABS.enrollments,          headers: SHEET_HEADERS.enrollments,          rows: enrollmentRows },
+      { tab: SHEET_TABS.users,                headers: SHEET_HEADERS.users,                rows: userRows },
+      { tab: SHEET_TABS.enrollment_requests,  headers: SHEET_HEADERS.enrollment_requests,  rows: enrollmentRequestRows },
     ];
 
     for (const { tab, headers, rows } of tabData) {
