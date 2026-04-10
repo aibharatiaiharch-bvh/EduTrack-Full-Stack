@@ -46,10 +46,11 @@ router.get('/roles/check', async (req, res): Promise<void> => {
     if (user) {
       res.json({ role: user.role, name: user.name, status: user.status, found: true });
     } else {
-      res.json({ role: null, status: null, found: false });
+      res.json({ role: null, status: null, found: false, tabMissing: false });
     }
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Users tab likely doesn't exist yet — not a hard error
+    res.json({ role: null, status: null, found: false, tabMissing: true });
   }
 });
 
