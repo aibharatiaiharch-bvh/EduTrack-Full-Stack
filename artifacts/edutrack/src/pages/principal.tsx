@@ -246,7 +246,7 @@ export default function PrincipalDashboard() {
 
   // Add Student dialog
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", parentEmail: "" });
+  const [studentForm, setStudentForm] = useState({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "" });
   const addStudentMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(apiUrl("/principals/add-student"), {
@@ -259,10 +259,38 @@ export default function PrincipalDashboard() {
     },
     onSuccess: () => {
       setShowAddStudent(false);
-      setStudentForm({ name: "", email: "", phone: "", parentEmail: "" });
-      toast({ title: "Student added", description: "Student is now active in the Students tab." });
+      setStudentForm({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "" });
+      qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
+      toast({ title: "Student added", description: "Student is Inactive — activate them here once payment is confirmed." });
     },
     onError: (err: any) => toast({ title: "Failed to add student", description: err.message, variant: "destructive" }),
+  });
+
+  // Pending Activation — students awaiting principal activation (e.g. after payment)
+  const { data: pendingStudents } = useQuery<{ UserID: string; Name: string; Email: string; "Added Date": string }[]>({
+    queryKey: ["pending-students", sheetId],
+    enabled: !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/principals/pending-students?sheetId=${encodeURIComponent(sheetId!)}`));
+      if (!res.ok) throw new Error("Failed to load pending students");
+      return res.json();
+    },
+  });
+  const activateStudentMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(apiUrl("/users/reactivate"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
+      toast({ title: "Student activated", description: "The student's account is now Active." });
+    },
+    onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
   });
 
   // Add Subject dialog

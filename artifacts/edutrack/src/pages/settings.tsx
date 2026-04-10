@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -5,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield } from "lucide-react";
+import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
 export default function Settings() {
   const {
@@ -24,8 +28,31 @@ export default function Settings() {
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [syncingHeaders, setSyncingHeaders] = useState(false);
 
   const selectedFile = driveFiles.find((f) => f.id === sheetId);
+
+  const handleSyncHeaders = async () => {
+    if (!sheetId) {
+      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
+      return;
+    }
+    setSyncingHeaders(true);
+    try {
+      const res = await fetch(apiUrl("/sheets/ensure-headers"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to sync headers");
+      toast({ title: "Headers synced", description: "All sheet tabs have been checked and updated." });
+    } catch (err: any) {
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSyncingHeaders(false);
+    }
+  };
 
   const handleSelect = (value: string) => {
     setSheetId(value);
@@ -182,6 +209,27 @@ export default function Settings() {
                   <Plus className="h-4 w-4" />
                 )}
                 Create new EduTrack spreadsheet
+              </Button>
+            </div>
+
+            <div className="border-t pt-4 space-y-2">
+              <p className="text-sm font-medium">Sync sheet structure</p>
+              <p className="text-xs text-muted-foreground">
+                After updating EduTrack, run this to ensure all tabs have the latest column headers.
+                Only adds missing columns — existing data is never overwritten.
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleSyncHeaders}
+                disabled={syncingHeaders || !sheetId}
+                className="gap-2"
+              >
+                {syncingHeaders ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4" />
+                )}
+                Sync Sheet Headers
               </Button>
             </div>
           </CardContent>

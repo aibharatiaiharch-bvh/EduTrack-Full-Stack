@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient, SHEET_TABS, generateUserId } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS, generateUserId } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -89,53 +89,122 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
 
 // POST /api/principals/add-student
 // Adds a student to the Students tab with a unique UserID.
-// If an email is provided, also creates a Users tab entry (role: student) so they can log in later.
+// Students default to Inactive — the principal must activate them (e.g. after payment).
+// If an email is provided, also creates a Users tab entry (role: student/Inactive).
+// Links the student to their parent via ParentID if parentEmail is supplied.
 router.post('/principals/add-student', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
 
-  const { name, email, phone, parentEmail } = req.body as {
-    name?: string; email?: string; phone?: string; parentEmail?: string;
+  const { name, email, phone, parentEmail, parentName, parentPhone } = req.body as {
+    name?: string; email?: string; phone?: string;
+    parentEmail?: string; parentName?: string; parentPhone?: string;
   };
 
   if (!name) { res.status(400).json({ error: 'name is required' }); return; }
 
-  const emailNorm = (email || '').trim().toLowerCase();
-  const today = new Date().toLocaleDateString('en-AU');
+  const emailNorm    = (email || '').trim().toLowerCase();
+  const parentNorm   = (parentEmail || '').trim().toLowerCase();
+  const today        = new Date().toLocaleDateString('en-AU');
 
   try {
     // Generate a unique student UserID
     const userId = await generateUserId('student', sheetId);
 
-    // Register in Users tab FIRST — master ID registry.
-    // Students with an email can log in; without email the record exists but has no login.
+    // Register in Users tab as Inactive — requires principal activation
     if (emailNorm) {
       const users = await readRows(sheetId, SHEET_TABS.users);
       const exists = users.find(u => (u['Email'] || '').toLowerCase().trim() === emailNorm);
       if (!exists) {
         await appendRow(sheetId, SHEET_TABS.users, [
-          userId, emailNorm, 'student', name.trim(), today, 'Active',
+          userId, emailNorm, 'student', name.trim(), today, 'Inactive',
         ]);
       }
     } else {
-      // No email — still register ID so it is tracked centrally
       await appendRow(sheetId, SHEET_TABS.users, [
-        userId, '', 'student', name.trim(), today, 'Active',
+        userId, '', 'student', name.trim(), today, 'Inactive',
       ]);
     }
 
-    // Then write to Students tab with the same UserID
+    // Resolve Parent ID — look up or create parent record
+    let parentId = '';
+    if (parentNorm) {
+      // Check if parent already exists in the Users tab
+      const users = await readRows(sheetId, SHEET_TABS.users);
+      const existingParentUser = users.find(u =>
+        (u['Email'] || '').toLowerCase().trim() === parentNorm && u['Role'] === 'parent'
+      );
+      if (existingParentUser) {
+        parentId = existingParentUser['UserID'] || '';
+      }
+      if (!parentId) {
+        // Check Parents tab for an existing record with a ParentID
+        const parents = await readRows(sheetId, SHEET_TABS.parents);
+        const existingParent = parents.find(p =>
+          (p['Email'] || '').toLowerCase().trim() === parentNorm
+        );
+        if (existingParent) {
+          parentId = existingParent['ParentID'] || '';
+          // Update Children list on the existing parent row
+          if (existingParent._row) {
+            const existingChildren = (existingParent['Children'] || '').split(';').map((s: string) => s.trim()).filter(Boolean);
+            if (!existingChildren.includes(name.trim())) {
+              existingChildren.push(name.trim());
+              const sheets = await getUncachableGoogleSheetClient();
+              const childrenIdx = 3; // Children is column D (index 3)
+              const col = String.fromCharCode(65 + childrenIdx);
+              await sheets.spreadsheets.values.update({
+                spreadsheetId: sheetId,
+                range: `${SHEET_TABS.parents}!${col}${existingParent._row}`,
+                valueInputOption: 'RAW',
+                requestBody: { values: [[existingChildren.join('; ')]] },
+              });
+            }
+          }
+        }
+      }
+      if (!parentId) {
+        // Create new parent record
+        parentId = await generateUserId('parent', sheetId);
+        await appendRow(sheetId, SHEET_TABS.users, [
+          parentId, parentNorm, 'parent', (parentName || '').trim() || 'Parent', today, 'Active',
+        ]);
+        await appendRow(sheetId, SHEET_TABS.parents, [
+          parentNorm, (parentName || '').trim() || 'Parent',
+          (parentPhone || '').trim(), name.trim(), today, 'Active', parentId,
+        ]);
+      }
+    }
+
+    // Write to Students tab with Inactive status and Parent ID link
     await appendRow(sheetId, SHEET_TABS.students, [
       userId,
       name.trim(),
       emailNorm,
       '',
-      'Active',
+      'Inactive',
       (phone || '').trim(),
-      (parentEmail || '').trim(),
+      parentNorm,
+      parentId,
     ]);
 
-    res.json({ ok: true, userId });
+    res.json({ ok: true, userId, parentId, status: 'Inactive' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/principals/pending-students?sheetId=X
+// Returns students in Inactive status — awaiting principal activation (e.g. after payment).
+router.get('/principals/pending-students', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const users = await readRows(sheetId, SHEET_TABS.users);
+    const pending = users.filter(u =>
+      u['Role'] === 'student' && (u['Status'] || '').toLowerCase() === 'inactive'
+    );
+    res.json(pending);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
