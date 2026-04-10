@@ -1,4 +1,4 @@
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
@@ -98,11 +98,13 @@ export function AppSidebar() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex bg-background w-full">
-      <AppSidebar />
-      <main className="flex-1 flex flex-col min-w-0 overflow-auto">
-        {children}
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="min-h-screen flex bg-background w-full">
+        <AppSidebar />
+        <main className="flex-1 flex flex-col min-w-0 overflow-auto">
+          {children}
+        </main>
+      </div>
+    </SidebarProvider>
   );
 }
