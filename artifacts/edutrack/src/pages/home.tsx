@@ -7,9 +7,9 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const sheetId = localStorage.getItem(SHEET_KEY) || "";
 
   function handleNewStudent() {
-    const sheetId = localStorage.getItem(SHEET_KEY) || "";
     if (sheetId) {
       setLocation(`/enroll?sheetId=${encodeURIComponent(sheetId)}`);
     } else {
