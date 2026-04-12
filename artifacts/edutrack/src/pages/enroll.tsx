@@ -89,6 +89,9 @@ export default function EnrollPage() {
     applicantName: "",
     applicantEmail: "",
     applicantPhone: "",
+    previousUser: "No",
+    timeZone: "",
+    zoomLink: "",
     subjects: "",
     notes: "",
   });
@@ -127,7 +130,10 @@ export default function EnrollPage() {
           studentName: tutorForm.applicantName,
           parentEmail: tutorForm.applicantEmail || userEmail,
           parentPhone: tutorForm.applicantPhone,
+          previouslyEnrolled: tutorForm.previousUser,
+          currentGrade: tutorForm.timeZone,
           classesInterested: tutorForm.subjects,
+          reference: tutorForm.zoomLink,
           notes: tutorForm.notes,
           sheetId,
           userEmail,
@@ -467,6 +473,35 @@ export default function EnrollPage() {
                   <div className="space-y-2">
                     <Label htmlFor="applicantPhone">Phone Number</Label>
                     <Input id="applicantPhone" type="tel" value={tutorForm.applicantPhone} onChange={e => setTutor("applicantPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Previous User?</Label>
+                    <div className="flex gap-2">
+                      {["Yes", "No"].map(opt => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setTutor("previousUser", opt)}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                            tutorForm.previousUser === opt
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border bg-background text-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="timeZone">Time Zone</Label>
+                      <Input id="timeZone" value={tutorForm.timeZone} onChange={e => setTutor("timeZone", e.target.value)} placeholder="e.g. Australia/Sydney" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="zoomLink">Zoom Link</Label>
+                      <Input id="zoomLink" value={tutorForm.zoomLink} onChange={e => setTutor("zoomLink", e.target.value)} placeholder="e.g. https://zoom.us/j/..." />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="subjects">Subjects / Areas You Teach <span className="text-destructive">*</span></Label>
