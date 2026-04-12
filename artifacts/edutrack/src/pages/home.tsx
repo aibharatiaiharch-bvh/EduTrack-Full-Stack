@@ -40,7 +40,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link href="/sign-in">
+            <Link href={sheetId ? `/enroll?sheetId=${encodeURIComponent(sheetId)}` : "/enroll"}>
               <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                   <GraduationCap className="w-6 h-6 text-primary" />
