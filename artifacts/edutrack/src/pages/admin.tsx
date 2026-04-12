@@ -107,7 +107,7 @@ export default function AdminPortal() {
               {user?.primaryEmailAddress?.emailAddress}
             </span>
             <Badge variant="outline" className="text-purple-600 border-purple-200 bg-purple-50">Developer</Badge>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => setLocation("/principal")}>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setLocation("/admin")}>
               <ShieldCheck className="w-4 h-4" />
               <span className="hidden sm:inline">Principal Dashboard</span>
             </Button>
