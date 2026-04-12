@@ -1,6 +1,5 @@
-import { useLocation } from "wouter";
-import { GraduationCap, Users, UserPlus, ArrowRight } from "lucide-react";
-import { Link } from "wouter";
+import { useLocation, Link } from "wouter";
+import { GraduationCap, Users, UserPlus, ArrowRight, ShieldCheck } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -39,8 +38,8 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link href={sheetId ? `/enroll?sheetId=${encodeURIComponent(sheetId)}` : "/enroll"}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link href="/sign-in">
               <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                   <GraduationCap className="w-6 h-6 text-primary" />
@@ -60,6 +59,18 @@ export default function Home() {
                 <h2 className="text-base font-semibold text-foreground mb-1">Parent Portal</h2>
                 <p className="text-sm text-muted-foreground">
                   View your child's enrolments, attendance, and manage cancellations.
+                </p>
+              </div>
+            </Link>
+
+            <Link href="/sign-in">
+              <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <ShieldCheck className="w-6 h-6 text-primary" />
+                </div>
+                <h2 className="text-base font-semibold text-foreground mb-1">Developer / Admin</h2>
+                <p className="text-sm text-muted-foreground">
+                  Sign in to manage setup, users, and system tools.
                 </p>
               </div>
             </Link>
