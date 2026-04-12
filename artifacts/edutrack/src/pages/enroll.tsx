@@ -112,10 +112,7 @@ export default function EnrollPage() {
     e.preventDefault();
     setError("");
 
-    if (!sheetId) {
-      setError("Invalid enrolment link. Please contact your school for the correct link.");
-      return;
-    }
+    if (!sheetId) return;
 
     setSubmitting(true);
     try {
@@ -210,13 +207,6 @@ export default function EnrollPage() {
               Select how you are applying below, fill in your details, and the principal will review your request.
             </p>
           </div>
-
-          {!sheetId && (
-            <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p className="text-sm">Invalid enrolment link. Please ask your school for the correct link.</p>
-            </div>
-          )}
 
           {/* Role selector */}
           {!requestType && (
