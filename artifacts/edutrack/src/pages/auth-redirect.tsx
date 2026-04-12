@@ -3,6 +3,7 @@ import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -142,21 +143,24 @@ type Screen = "loading" | "pending" | "inactive" | "not-found" | "setup-required
 
 export default function AuthRedirect() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
   const [, setLocation] = useLocation();
   const [screen, setScreen] = useState<Screen>("loading");
   const [statusMsg, setStatusMsg] = useState("Checking your account…");
   const [userName, setUserName] = useState("");
   const [sheetId, setSheetId] = useState("");
+  const [email, setEmail] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
 
   useEffect(() => {
     if (!isLoaded) return;
 
     if (!isSignedIn || !user) {
-      setLocation("/");
+      setScreen("loading");
+      setStatusMsg("Enter the email you want to use to sign in.");
       return;
     }
 
-    const email = user.primaryEmailAddress?.emailAddress || "";
     const sid = localStorage.getItem(SHEET_KEY) || "";
     setSheetId(sid);
 
@@ -166,8 +170,8 @@ export default function AuthRedirect() {
     }
 
     setStatusMsg("Looking up your account…");
-
-    fetch(apiUrl(`/roles/check?email=${encodeURIComponent(email)}&sheetId=${encodeURIComponent(sid)}`))
+    const activeEmail = submittedEmail || user.primaryEmailAddress?.emailAddress || "";
+    fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
       .then((r) => r.json())
       .then((data) => {
         if (data.tabMissing) {
@@ -232,6 +236,41 @@ export default function AuthRedirect() {
       onEnroll={() => setLocation(`/enroll?sheetId=${encodeURIComponent(sheetId)}`)}
     />
   );
+
+  if (!isSignedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-md space-y-4 rounded-xl border bg-white p-6 shadow-sm">
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-bold">Sign in with email</h1>
+            <p className="text-sm text-muted-foreground">
+              Enter the email that exists in the Users tab.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+            />
+            <Button
+              className="w-full"
+              onClick={async () => {
+                const next = email.trim().toLowerCase();
+                if (!next) return;
+                setSubmittedEmail(next);
+                localStorage.removeItem("edutrack_dev_role_override");
+                await signOut({ redirectUrl: `${BASE}/sign-in` });
+              }}
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
