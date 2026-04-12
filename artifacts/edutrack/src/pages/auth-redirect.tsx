@@ -165,8 +165,7 @@ export default function AuthRedirect() {
     setSheetId(sid);
 
     if (!sid) {
-      setScreen("setup-required");
-      return;
+      setStatusMsg("No Google Sheet linked. Please sign in with your school email.");
     }
 
     setStatusMsg("Looking up your account…");
@@ -227,7 +226,6 @@ export default function AuthRedirect() {
       });
   }, [isLoaded, isSignedIn, user, setLocation]);
 
-  if (screen === "setup-required") return <SetupRequiredScreen />;
   if (screen === "pending")  return <PendingApprovalScreen name={userName} />;
   if (screen === "inactive") return <InactiveScreen name={userName} />;
   if (screen === "not-found") return (
@@ -236,6 +234,8 @@ export default function AuthRedirect() {
       onEnroll={() => setLocation(`/enroll?sheetId=${encodeURIComponent(sheetId)}`)}
     />
   );
+
+  if (screen === "setup-required") return <SetupRequiredScreen />;
 
   if (!isSignedIn || !user) {
     return (
