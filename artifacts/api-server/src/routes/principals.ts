@@ -176,19 +176,19 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
       }
     }
 
-    // Write to Students tab with Inactive status and Parent ID link
+    // Write to Students tab with status mirrored from Users tab
     await appendRow(sheetId, SHEET_TABS.students, [
       userId,
       name.trim(),
       emailNorm,
       '',
-      'Inactive',
+      'Active',
       (phone || '').trim(),
       parentNorm,
       parentId,
     ]);
 
-    res.json({ ok: true, userId, parentId, status: 'Inactive' });
+    res.json({ ok: true, userId, parentId, status: 'Active' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -219,6 +219,59 @@ router.get('/principals/teachers', async (req, res): Promise<void> => {
     const rows = await readRows(sheetId, SHEET_TABS.teachers);
     const active = rows.filter(r => (r['Status'] || '').toLowerCase() === 'active');
     res.json(active);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/principals/sync-user-status', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  const { userId, status } = req.body as { userId?: string; status?: string };
+  if (!sheetId || !userId || !status) { res.status(400).json({ error: 'sheetId, userId, and status are required' }); return; }
+
+  try {
+    const users = await readRows(sheetId, SHEET_TABS.users);
+    const user = users.find(u => u['UserID'] === userId);
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+
+    const normalizedStatus = status.toLowerCase().trim() === 'active' ? 'Active' : 'Inactive';
+    const userStatusCol = 'F';
+    await appendRow(sheetId, SHEET_TABS.archive, [
+      user['UserID'] || '',
+      user['Email'] || '',
+      user['Role'] || '',
+      user['Name'] || '',
+      user['Added Date'] || '',
+      normalizedStatus,
+      new Date().toLocaleDateString('en-AU'),
+    ]);
+
+    if ((user['Role'] || '').toLowerCase().trim() === 'student') {
+      const studentRows = await readRows(sheetId, SHEET_TABS.students);
+      const student = studentRows.find(r =>
+        (r['UserID'] || '') === userId ||
+        ((r['Email'] || '').toLowerCase().trim() === (user['Email'] || '').toLowerCase().trim())
+      );
+      if (student) {
+        const studentStatusCol = 'E';
+        await updateCell(sheetId, `${SHEET_TABS.students}!${studentStatusCol}${student._row}`, normalizedStatus);
+      }
+    }
+
+    if ((user['Role'] || '').toLowerCase().trim() === 'tutor' || (user['Role'] || '').toLowerCase().trim() === 'teacher') {
+      const teacherRows = await readRows(sheetId, SHEET_TABS.teachers);
+      const teacher = teacherRows.find(r =>
+        (r['UserID'] || '') === userId ||
+        ((r['Email'] || '').toLowerCase().trim() === (user['Email'] || '').toLowerCase().trim())
+      );
+      if (teacher) {
+        const teacherStatusCol = 'F';
+        await updateCell(sheetId, `${SHEET_TABS.teachers}!${teacherStatusCol}${teacher._row}`, normalizedStatus);
+      }
+    }
+
+    await updateCell(sheetId, `${SHEET_TABS.users}!${userStatusCol}${user._row}`, normalizedStatus);
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
