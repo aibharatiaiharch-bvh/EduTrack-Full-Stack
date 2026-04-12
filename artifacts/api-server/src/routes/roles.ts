@@ -90,8 +90,12 @@ router.get('/roles/check', async (req, res): Promise<void> => {
     }
 
     // Not found in Users tab — developer bypass (admin access without a Users tab entry)
-    const devEmail = (process.env.DEVELOPER_EMAIL || '').toLowerCase().trim();
-    if (devEmail && email === devEmail) {
+    // DEVELOPER_EMAIL supports a single email or a comma-separated list, e.g. "a@x.com,b@x.com"
+    const devEmails = (process.env.DEVELOPER_EMAIL || '')
+      .split(',')
+      .map(e => e.toLowerCase().trim())
+      .filter(Boolean);
+    if (devEmails.length > 0 && devEmails.includes(email)) {
       res.json({
         role: 'developer',
         name: process.env.DEVELOPER_NAME || 'Developer',
