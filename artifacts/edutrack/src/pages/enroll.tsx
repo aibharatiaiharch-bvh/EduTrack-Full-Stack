@@ -496,7 +496,17 @@ export default function EnrollPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="timeZone">Time Zone</Label>
-                      <Input id="timeZone" value={tutorForm.timeZone} onChange={e => setTutor("timeZone", e.target.value)} placeholder="e.g. Australia/Sydney" />
+                      <select
+                        id="timeZone"
+                        value={tutorForm.timeZone}
+                        onChange={e => setTutor("timeZone", e.target.value)}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="">Select time zone</option>
+                        <option value="East">East</option>
+                        <option value="Central">Central</option>
+                        <option value="Pacific">Pacific</option>
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="zoomLink">Zoom Link</Label>
