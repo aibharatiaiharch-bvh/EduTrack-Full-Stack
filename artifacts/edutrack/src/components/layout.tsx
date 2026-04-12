@@ -8,6 +8,8 @@ import { DevModeBanner } from "@/components/dev-mode-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 
 function getStoredRole(): string {
+  const override = localStorage.getItem("edutrack_dev_role_override");
+  if (override) return override;
   return localStorage.getItem("edutrack_user_role") || "tutor";
 }
 
