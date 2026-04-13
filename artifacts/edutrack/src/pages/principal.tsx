@@ -512,16 +512,6 @@ export default function PrincipalDashboard() {
                       <p className="text-xs text-muted-foreground truncate">{s.Email || "No email"} · Added {s["Added Date"] || "—"}</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 gap-1.5 text-amber-700 border-amber-200 hover:bg-amber-50"
-                    onClick={() => deactivateUser(s.UserID)}
-                    disabled={actioningUser === s.UserID || s.status?.toLowerCase() === "inactive"}
-                  >
-                    {actioningUser === s.UserID ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <UserX className="h-3.5 w-3.5" />}
-                    Deactivate
-                  </Button>
                 </div>
               ))}
             </CardContent>

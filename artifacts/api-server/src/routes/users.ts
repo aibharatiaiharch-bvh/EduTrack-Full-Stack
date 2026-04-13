@@ -99,8 +99,8 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
       user['Role'] || '',
       user['Name'] || '',
       user['Added Date'] || '',
-      user['Status'] || '',
       archivedDate,
+      user['Status'] || '',
     ]);
 
     // 2. Set Status to Inactive in Users tab
