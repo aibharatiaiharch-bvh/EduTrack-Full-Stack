@@ -310,6 +310,7 @@ export default function PrincipalDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [actioningUser, setActioningUser] = useState<string | null>(null);
 
   function loadUsers() {
     if (!sheetId) return;
