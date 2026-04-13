@@ -159,6 +159,13 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       if (!studentName || !parentEmail) {
         res.status(400).json({ error: 'studentName and parentEmail are required' }); return;
       }
+      const existingUsers = await readUsersTab(sheetId);
+      const registrantEmail = parentEmail.toLowerCase().trim() || (userEmail || '').toLowerCase().trim();
+      const existingUser = existingUsers.find(u => u.email === registrantEmail);
+      if (existingUser && existingUser.status === 'active') {
+        res.status(409).json({ error: 'You are already a user — use the above to log in.' });
+        return;
+      }
       await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
         studentName,
         studentEmail || '',
@@ -180,11 +187,8 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       // The family can sign in after this — they will see the "Awaiting Activation" screen
       // until the principal confirms payment and activates the account.
       // Priority: use the form's parentEmail (explicitly entered). Fall back to Clerk userEmail.
-      const registrantEmail = parentEmail.toLowerCase().trim() || (userEmail || '').toLowerCase().trim();
       if (registrantEmail) {
-        const existingUsers = await readUsersTab(sheetId);
-        const alreadyExists = existingUsers.find(u => u.email === registrantEmail);
-        if (!alreadyExists) {
+        if (!existingUser) {
           const userId = await generateUserId('parent', sheetId);
           await appendRow(sheetId, SHEET_TABS.users, [
             userId, registrantEmail, 'parent',
