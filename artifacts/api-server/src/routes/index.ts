@@ -17,6 +17,7 @@ import usersRouter from "./users";
 import tutorsRouter from "./tutors";
 import subjectsRouter from "./subjects";
 import announcementsRouter from "./announcements";
+import scheduleCalendarRouter from "./scheduleCalendar";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(usersRouter);
 router.use(tutorsRouter);
 router.use(subjectsRouter);
 router.use(announcementsRouter);
+router.use(scheduleCalendarRouter);
 
 export default router;

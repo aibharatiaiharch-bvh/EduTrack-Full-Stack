@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck, FlaskConical } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
@@ -28,7 +28,26 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "Academics",
         items: [
           { name: "Classes", href: "/classes", icon: BookOpen },
+          { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
           ...(features.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
+        ],
+      },
+      {
+        label: "Account",
+        items: [
+          { name: "Settings", href: "/settings", icon: Settings },
+        ],
+      },
+    ];
+  }
+
+  if (role === "parent" || role === "student") {
+    return [
+      {
+        label: "My Portal",
+        items: [
+          { name: "My Classes", href: "/parent", icon: BookOpen },
+          { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
         ],
       },
       {
@@ -68,6 +87,7 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       label: "Portals",
       items: [
         { name: "Parent Portal", href: "/parent", icon: UserRound },
+        { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
         { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
         ...(role === "developer" || role === "admin"
           ? [{ name: "Developer Tools", href: "/admin", icon: FlaskConical }]

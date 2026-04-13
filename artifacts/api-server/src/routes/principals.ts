@@ -18,6 +18,16 @@ async function appendRow(spreadsheetId: string, tab: string, values: string[]): 
   });
 }
 
+async function updateCell(spreadsheetId: string, range: string, value: string): Promise<void> {
+  const sheets = await getUncachableGoogleSheetClient();
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[value]] },
+  });
+}
+
 async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
   const sheets = await getUncachableGoogleSheetClient();
   const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });

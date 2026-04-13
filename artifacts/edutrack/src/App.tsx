@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import TeacherDashboard from "@/pages/teacher-dashboard";
+import ClassCalendar from "@/pages/class-calendar";
 import Settings from "@/pages/settings";
 import Checkin from "@/pages/checkin";
 import ParentView from "@/pages/parent";
@@ -133,6 +134,7 @@ function ClerkProviderWithRoutes() {
             <ProtectedRoute component={Settings} />
           </Route>
           <Route path="/parent" component={ParentView} />
+          <Route path="/calendar" component={ClassCalendar} />
           <Route path="/principal">
             <ProtectedRoute component={PrincipalDashboard} />
           </Route>

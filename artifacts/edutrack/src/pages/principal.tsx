@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -228,6 +228,35 @@ export default function PrincipalDashboard() {
   const assignableEnrollments = (allEnrollments ?? []).filter(
     e => !["cancelled", "late cancellation", "rejected"].includes((e["Status"] || "").toLowerCase())
   );
+
+  // ── Teacher Schedule ─────────────────────────────────────────────────
+  const [teacherScheduleFilter, setTeacherScheduleFilter] = useState("__all__");
+
+  const teacherNames = useMemo(() => {
+    const names = new Set<string>();
+    (allEnrollments ?? []).forEach(e => { if (e["Teacher"]) names.add(e["Teacher"]); });
+    return Array.from(names).sort();
+  }, [allEnrollments]);
+
+  const scheduleEnrollments = useMemo(() => {
+    const enrs = (allEnrollments ?? [])
+      .filter(e => !["cancelled", "late cancellation", "rejected"].includes((e["Status"] || "").toLowerCase()))
+      .filter(e => teacherScheduleFilter === "__all__" || e["Teacher"] === teacherScheduleFilter)
+      .slice()
+      .sort((a, b) => {
+        const da = `${a["Class Date"]} ${a["Class Time"]}`;
+        const db = `${b["Class Date"]} ${b["Class Time"]}`;
+        return da.localeCompare(db);
+      });
+    // Group by teacher
+    const grouped: Record<string, Enrollment[]> = {};
+    for (const e of enrs) {
+      const key = e["Teacher"] || "Unassigned";
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(e);
+    }
+    return grouped;
+  }, [allEnrollments, teacherScheduleFilter]);
 
   // Add Teacher dialog
   const [showAddTeacher, setShowAddTeacher] = useState(false);
@@ -784,6 +813,97 @@ export default function PrincipalDashboard() {
                   </div>
                 );
               })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Teacher Schedules */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Teacher Schedules
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  All classes grouped by teacher. Click Reassign to move a class to a different teacher.
+                </CardDescription>
+              </div>
+              {/* Teacher filter */}
+              <div className="relative shrink-0">
+                <select
+                  className="h-8 pl-2 pr-7 text-xs rounded-md border bg-background appearance-none cursor-pointer"
+                  value={teacherScheduleFilter}
+                  onChange={e => setTeacherScheduleFilter(e.target.value)}
+                >
+                  <option value="__all__">All Teachers</option>
+                  <option value="Unassigned">Unassigned</option>
+                  {teacherNames.map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {loadingAllEnrollments ? (
+              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
+            ) : Object.keys(scheduleEnrollments).length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
+                <Calendar className="h-8 w-8 opacity-40" />
+                <p className="font-medium">No classes to display</p>
+              </div>
+            ) : (
+              Object.entries(scheduleEnrollments).map(([teacherName, enrs]) => (
+                <div key={teacherName} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold
+                      ${teacherName === "Unassigned" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}>
+                      {teacherName === "Unassigned" ? "?" : teacherName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">{teacherName}</p>
+                      <p className="text-xs text-muted-foreground">{enrs.length} {enrs.length === 1 ? "class" : "classes"}</p>
+                    </div>
+                  </div>
+                  <div className="ml-10 space-y-2">
+                    {enrs.map(enr => (
+                      <div
+                        key={enr._row}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="font-medium text-sm">{enr["Class Name"] || "—"}</p>
+                          <p className="text-xs text-muted-foreground">Student: {enr["Student Name"]}</p>
+                          <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                            {enr["Class Date"] && (
+                              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{enr["Class Date"]}</span>
+                            )}
+                            {enr["Class Time"] && (
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{enr["Class Time"]}</span>
+                            )}
+                            {enr["Zoom Link"] && (
+                              <a href={enr["Zoom Link"]} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-1 text-primary hover:underline">
+                                <Video className="h-3 w-3" />Zoom
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5 self-start sm:self-auto"
+                          onClick={() => { setAssignDialog({ open: true, enrollment: enr }); setAssignSearch(""); }}
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          Reassign
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
