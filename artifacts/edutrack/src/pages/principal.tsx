@@ -19,7 +19,7 @@ import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } fro
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
   XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
-  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers,
+  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers, PlusCircle,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -177,7 +177,49 @@ export default function PrincipalDashboard() {
     onError: (err: any) => toast({ title: "Rejection failed", description: err.message, variant: "destructive" }),
   });
 
-  const pendingRequests = (enrollmentRequests ?? []).filter(r => r["Status"]?.toLowerCase() === "pending");
+  const pendingRequests = (enrollmentRequests ?? []).filter(r =>
+    r["Status"]?.toLowerCase() === "pending" &&
+    (r["Request Type"] || "student").toLowerCase() !== "new-class"
+  );
+
+  const pendingClassRequests = (enrollmentRequests ?? []).filter(r =>
+    r["Status"]?.toLowerCase() === "pending" &&
+    (r["Request Type"] || "").toLowerCase() === "new-class"
+  );
+
+  const approveClassRequestMutation = useMutation({
+    mutationFn: async (row: number) => {
+      const res = await fetch(apiUrl(`/enrollment-requests/${row}/approve`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["enrollment-requests"] });
+      toast({ title: "Class request approved", description: "The request has been marked as approved." });
+    },
+    onError: (err: any) => toast({ title: "Approval failed", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectClassRequestMutation = useMutation({
+    mutationFn: async (row: number) => {
+      const res = await fetch(apiUrl(`/enrollment-requests/${row}/reject`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["enrollment-requests"] });
+      toast({ title: "Class request rejected" });
+    },
+    onError: (err: any) => toast({ title: "Rejection failed", description: err.message, variant: "destructive" }),
+  });
 
   // ── Class Assignments ────────────────────────────────────────────────
   const { data: allEnrollments, isLoading: loadingAllEnrollments } = useQuery<Enrollment[]>({
@@ -639,6 +681,92 @@ export default function PrincipalDashboard() {
                   </div>
                 </div>
               ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Class Requests */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <PlusCircle className="h-5 w-5 text-primary" />
+                  Class Requests
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Students and parents requesting a new class to be created. Approve to confirm, or reject to decline.
+                </CardDescription>
+              </div>
+              {!loadingRequests && (
+                <Badge
+                  variant={pendingClassRequests.length > 0 ? "destructive" : "secondary"}
+                  className="text-sm px-3 py-1 self-start shrink-0"
+                >
+                  {pendingClassRequests.length} pending
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingRequests ? (
+              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+            ) : pendingClassRequests.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
+                <CheckCircle2 className="h-8 w-8 text-green-500" />
+                <p className="font-medium">No pending class requests</p>
+                <p className="text-sm">When students or parents request a new class it will appear here.</p>
+              </div>
+            ) : (
+              pendingClassRequests.map((req) => {
+                const classWanted = req["Classes Interested"] || req["Student Email"] || "—";
+                const requesterName = req["Student Name"] || "Unknown";
+                const requesterEmail = req["Parent Email"] || req["Student Email"] || "";
+                const notes = req["Notes"] || "";
+                return (
+                  <div
+                    key={req._row}
+                    className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <PlusCircle className="w-5 h-5" />
+                      </div>
+                      <div className="space-y-1 min-w-0">
+                        <p className="font-semibold text-foreground">{classWanted}</p>
+                        <p className="text-sm text-muted-foreground">Requested by: {requesterName}{requesterEmail ? ` · ${requesterEmail}` : ""}</p>
+                        {notes && (
+                          <p className="text-xs text-muted-foreground italic">{notes}</p>
+                        )}
+                        {req["Submission Date"] && (
+                          <p className="text-xs text-muted-foreground">Submitted: {req["Submission Date"]}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => approveClassRequestMutation.mutate(req._row)}
+                        disabled={approveClassRequestMutation.isPending || rejectClassRequestMutation.isPending}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-destructive border-destructive/40 hover:bg-destructive/10"
+                        onClick={() => rejectClassRequestMutation.mutate(req._row)}
+                        disabled={approveClassRequestMutation.isPending || rejectClassRequestMutation.isPending}
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </CardContent>
         </Card>

@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Calendar, Clock, Users, User, BookOpen, AlertTriangle,
-  CheckCircle2, ChevronRight, Video,
+  CheckCircle2, ChevronRight, Video, PlusCircle,
 } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
@@ -73,6 +74,37 @@ export default function ClassCalendar() {
   const [studentName, setStudentName] = useState("");
   const [parentEmail, setParentEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
   const [selectedWeek, setSelectedWeek] = useState<0 | 1>(0);
+
+  // Request a new class
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [reqForm, setReqForm] = useState({ name: "", email: user?.primaryEmailAddress?.emailAddress || "", className: "", preferredDays: "", preferredTime: "", notes: "" });
+
+  const requestClassMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl("/roles/enroll"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sheetId,
+          requestType: "new-class",
+          studentName: reqForm.name.trim(),
+          parentEmail: reqForm.email.trim(),
+          classesInterested: reqForm.className.trim(),
+          parentPhone: reqForm.preferredDays.trim(),
+          currentGrade: reqForm.preferredTime.trim(),
+          notes: reqForm.notes.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Request submitted!", description: "A principal will review your request and activate the class." });
+      setShowRequestDialog(false);
+      setReqForm({ name: "", email: user?.primaryEmailAddress?.emailAddress || "", className: "", preferredDays: "", preferredTime: "", notes: "" });
+    },
+    onError: (err: any) => toast({ title: "Request failed", description: err.message, variant: "destructive" }),
+  });
 
   const { data, isLoading, error } = useQuery<CalendarData>({
     queryKey: ["class-calendar", sheetId],
@@ -133,9 +165,23 @@ export default function ClassCalendar() {
   return (
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 max-w-5xl">
-        <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Class Calendar</h1>
-          <p className="text-muted-foreground">View available classes for the next 2 weeks and book a spot.</p>
+        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Class Calendar</h1>
+            <p className="text-muted-foreground">View available classes for the next 2 weeks and book a spot.</p>
+          </div>
+          {sheetId && (
+            <Button
+              className="gap-2 shrink-0 self-start"
+              onClick={() => {
+                setReqForm(f => ({ ...f, email: user?.primaryEmailAddress?.emailAddress || f.email }));
+                setShowRequestDialog(true);
+              }}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Request a New Class
+            </Button>
+          )}
         </header>
 
         {!sheetId && (
@@ -291,6 +337,92 @@ export default function ClassCalendar() {
           </div>
         )}
       </div>
+
+      {/* Request a New Class dialog */}
+      <Dialog open={showRequestDialog} onOpenChange={(open) => { if (!open) setShowRequestDialog(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PlusCircle className="h-5 w-5 text-primary" />
+              Request a New Class
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-1">
+            <p className="text-sm text-muted-foreground">
+              Can't find the class you need? Submit a request and a principal will review and activate it.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="req-name">Your Name *</Label>
+                <Input
+                  id="req-name"
+                  placeholder="Full name"
+                  value={reqForm.name}
+                  onChange={e => setReqForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="req-email">Your Email *</Label>
+                <Input
+                  id="req-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={reqForm.email}
+                  onChange={e => setReqForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="req-class">Class / Subject Name *</Label>
+              <Input
+                id="req-class"
+                placeholder="e.g. Advanced Mathematics, Guitar Lessons…"
+                value={reqForm.className}
+                onChange={e => setReqForm(f => ({ ...f, className: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="req-days">Preferred Days</Label>
+                <Input
+                  id="req-days"
+                  placeholder="e.g. Mon, Wed"
+                  value={reqForm.preferredDays}
+                  onChange={e => setReqForm(f => ({ ...f, preferredDays: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="req-time">Preferred Time</Label>
+                <Input
+                  id="req-time"
+                  placeholder="e.g. 4:00 PM"
+                  value={reqForm.preferredTime}
+                  onChange={e => setReqForm(f => ({ ...f, preferredTime: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="req-notes">Additional Notes</Label>
+              <Textarea
+                id="req-notes"
+                placeholder="Any other details that might help…"
+                rows={3}
+                value={reqForm.notes}
+                onChange={e => setReqForm(f => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRequestDialog(false)}>Cancel</Button>
+            <Button
+              disabled={!reqForm.name.trim() || !reqForm.email.trim() || !reqForm.className.trim() || requestClassMutation.isPending}
+              onClick={() => requestClassMutation.mutate()}
+            >
+              {requestClassMutation.isPending ? "Submitting…" : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Booking dialog */}
       <Dialog open={!!bookingSlot} onOpenChange={(open) => { if (!open) setBookingSlot(null); }}>

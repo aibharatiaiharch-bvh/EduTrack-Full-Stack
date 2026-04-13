@@ -132,6 +132,28 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
   const submissionDate = new Date().toLocaleDateString('en-AU');
 
   try {
+    if (requestType === 'new-class') {
+      // Class request from a student/parent/tutor
+      const submitterName  = studentName || userName || '';
+      const submitterEmail = (parentEmail || userEmail || '').toLowerCase().trim();
+      if (!submitterName || !submitterEmail) {
+        res.status(400).json({ error: 'Name and email are required for class requests' }); return;
+      }
+      // Pack preferred schedule into Notes
+      const combinedNotes = [
+        classesInterested ? `Requested class: ${classesInterested}` : '',
+        parentPhone         ? `Preferred days: ${parentPhone}`        : '',   // reusing field
+        currentGrade        ? `Preferred time: ${currentGrade}`        : '',  // reusing field
+        notes               ? `Notes: ${notes}`                       : '',
+      ].filter(Boolean).join(' | ');
+
+      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+        submitterName, submitterEmail, '', '', '', '', classesInterested || '',
+        submitterEmail, '', '', '', combinedNotes, submissionDate, 'Pending', 'new-class',
+      ]);
+      res.json({ success: true }); return;
+    }
+
     if (requestType === 'tutor') {
       // Tutor / staff application
       const applicantName = studentName || userName || '';
@@ -236,6 +258,11 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
     await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${erStatusCol}${rowNum}`, 'Active');
 
     const requestType = (request['Request Type'] || 'student').toLowerCase().trim();
+
+    if (requestType === 'new-class') {
+      // Class request — just mark approved, no user provisioning needed
+      res.json({ ok: true, requestType: 'new-class' }); return;
+    }
 
     if (requestType === 'tutor') {
       // ── Tutor / staff approval ───────────────────────────────────────
