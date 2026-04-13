@@ -73,15 +73,15 @@ export const SHEET_TABS = {
 };
 
 export const SHEET_HEADERS = {
-  students: ['UserID', 'Name', 'Email', 'Classes', 'Status', 'Phone', 'Parent Email', 'Parent ID'],
-  teachers: ['UserID', 'Name', 'Email', 'Subjects', 'Role', 'Status', 'Zoom Link'],
-  subjects: ['SubjectID', 'Name', 'Type', 'Teachers', 'Room', 'Days', 'Status', 'MaxCapacity'],
-  enrollments: ['Student Name', 'Student Email', 'Class Name', 'Class Date', 'Class Time', 'Parent Email', 'Status', 'Override Action', 'Teacher', 'Teacher Email', 'Zoom Link', 'Class Type'],
-  users: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status'],
-  enrollment_requests: ['Student Name', 'Student Email', 'Previously Enrolled', 'Current School', 'Current Grade', 'Age', 'Classes Interested', 'Parent Email', 'Parent Phone', 'Reference', 'Promo Code', 'Notes', 'Submission Date', 'Status', 'Request Type'],
-  parents: ['Email', 'Parent Name', 'Phone', 'Children', 'Added Date', 'Status', 'ParentID'],
-  archive: ['UserID', 'Email', 'Role', 'Name', 'Added Date', 'Status', 'Archived Date'],
-  announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive'],
+  users: ['UserID', 'Email', 'Role', 'Name', 'Status', 'CreatedAt', 'UpdatedAt'],
+  students: ['StudentID', 'UserID', 'ParentID', 'Classes', 'Phone', 'Notes'],
+  teachers: ['TeacherID', 'UserID', 'Subjects', 'Zoom Link', 'Specialty', 'Notes'],
+  subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Status', 'MaxCapacity'],
+  enrollments: ['EnrollmentID', 'UserID', 'ClassID', 'ParentID', 'Status', 'Timestamp', 'Override Action', 'TeacherID', 'TeacherEmail', 'Zoom Link', 'Class Type'],
+  enrollment_requests: ['RequestID', 'UserID', 'RequestType', 'ClassID', 'Status', 'Timestamp', 'Notes'],
+  parents: ['ParentID', 'UserID', 'Children', 'Notes'],
+  archive: ['ArchiveID', 'UserID', 'Email', 'Role', 'Name', 'Status', 'ArchivedAt'],
+  announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive', 'CreatedAt'],
 };
 
 /** Return the A1 column letter for a named field within a tab's header row. */

@@ -1,0 +1,41 @@
+def generate_replit_prompt():
+    prompt = """
+# App Architecture & Logic Specifications (v1.0)
+
+## Core Database Strategy: Google Sheets as Master
+- **Single Source of Truth:** Use the 'Users' tab for all profile data.
+- **Relational Integrity:** All other tabs (Enrollments, Requests, Schedule) must use `UserID`, NOT names or emails, to link records.
+- **Field Discipline:** Never edit master fields (Name, Email, Role, Status) in transactional tabs. Use VLOOKUP or app-side joins to display them.
+- **Write Policy:** Server-side writes only. The UI should never directly edit raw cells; use an API or script function to append/update.
+- **Security:** Lock protected ranges in Sheets for master columns.
+
+## Principal & Admin Controls (Reassignment Logic)
+- **Roles:** Define 'Principal', 'Teacher', and 'Student' in the Users tab.
+- **Reassignment:** Principals can update the `TeacherID` field in the 'Schedule' or 'Enrollments' tabs.
+- **Booking Rules:** 
+  - Supports Individual and Group classes.
+  - Enforce booking/cancellation windows (e.g., no changes within 24 hours).
+  - Trigger notifications (email/push) upon assignment changes.
+
+## Feature: Manual Reconcile Job (The "Sync" Button)
+- **Function:** A manual button in the App/Sheet UI that:
+  1. Validates all child tab UserIDs against the 'Users' master list.
+  2. Flags mismatches or orphaned IDs.
+  3. Updates display fields (like Email or Name) if the master record changed.
+  4. Manages Google Sheet permissions if a user email is updated.
+  
+## Handling Master Data Changes (e.g., Principal Email Update)
+1. Update 'Email' in the 'Users' tab row only.
+2. The Reconcile Job must then:
+   - Update the login mapping for that UserID.
+   - Update any 'Audit Columns' (updated_by, updated_at).
+   - Clear any cached session data to force a re-login with the new email.
+
+## Data Structure
+- **Users Tab:** UserID (PK), Name, Email, Role, Status, CreatedAt.
+- **Extensions:** Separate tables for role-specific data (e.g., Teacher Specialties).
+- **Transactions:** Tab (EnrollmentID, UserID, ClassID, Status, Timestamp).
+"""
+    return prompt
+
+print(generate_replit_prompt())
