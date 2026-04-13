@@ -142,14 +142,20 @@ export function AppSidebar() {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useUser();
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex bg-background w-full">
         <AppSidebar />
         <main className="flex-1 flex flex-col min-w-0 overflow-auto">
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background sticky top-0 z-10 md:hidden">
-            <SidebarTrigger />
-            <span className="text-sm font-semibold text-foreground">EduTrack</span>
+          <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background sticky top-0 z-10">
+            <div className="flex items-center gap-2 md:hidden">
+              <SidebarTrigger />
+              <span className="text-sm font-semibold text-foreground">EduTrack</span>
+            </div>
+            <div className="ml-auto text-xs sm:text-sm text-muted-foreground truncate max-w-[60vw] text-right">
+              {user?.primaryEmailAddress?.emailAddress || ""}
+            </div>
           </div>
           <AnnouncementBanner />
           {children}
