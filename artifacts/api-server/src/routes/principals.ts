@@ -287,4 +287,36 @@ router.post('/principals/sync-user-status', async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/principals/eligible-students
+// Returns Active students from the Students tab linked to a given parent or student email.
+// Used by the Join Class form to show a dropdown of who can enrol.
+router.get('/principals/eligible-students', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+
+  const parentEmail  = ((req.query.parentEmail  as string) || '').toLowerCase().trim();
+  const studentEmail = ((req.query.studentEmail as string) || '').toLowerCase().trim();
+
+  try {
+    const rows = await readRows(sheetId, SHEET_TABS.students);
+    const eligible = rows.filter(r => {
+      const status = (r['Status'] || '').toLowerCase().trim();
+      if (status !== 'active') return false;
+      if (parentEmail  && (r['Parent Email'] || '').toLowerCase().trim() === parentEmail)  return true;
+      if (studentEmail && (r['Email'] || '').toLowerCase().trim() === studentEmail) return true;
+      return false;
+    }).map(r => ({
+      name:        r['Name'] || '',
+      email:       r['Email'] || '',
+      userId:      r['UserID'] || '',
+      parentEmail: r['Parent Email'] || '',
+      classes:     r['Classes'] || '',
+    }));
+
+    res.json(eligible);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

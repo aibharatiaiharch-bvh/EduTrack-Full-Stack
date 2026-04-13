@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck } from "lucide-react";
+import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck, ChevronDown } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
-const ROLE_KEY = "edutrack_user_role";
+const ROLE_KEY  = "edutrack_user_role";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
@@ -28,19 +28,31 @@ type SubjectWithCapacity = {
   isFull: boolean;
 };
 
+type EligibleStudent = {
+  name: string;
+  email: string;
+  userId: string;
+  parentEmail: string;
+  classes: string;
+};
+
 export default function BrowseClasses() {
   const { user } = useUser();
-  const sheetId = localStorage.getItem(SHEET_KEY);
-  const role = localStorage.getItem(ROLE_KEY) || "tutor";
+  const sheetId  = localStorage.getItem(SHEET_KEY);
+  const role     = localStorage.getItem(ROLE_KEY) || "tutor";
+  const email    = user?.primaryEmailAddress?.emailAddress || "";
+
   const isPrincipal = role === "principal" || role === "admin" || role === "developer";
+  const isParent    = role === "parent";
+  const isStudent   = role === "student";
+
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [joiningRow, setJoiningRow] = useState<number | null>(null);
-  const [studentName, setStudentName] = useState("");
-  const [parentEmail, setParentEmail] = useState(
-    user?.primaryEmailAddress?.emailAddress || ""
-  );
+  const [joiningRow, setJoiningRow]     = useState<number | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
+  const [manualName,  setManualName]    = useState("");
+  const [manualEmail, setManualEmail]   = useState(email);
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
     queryKey: ["subjects-capacity", sheetId],
@@ -52,8 +64,39 @@ export default function BrowseClasses() {
     },
   });
 
+  // Fetch eligible students (Active students linked to this parent/student email)
+  const { data: eligibleStudents = [], isLoading: loadingStudents } = useQuery<EligibleStudent[]>({
+    queryKey: ["eligible-students", sheetId, email, role],
+    enabled: !!sheetId && !!email && (isParent || isStudent),
+    queryFn: async () => {
+      const params = new URLSearchParams({ sheetId: sheetId! });
+      if (isParent)   params.set("parentEmail",  email);
+      if (isStudent)  params.set("studentEmail", email);
+      const res = await fetch(apiUrl(`/principals/eligible-students?${params}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  // For a given class type, filter eligible students
+  function studentsForClass(cls: SubjectWithCapacity): EligibleStudent[] {
+    if (isPrincipal) return []; // principal uses manual entry
+    return eligibleStudents.filter(s => {
+      // Both types accept all active students
+      if (cls.Type === "Both") return true;
+      // Individual: check the student isn't already enrolled in an Individual slot for this class
+      if (cls.Type === "Individual") return true;
+      // Group: anyone active is eligible
+      return true;
+    });
+  }
+
   const joinMutation = useMutation({
     mutationFn: async (subject: SubjectWithCapacity) => {
+      const studentName  = isPrincipal ? manualName.trim()  : (selectedStudent?.name  || manualName.trim());
+      const parentEmail  = isPrincipal ? manualEmail.trim() : (selectedStudent?.parentEmail || manualEmail.trim());
+      if (!studentName) throw new Error("Please select or enter a student name.");
+
       const res = await fetch(apiUrl("/enrollments/join"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -71,11 +114,13 @@ export default function BrowseClasses() {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, subject) => {
       qc.invalidateQueries({ queryKey: ["subjects-capacity"] });
-      toast({ title: "Enrolled!", description: `${studentName} has been added to the class.` });
+      const name = isPrincipal ? manualName : (selectedStudent?.name || manualName);
+      toast({ title: "Enrolled!", description: `${name} has been added to ${subject.Name}.` });
       setJoiningRow(null);
-      setStudentName("");
+      setSelectedStudent(null);
+      setManualName("");
     },
     onError: (err: any) => {
       toast({ title: "Enrollment failed", description: err.message, variant: "destructive" });
@@ -84,7 +129,7 @@ export default function BrowseClasses() {
 
   function capacityColor(cls: SubjectWithCapacity) {
     const pct = cls.currentEnrolled / cls.MaxCapacity;
-    if (pct >= 1) return "text-destructive";
+    if (pct >= 1)    return "text-destructive";
     if (pct >= 0.75) return "text-amber-600";
     return "text-emerald-600";
   }
@@ -101,6 +146,16 @@ export default function BrowseClasses() {
           <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
             <AlertTriangle className="h-5 w-5 shrink-0" />
             <p className="text-sm">No Google Sheet linked. Go to Settings to link your data source.</p>
+          </div>
+        )}
+
+        {/* No eligible students warning for parents/students */}
+        {!loadingStudents && (isParent || isStudent) && eligibleStudents.length === 0 && sheetId && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
+              No active students are linked to your account. A principal must activate your student account before you can join classes.
+            </p>
           </div>
         )}
 
@@ -130,20 +185,24 @@ export default function BrowseClasses() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {classes.map(cls => {
-                  const isJoining = joiningRow === cls._row;
-                  const canJoin = !cls.isFull;
-                  const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
+                  const isJoining    = joiningRow === cls._row;
+                  const canJoin      = !cls.isFull || isPrincipal;
+                  const spotsLeft    = cls.MaxCapacity - cls.currentEnrolled;
+                  const myStudents   = studentsForClass(cls);
+                  const hasEligible  = isPrincipal || myStudents.length > 0;
 
                   return (
-                    <Card key={cls._row} className={`overflow-hidden transition-shadow hover:shadow-md ${cls.isFull ? "opacity-80" : ""}`}>
+                    <Card key={cls._row} className={`overflow-hidden transition-shadow hover:shadow-md ${cls.isFull && !isPrincipal ? "opacity-80" : ""}`}>
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <CardTitle className="text-base">{cls.Name}</CardTitle>
                             <CardDescription className="mt-0.5">
                               {cls.Type === "Individual"
-                                ? <span className="flex items-center gap-1"><User className="h-3 w-3" /> Individual</span>
-                                : <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Group</span>
+                                ? <span className="flex items-center gap-1"><User className="h-3 w-3" /> Individual (1-on-1)</span>
+                                : cls.Type === "Group"
+                                  ? <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Group</span>
+                                  : <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Individual &amp; Group</span>
                               }
                             </CardDescription>
                           </div>
@@ -199,24 +258,58 @@ export default function BrowseClasses() {
                         {/* Join form */}
                         {isJoining ? (
                           <div className="space-y-2 pt-1">
-                            <input
-                              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                              placeholder="Student name *"
-                              value={studentName}
-                              onChange={e => setStudentName(e.target.value)}
-                              autoFocus
-                            />
-                            <input
-                              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                              placeholder="Parent email"
-                              value={parentEmail}
-                              onChange={e => setParentEmail(e.target.value)}
-                            />
+                            {/* Principal uses free-text; parent/student gets a dropdown */}
+                            {isPrincipal ? (
+                              <>
+                                <input
+                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                  placeholder="Student name *"
+                                  value={manualName}
+                                  onChange={e => setManualName(e.target.value)}
+                                  autoFocus
+                                />
+                                <input
+                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                  placeholder="Parent email"
+                                  value={manualEmail}
+                                  onChange={e => setManualEmail(e.target.value)}
+                                />
+                              </>
+                            ) : myStudents.length === 0 ? (
+                              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                No active students linked to your account. Contact the principal to activate your student.
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <select
+                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring pr-8"
+                                  value={selectedStudent?.name || ""}
+                                  onChange={e => {
+                                    const s = myStudents.find(s => s.name === e.target.value) || null;
+                                    setSelectedStudent(s);
+                                  }}
+                                  autoFocus
+                                >
+                                  <option value="">— Select student —</option>
+                                  {myStudents.map(s => (
+                                    <option key={s.userId || s.name} value={s.name}>
+                                      {s.name}{cls.Type === "Individual" ? " (1-on-1)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                              </div>
+                            )}
+
                             <div className="flex gap-2">
                               <Button
                                 size="sm"
                                 className="flex-1"
-                                disabled={!studentName.trim() || joinMutation.isPending}
+                                disabled={
+                                  joinMutation.isPending ||
+                                  (isPrincipal ? !manualName.trim() : (!selectedStudent && myStudents.length > 0))
+                                }
                                 onClick={() => joinMutation.mutate(cls)}
                               >
                                 {joinMutation.isPending ? "Enrolling…" : "Confirm Enrol"}
@@ -224,7 +317,7 @@ export default function BrowseClasses() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => { setJoiningRow(null); setStudentName(""); }}
+                                onClick={() => { setJoiningRow(null); setSelectedStudent(null); setManualName(""); }}
                               >
                                 Cancel
                               </Button>
@@ -232,11 +325,15 @@ export default function BrowseClasses() {
                           </div>
                         ) : (
                           <div className="flex gap-2 pt-1">
-                            {canJoin ? (
+                            {!hasEligible && !isPrincipal ? (
+                              <Button size="sm" className="flex-1" disabled title="No active students linked to your account">
+                                Not Eligible
+                              </Button>
+                            ) : canJoin ? (
                               <Button
                                 size="sm"
                                 className="flex-1"
-                                onClick={() => setJoiningRow(cls._row)}
+                                onClick={() => { setJoiningRow(cls._row); setSelectedStudent(null); setManualName(""); }}
                               >
                                 Join Class
                               </Button>
@@ -250,7 +347,7 @@ export default function BrowseClasses() {
                                 size="sm"
                                 variant="outline"
                                 className="border-amber-300 text-amber-700 hover:bg-amber-50"
-                                onClick={() => setJoiningRow(cls._row)}
+                                onClick={() => { setJoiningRow(cls._row); setSelectedStudent(null); setManualName(""); }}
                               >
                                 Override
                               </Button>
