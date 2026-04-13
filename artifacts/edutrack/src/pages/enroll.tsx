@@ -114,6 +114,17 @@ export default function EnrollPage() {
 
     if (!sheetId) return;
 
+    if (requestType === "student") {
+      if (!studentForm.studentName.trim() || !studentForm.parentEmail.trim() || !studentForm.parentPhone.trim()) {
+        setError("Please complete the required fields marked with *.");
+        return;
+      }
+      if (!studentForm.classesInterested.trim() && selectedSubjects.length === 0) {
+        setError("Please select at least one class from the list.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const userEmail = user?.primaryEmailAddress?.emailAddress || "";
@@ -269,13 +280,13 @@ export default function EnrollPage() {
                       <Input id="studentName" value={studentForm.studentName} onChange={e => setStudent("studentName", e.target.value)} placeholder="e.g. Emma Johnson" required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="studentEmail">Student Email</Label>
+                      <Label htmlFor="studentEmail">Student Email <span className="text-destructive">*</span></Label>
                       <Input id="studentEmail" type="email" value={studentForm.studentEmail} onChange={e => setStudent("studentEmail", e.target.value)} placeholder="e.g. emma@email.com" />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Previously Enrolled at This School?</Label>
+                    <Label>Previously Enrolled at This School? <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
                       {["Yes", "No"].map(opt => (
                         <button
@@ -296,18 +307,18 @@ export default function EnrollPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2 sm:col-span-2">
-                      <Label htmlFor="currentSchool">Current School Attending</Label>
+                      <Label htmlFor="currentSchool">Current School Attending <span className="text-destructive">*</span></Label>
                       <Input id="currentSchool" value={studentForm.currentSchool} onChange={e => setStudent("currentSchool", e.target.value)} placeholder="e.g. Greenwood Primary" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="currentGrade">Current Grade / Year</Label>
+                      <Label htmlFor="currentGrade">Current Grade / Year <span className="text-destructive">*</span></Label>
                       <Input id="currentGrade" value={studentForm.currentGrade} onChange={e => setStudent("currentGrade", e.target.value)} placeholder="e.g. Year 5" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
+                      <Label htmlFor="age">Age <span className="text-destructive">*</span></Label>
                       <Input id="age" type="number" min="1" max="25" value={studentForm.age} onChange={e => setStudent("age", e.target.value)} placeholder="e.g. 12" />
                     </div>
                   </div>
@@ -317,64 +328,56 @@ export default function EnrollPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Classes Interested In</CardTitle>
-                  <CardDescription>Select one or more classes from the list below.</CardDescription>
+                  <CardDescription>Select one or more classes from the dropdown list below.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
+                    <select
+                      id="classesInterested"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      value=""
+                      onChange={e => addSubject(e.target.value)}
+                    >
+                      <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "No classes available"}</option>
+                      {subjects
+                        .filter(s => {
+                          const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                          return !selectedSubjects.includes(label);
+                        })
+                        .map(s => {
+                          const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                          return (
+                            <option key={s._row} value={label}>
+                              {label}
+                            </option>
+                          );
+                        })}
+                    </select>
+                    <p className="text-xs text-muted-foreground">Pick from the list to add classes. Selected classes appear below.</p>
+                  </div>
                   {subjects.length > 0 ? (
-                    <>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        value=""
-                        onChange={e => addSubject(e.target.value)}
-                      >
-                        <option value="" disabled>Select a class…</option>
-                        {subjects
-                          .filter(s => {
-                            const label = `${s.Name} (${s.Type}) with ${s.Teachers}`;
-                            return !selectedSubjects.includes(label);
-                          })
-                          .map(s => {
-                            const label = `${s.Name} (${s.Type}) with ${s.Teachers}`;
-                            return (
-                              <option key={s._row} value={label}>
-                                {s.Name} ({s.Type}){s.Teachers ? ` — ${s.Teachers}` : ""}
-                              </option>
-                            );
-                          })}
-                      </select>
-                      {selectedSubjects.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {selectedSubjects.map(name => (
-                            <span
-                              key={name}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1"
-                            >
-                              <BookOpen className="h-3 w-3" />
-                              {name}
-                              <button
-                                type="button"
-                                onClick={() => removeSubject(name)}
-                                className="ml-0.5 hover:text-destructive transition-colors"
-                                aria-label={`Remove ${name}`}
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
-                      <Input
-                        id="classesInterested"
-                        value={studentForm.classesInterested}
-                        onChange={e => setStudent("classesInterested", e.target.value)}
-                        placeholder="e.g. Mathematics, Science"
-                        required
-                      />
+                    <div className="flex flex-wrap gap-2">
+                      {selectedSubjects.map(name => (
+                        <span
+                          key={name}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          {name}
+                          <button
+                            type="button"
+                            onClick={() => removeSubject(name)}
+                            className="ml-0.5 hover:text-destructive transition-colors"
+                            aria-label={`Remove ${name}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
                     </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Select a class above to add it to the list.</div>
                   )}
                 </CardContent>
               </Card>
