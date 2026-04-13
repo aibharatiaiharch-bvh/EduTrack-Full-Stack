@@ -80,6 +80,12 @@ export default function ParentView() {
     },
   });
 
+  useEffect(() => {
+    if (!selectedParent && parents && parents.length > 0) {
+      selectParent(parents[0]);
+    }
+  }, [parents, selectedParent]);
+
   // Filter parents based on search text
   const filteredParents = useMemo(() => {
     if (!parents) return [];
@@ -243,9 +249,18 @@ export default function ParentView() {
                 )}
               </div>
               {selectedParent && (
-                <p className="text-xs text-muted-foreground pl-1">
-                  Showing classes for <span className="font-medium text-foreground">{selectedParent["Email"]}</span>
-                </p>
+                <div className="flex items-center justify-between gap-2 pl-1">
+                  <p className="text-xs text-muted-foreground">
+                    Showing classes for <span className="font-medium text-foreground">{selectedParent["Email"]}</span>
+                  </p>
+                  <button
+                    className="text-xs text-primary hover:underline"
+                    onClick={() => setShowList((v) => !v)}
+                    type="button"
+                  >
+                    Change parent
+                  </button>
+                </div>
               )}
             </div>
 
