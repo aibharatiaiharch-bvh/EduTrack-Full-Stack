@@ -127,6 +127,14 @@ function InactiveScreen({ name }: { name: string }) {
           Already paid? Contact your school's front desk or principal to confirm activation.
         </p>
         <Button
+          variant="ghost"
+          className="gap-2"
+          onClick={() => window.location.href = "/principal"}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          Principal Dashboard
+        </Button>
+        <Button
           variant="outline"
           className="gap-2"
           onClick={() => signOut({ redirectUrl: "/" })}
