@@ -143,6 +143,7 @@ export function AppSidebar() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
+  const { signOut } = useClerk();
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex bg-background w-full">
@@ -153,9 +154,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <SidebarTrigger />
               <span className="text-sm font-semibold text-foreground">EduTrack</span>
             </div>
-            <div className="ml-auto text-xs sm:text-sm text-muted-foreground truncate max-w-[60vw] text-right">
+            <button
+              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+              className="ml-auto text-xs sm:text-sm text-muted-foreground truncate max-w-[60vw] text-right hover:text-foreground transition-colors"
+              title="Switch email"
+            >
               {user?.primaryEmailAddress?.emailAddress || ""}
-            </div>
+            </button>
           </div>
           <AnnouncementBanner />
           {children}
