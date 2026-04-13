@@ -47,13 +47,21 @@ router.get('/tutors/me', async (req, res): Promise<void> => {
       if (teacherEmail && teacherEmail !== email) return false;
       return true;
     });
+    const assignedEnrollments = enrollments.filter(e => {
+      const teacherEmail = (e['Teacher Email'] || '').toLowerCase().trim();
+      return teacherEmail === email;
+    });
 
     // Today's classes
     const today = new Date().toLocaleDateString('en-AU');
-    const todayEnrollments = activeEnrollments.filter(e => e['Class Date'] === today);
+    const todayEnrollments = assignedEnrollments.filter(e => e['Class Date'] === today);
 
     // Unique students for this tutor
-    const studentNames = new Set(activeEnrollments.map(e => e['Student Name']).filter(Boolean));
+    const studentNames = new Set(assignedEnrollments.map(e => e['Student Name']).filter(Boolean));
+    const upcomingEnrollments = assignedEnrollments
+      .filter(e => e['Status'] === 'Active' || (e['Status'] || '').toLowerCase() === 'enrolled')
+      .slice()
+      .sort((a, b) => `${a['Class Date']} ${a['Class Time']}`.localeCompare(`${b['Class Date']} ${b['Class Time']}`));
 
     // All students tab for count
     let activeStudentCount = 0;
@@ -65,6 +73,7 @@ router.get('/tutors/me', async (req, res): Promise<void> => {
     res.json({
       tutor,
       todayEnrollments,
+      upcomingEnrollments,
       todayCount: todayEnrollments.length,
       activeEnrollmentCount: activeEnrollments.length,
       uniqueStudentCount: studentNames.size,

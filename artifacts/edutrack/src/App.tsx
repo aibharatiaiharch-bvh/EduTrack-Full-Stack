@@ -10,6 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
+import TeacherDashboard from "@/pages/teacher-dashboard";
 import Settings from "@/pages/settings";
 import Checkin from "@/pages/checkin";
 import ParentView from "@/pages/parent";
@@ -108,7 +109,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/enroll" component={EnrollPage} />
           
           <Route path="/dashboard">
-            <ProtectedRoute component={Dashboard} />
+            <ProtectedRoute component={TeacherDashboard} />
           </Route>
           <Route path="/checkin">
             <ProtectedRoute component={Checkin} />
