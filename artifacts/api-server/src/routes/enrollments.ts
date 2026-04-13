@@ -52,6 +52,19 @@ function classStartsInMoreThan24Hours(classDate: string, classTime: string): boo
   return diffMs > 24 * 60 * 60 * 1000;
 }
 
+async function readSubjectsRows(spreadsheetId: string): Promise<{ _row: number; [k: string]: any }[]> {
+  const sheets = await getUncachableGoogleSheetClient();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${SHEET_TABS.subjects}!A1:Z` });
+  const rows = res.data.values || [];
+  if (rows.length < 1) return [];
+  const headerRow = rows[0] as string[];
+  return rows.slice(1).map((row, i) => {
+    const obj: any = { _row: i + 2 };
+    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
+    return obj;
+  });
+}
+
 // GET /api/enrollments?sheetId=&parentEmail=&teacherEmail=&studentEmail=&studentName=&status=
 router.get('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
@@ -97,6 +110,21 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
   }
 
   try {
+    const subjects = await readSubjectsRows(spreadsheetId);
+    const subject = subjects.find(s => (s['Name'] || '').toLowerCase().trim() === (subjectName || '').toLowerCase().trim());
+    const maxCapacity = Math.max(parseInt(subject?.['MaxCapacity'] || '8', 10) || 8, 1);
+    const currentEnrollments = await readEnrollmentRows(spreadsheetId);
+    const activeCount = currentEnrollments.filter(r =>
+      (r['Class Name'] || '').toLowerCase().trim() === (subjectName || '').toLowerCase().trim() &&
+      !['cancelled', 'late cancellation', 'rejected'].includes((r['Status'] || '').toLowerCase().trim())
+    ).length;
+
+    if (activeCount >= maxCapacity) {
+      await appendPrincipalReviewRequest(spreadsheetId, studentName, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink);
+      res.json({ ok: true, queuedForReview: true });
+      return;
+    }
+
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
       if (h === 'Student Name')    return studentName || '';
@@ -125,6 +153,44 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
     res.status(500).json({ error: err.message });
   }
 });
+
+async function appendPrincipalReviewRequest(
+  spreadsheetId: string,
+  studentName: string,
+  parentEmail: string,
+  subjectName: string,
+  subjectType: string,
+  teacherName: string,
+  teacherEmail: string,
+  zoomLink: string,
+): Promise<void> {
+  const sheets = await getUncachableGoogleSheetClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${SHEET_TABS.enrollment_requests}!A1`,
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: {
+      values: [[
+        studentName,
+        '',
+        'No',
+        '',
+        '',
+        '',
+        subjectName,
+        parentEmail,
+        '',
+        '',
+        '',
+        `Auto-review needed for ${subjectType} class${teacherName ? ` (${teacherName})` : ''}`,
+        new Date().toLocaleDateString('en-AU'),
+        'Pending',
+        'student',
+      ]],
+    },
+  });
+}
 
 // POST /api/enrollments — add a new enrollment row
 router.post('/enrollments', async (req, res): Promise<void> => {
