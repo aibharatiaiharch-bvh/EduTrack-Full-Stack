@@ -267,6 +267,7 @@ export default function PrincipalDashboard() {
       setShowAddStudent(false);
       setStudentForm({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "" });
       qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
+      loadUsers();
       toast({ title: "Student added", description: "Student is Inactive — activate them here once payment is confirmed." });
     },
     onError: (err: any) => toast({ title: "Failed to add student", description: err.message, variant: "destructive" }),
@@ -295,6 +296,7 @@ export default function PrincipalDashboard() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
       loadUsers();
+      qc.invalidateQueries({ queryKey: ["users", sheetId] });
       toast({ title: "Student activated", description: "The student's account is now Active and can log in." });
     },
     onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
@@ -348,7 +350,7 @@ export default function PrincipalDashboard() {
         body: JSON.stringify({ userId, sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setUserList(prev => prev.map(u => u.userId === userId ? { ...u, status: "Inactive" } : u));
+      loadUsers();
       toast({ title: "User deactivated", description: "Access revoked. Record saved to Archive tab." });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
@@ -363,7 +365,7 @@ export default function PrincipalDashboard() {
         body: JSON.stringify({ userId, sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setUserList(prev => prev.map(u => u.userId === userId ? { ...u, status: "Active" } : u));
+      loadUsers();
       toast({ title: "User reactivated", description: "Access restored." });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
