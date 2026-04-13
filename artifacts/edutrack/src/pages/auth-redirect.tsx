@@ -159,6 +159,7 @@ export default function AuthRedirect() {
   const [sheetId, setSheetId] = useState("");
   const [email, setEmail] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
+  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -264,15 +265,17 @@ export default function AuthRedirect() {
             />
             <Button
               className="w-full"
+              disabled={!email.trim() || isSubmittingEmail}
               onClick={async () => {
                 const next = email.trim().toLowerCase();
                 if (!next) return;
+                setIsSubmittingEmail(true);
                 setSubmittedEmail(next);
                 localStorage.removeItem("edutrack_dev_role_override");
-                await signOut({ redirectUrl: `${BASE}/sign-in` });
+                await signOut({ redirectUrl: `${BASE}/auth-redirect` });
               }}
             >
-              Continue
+              {isSubmittingEmail ? "Sending…" : "Continue"}
             </Button>
           </div>
         </div>
