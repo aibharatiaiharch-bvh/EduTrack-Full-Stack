@@ -283,25 +283,6 @@ export default function PrincipalDashboard() {
       return res.json();
     },
   });
-  const activateStudentMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const res = await fetch(apiUrl("/users/reactivate"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, sheetId }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
-      loadUsers();
-      qc.invalidateQueries({ queryKey: ["users", sheetId] });
-      toast({ title: "Student activated", description: "The student's account is now Active and can log in." });
-    },
-    onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
-  });
-
   // Add Subject dialog
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [subjectForm, setSubjectForm] = useState({ name: "", type: "Individual", teachers: "", room: "", days: "" });
@@ -533,12 +514,13 @@ export default function PrincipalDashboard() {
                   </div>
                   <Button
                     size="sm"
-                    className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-                    disabled={activateStudentMutation.isPending}
-                    onClick={() => activateStudentMutation.mutate(s.UserID)}
+                    variant="outline"
+                    className="shrink-0 gap-1.5 text-amber-700 border-amber-200 hover:bg-amber-50"
+                    onClick={() => deactivateUser(s.UserID)}
+                    disabled={actioningUser === s.UserID || s.status?.toLowerCase() === "inactive"}
                   >
-                    <UserCheck className="h-3.5 w-3.5" />
-                    Activate
+                    {actioningUser === s.UserID ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <UserX className="h-3.5 w-3.5" />}
+                    Deactivate
                   </Button>
                 </div>
               ))}
