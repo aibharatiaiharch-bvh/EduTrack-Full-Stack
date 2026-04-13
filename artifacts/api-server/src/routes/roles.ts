@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import {
-  getUncachableGoogleSheetClient, SHEET_HEADERS, SHEET_TABS,
-  colLetter, generateUserId,
+  SHEET_TABS, colLetter, generateUserId,
+  readTabRows, readUsersTab, appendRow, updateCell, touchUser,
 } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
@@ -12,56 +12,20 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
-async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
-  const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });
-  const rows = res.data.values || [];
-  if (rows.length < 1) return [];
-  const headerRow = rows[0] as string[];
-  return rows.slice(1).map((row, i) => {
-    const obj: any = { _row: i + 2 };
-    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
-    return obj;
-  });
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Pack enrollment form's extra fields into a Notes JSON string. */
+function packNotes(obj: Record<string, string>): string {
+  return JSON.stringify(obj);
 }
 
-async function readUsersTab(spreadsheetId: string) {
-  const rows = await readRows(spreadsheetId, SHEET_TABS.users);
-  return rows.map(r => ({
-    _row: r._row,
-    userId: r['UserID'] || '',
-    email: (r['Email'] || '').toLowerCase().trim(),
-    role: (r['Role'] || '').toLowerCase().trim(),
-    name: r['Name'] || '',
-    addedDate: r['Added Date'] || '',
-    status: (r['Status'] || 'active').toLowerCase().trim(),
-  }));
+/** Unpack Notes JSON. Returns {} on failure. */
+function unpackNotes(notes: string): Record<string, string> {
+  try { return JSON.parse(notes); } catch { return {}; }
 }
 
-async function appendRow(spreadsheetId: string, tab: string, values: string[]): Promise<void> {
-  const sheets = await getUncachableGoogleSheetClient();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${tab}!A1`,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [values] },
-  });
-}
-
-async function updateCell(spreadsheetId: string, range: string, value: string): Promise<void> {
-  const sheets = await getUncachableGoogleSheetClient();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range,
-    valueInputOption: 'RAW',
-    requestBody: { values: [[value]] },
-  });
-}
-
-// GET /api/roles/check?email=X&sheetId=Y
-// Users tab is the SINGLE SOURCE OF TRUTH for all users, including the developer.
-// Developer email bypass ONLY applies when email is NOT found in Users tab.
+// ─── GET /api/roles/check ───────────────────────────────────────────────────
+// Users tab is the SINGLE SOURCE OF TRUTH for all roles.
 router.get('/roles/check', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const email = ((req.query.email as string) || '').toLowerCase().trim();
@@ -72,36 +36,33 @@ router.get('/roles/check', async (req, res): Promise<void> => {
   }
 
   try {
-    // Always check Users tab first — even for the developer email
     const users = await readUsersTab(sheetId);
     const user = users.find((u) => u.email === email);
 
     if (user) {
-      // Found in Users tab — role and status here are the source of truth
       res.json({
-        role: user.role,
-        name: user.name,
-        status: user.status,
-        userId: user.userId,
-        found: true,
+        role:       user.role,
+        name:       user.name,
+        status:     user.status,
+        userId:     user.userId,
+        found:      true,
         tabMissing: false,
       });
       return;
     }
 
-    // Not found in Users tab — developer bypass (admin access without a Users tab entry)
-    // DEVELOPER_EMAIL supports a single email or a comma-separated list, e.g. "a@x.com,b@x.com"
+    // Developer bypass — only when email is NOT in Users tab
     const devEmails = (process.env.DEVELOPER_EMAIL || '')
       .split(',')
       .map(e => e.toLowerCase().trim())
       .filter(Boolean);
     if (devEmails.length > 0 && devEmails.includes(email)) {
       res.json({
-        role: 'developer',
-        name: process.env.DEVELOPER_NAME || 'Developer',
-        status: 'active',
-        userId: 'ADM-DEV',
-        found: true,
+        role:       'developer',
+        name:       process.env.DEVELOPER_NAME || 'Developer',
+        status:     'active',
+        userId:     'ADM-DEV',
+        found:      true,
         tabMissing: false,
       });
       return;
@@ -109,13 +70,12 @@ router.get('/roles/check', async (req, res): Promise<void> => {
 
     res.json({ role: null, status: null, found: false, tabMissing: false });
   } catch {
-    // Users tab likely doesn't exist yet
     res.json({ role: null, status: null, found: false, tabMissing: true });
   }
 });
 
-// POST /api/roles/enroll — submit an enrollment/application request
-// requestType: 'student' (default) or 'tutor'
+// ─── POST /api/roles/enroll ─────────────────────────────────────────────────
+// Submit an enrollment / application / class request.
 router.post('/roles/enroll', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
@@ -124,98 +84,106 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     requestType,
     studentName, studentEmail, previouslyEnrolled, currentSchool, currentGrade,
     age, classesInterested, parentEmail, parentPhone,
-    reference, promoCode, notes, userEmail, userName,
-    // Legacy fields — kept for backward compat with old form submissions
-    parentName,
+    reference, promoCode, notes, userEmail, userName, parentName,
   } = req.body;
 
-  const submissionDate = new Date().toLocaleDateString('en-AU');
+  const now       = new Date().toISOString();
+  const today     = new Date().toLocaleDateString('en-AU');
 
   try {
     if (requestType === 'new-class') {
-      // Class request from a student/parent/tutor
-      const submitterName  = studentName || userName || '';
+      const submitterName  = (studentName || userName || '').trim();
       const submitterEmail = (parentEmail || userEmail || '').toLowerCase().trim();
       if (!submitterName || !submitterEmail) {
         res.status(400).json({ error: 'Name and email are required for class requests' }); return;
       }
-      // Pack preferred schedule into Notes
-      const combinedNotes = [
-        classesInterested ? `Requested class: ${classesInterested}` : '',
-        parentPhone         ? `Preferred days: ${parentPhone}`        : '',   // reusing field
-        currentGrade        ? `Preferred time: ${currentGrade}`        : '',  // reusing field
-        notes               ? `Notes: ${notes}`                       : '',
-      ].filter(Boolean).join(' | ');
-
+      const users   = await readUsersTab(sheetId);
+      const user    = users.find(u => u.email === submitterEmail);
+      const userId  = user?.userId || '';
+      const reqId   = `REQ-${Date.now()}`;
+      const packedNotes = packNotes({
+        requesterName:  submitterName,
+        requesterEmail: submitterEmail,
+        classWanted:    classesInterested || '',
+        preferredDays:  parentPhone || '',
+        preferredTime:  currentGrade || '',
+        extra:          notes || '',
+      });
       await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
-        submitterName, submitterEmail, '', '', '', '', classesInterested || '',
-        submitterEmail, '', '', '', combinedNotes, submissionDate, 'Pending', 'new-class',
+        reqId, userId, 'new-class', classesInterested || '', 'Pending', now, packedNotes,
       ]);
       res.json({ success: true }); return;
     }
 
     if (requestType === 'tutor') {
-      // Tutor / staff application
-      const applicantName = studentName || userName || '';
+      const applicantName  = (studentName || userName || '').trim();
       const applicantEmail = (parentEmail || userEmail || '').toLowerCase().trim();
       if (!applicantName || !applicantEmail) {
         res.status(400).json({ error: 'Name and email are required for tutor applications' }); return;
       }
-      // Write to Enrollment Requests tab — repurpose existing columns
-      // studentName=applicant name, parentEmail=applicant email, classesInterested=subjects
-      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
-        applicantName, '', '', '', '', applicantEmail, parentPhone || '',
-        '', classesInterested || '', notes || '', submissionDate, 'Pending', 'tutor',
-      ]);
-      // Add to Users tab as tutor/Pending so they see the "Pending Approval" screen
-      const existingUsers = await readUsersTab(sheetId);
-      const alreadyExists = existingUsers.find(u => u.email === applicantEmail);
-      if (!alreadyExists) {
-        const userId = await generateUserId('tutor', sheetId);
+      // Create / find Users entry as Pending
+      const users   = await readUsersTab(sheetId);
+      let existing  = users.find(u => u.email === applicantEmail);
+      let userId    = existing?.userId || '';
+      if (!existing) {
+        userId = await generateUserId('tutor', sheetId);
         await appendRow(sheetId, SHEET_TABS.users, [
-          userId, applicantEmail, 'tutor', applicantName, submissionDate, 'Pending',
+          userId, applicantEmail, 'tutor', applicantName, 'Pending', today, now,
         ]);
       }
+      const reqId = `REQ-${Date.now()}`;
+      const packedNotes = packNotes({
+        applicantName,
+        applicantEmail,
+        subjects:  classesInterested || '',
+        phone:     parentPhone || '',
+        extra:     notes || '',
+      });
+      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+        reqId, userId, 'tutor', classesInterested || '', 'Pending', now, packedNotes,
+      ]);
     } else {
       // Student / family enrollment (default)
       if (!studentName || !parentEmail) {
         res.status(400).json({ error: 'studentName and parentEmail are required' }); return;
       }
-      const existingUsers = await readUsersTab(sheetId);
-      const registrantEmail = parentEmail.toLowerCase().trim() || (userEmail || '').toLowerCase().trim();
-      const existingUser = existingUsers.find(u => u.email === registrantEmail);
-      if (existingUser && existingUser.status === 'active') {
-        res.status(409).json({ error: 'You are already a user — use the above to log in.' });
-        return;
+      const parentNorm = parentEmail.toLowerCase().trim();
+      const users      = await readUsersTab(sheetId);
+      const existing   = users.find(u => u.email === parentNorm);
+      if (existing && existing.status === 'active') {
+        res.status(409).json({ error: 'You are already a user — use the above to log in.' }); return;
       }
-      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
-        studentName,
-        studentEmail || '',
-        previouslyEnrolled || 'No',
-        currentSchool || '',
-        currentGrade || '',
-        age || '',
-        classesInterested || '',
-        parentEmail,
-        parentPhone || '',
-        reference || '',
-        promoCode || '',
-        notes || '',
-        submissionDate,
-        'Pending',
-        'student',
-      ]);
-      // Write the parent/guardian email to the Users tab as Inactive immediately.
-      // The family can sign in after this — they will see the "Awaiting Activation" screen
-      // until the principal confirms payment and activates the account.
-      // Priority: use the form's parentEmail (explicitly entered). Fall back to Clerk userEmail.
-      if (registrantEmail && !existingUser) {
-        const userId = await generateUserId('parent', sheetId);
+
+      // Write parent to Users tab as Inactive (login gate — can sign in but sees "Awaiting Activation")
+      let userId = existing?.userId || '';
+      if (!existing) {
+        userId = await generateUserId('parent', sheetId);
         await appendRow(sheetId, SHEET_TABS.users, [
-          userId, registrantEmail, 'parent',
-          parentName || userName || '', submissionDate, 'Inactive',
+          userId, parentNorm, 'parent', (parentName || userName || '').trim() || 'Parent',
+          'Inactive', today, now,
         ]);
       }
+
+      const reqId = `REQ-${Date.now()}`;
+      const packedNotes = packNotes({
+        studentName:      studentName || '',
+        studentEmail:     studentEmail || '',
+        parentEmail:      parentNorm,
+        parentPhone:      parentPhone || '',
+        parentName:       parentName || '',
+        age:              age || '',
+        currentGrade:     currentGrade || '',
+        currentSchool:    currentSchool || '',
+        previouslyEnrolled: previouslyEnrolled || 'No',
+        classesInterested: classesInterested || '',
+        reference:        reference || '',
+        promoCode:        promoCode || '',
+        extra:            notes || '',
+        submissionDate:   today,
+      });
+      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+        reqId, userId, 'student', classesInterested || '', 'Pending', now, packedNotes,
+      ]);
     }
 
     res.json({ success: true });
@@ -224,99 +192,143 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
   }
 });
 
-// GET /api/enrollment-requests?sheetId=X
+// ─── GET /api/enrollment-requests?sheetId=X ────────────────────────────────
+// Returns requests with resolved display fields (joined from Users).
 router.get('/enrollment-requests', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.enrollment_requests);
-    res.json(rows);
+    const [rows, users] = await Promise.all([
+      readTabRows(sheetId, SHEET_TABS.enrollment_requests),
+      readUsersTab(sheetId),
+    ]);
+    const userMap = new Map(users.map(u => [u.userId, u]));
+
+    const enriched = rows.map(r => {
+      const extra = unpackNotes(r['Notes'] || '');
+      const requester = userMap.get(r['UserID'] || '');
+      return {
+        _row:               r._row,
+        RequestID:          r['RequestID'] || '',
+        UserID:             r['UserID'] || '',
+        RequestType:        r['RequestType'] || r['Request Type'] || 'student',
+        ClassID:            r['ClassID'] || '',
+        Status:             r['Status'] || '',
+        Timestamp:          r['Timestamp'] || '',
+        Notes:              extra['extra'] || '',
+        // ── Resolved display fields (joined from Users + packed Notes) ──
+        'Request Type':     r['RequestType'] || r['Request Type'] || 'student',
+        'Student Name':     extra['studentName']     || extra['applicantName'] || extra['requesterName'] || requester?.name || '',
+        'Student Email':    extra['studentEmail']    || extra['applicantEmail'] || extra['requesterEmail'] || requester?.email || '',
+        'Parent Email':     extra['parentEmail']     || extra['applicantEmail'] || extra['requesterEmail'] || requester?.email || '',
+        'Parent Phone':     extra['parentPhone']     || extra['phone'] || '',
+        'Parent Name':      extra['parentName']      || requester?.name || '',
+        'Age':              extra['age']             || '',
+        'Current Grade':    extra['currentGrade']    || '',
+        'Current School':   extra['currentSchool']   || '',
+        'Previously Enrolled': extra['previouslyEnrolled'] || 'No',
+        'Classes Interested': extra['classesInterested'] || extra['classWanted'] || extra['subjects'] || r['ClassID'] || '',
+        'Reference':        extra['reference']       || '',
+        'Promo Code':       extra['promoCode']       || '',
+        'Submission Date':  extra['submissionDate']  || new Date(r['Timestamp'] || Date.now()).toLocaleDateString('en-AU'),
+      };
+    });
+
+    res.json(enriched);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/enrollment-requests/:row/approve
+// ─── POST /api/enrollment-requests/:row/approve ────────────────────────────
 router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
-  const rowNum = parseInt(req.params.row, 10);
+  const rowNum  = parseInt(req.params.row, 10);
   if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: 'sheetId and valid row required' }); return; }
 
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.enrollment_requests);
+    const rows = await readTabRows(sheetId, SHEET_TABS.enrollment_requests);
     const request = rows.find(r => r._row === rowNum);
     if (!request) { res.status(404).json({ error: 'Enrollment request not found' }); return; }
 
-    const today = new Date().toLocaleDateString('en-AU');
-    const parentEmail  = (request['Parent Email'] || '').toLowerCase().trim();
-    const studentName  = request['Student Name'] || '';
-    const studentEmail = (request['Student Email'] || '').toLowerCase().trim();
-    const parentPhone  = request['Parent Phone'] || '';
+    const now     = new Date().toISOString();
+    const today   = new Date().toLocaleDateString('en-AU');
+    const extra   = unpackNotes(request['Notes'] || '');
+    const reqType = (request['RequestType'] || request['Request Type'] || 'student').toLowerCase().trim();
 
-    // 1. Mark enrollment request as Approved
-    const erStatusCol = colLetter('enrollment_requests', 'Status');
-    await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${erStatusCol}${rowNum}`, 'Active');
+    // Mark request as Active/Approved
+    const statusColLetter = colLetter('enrollment_requests', 'Status');
+    await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${statusColLetter}${rowNum}`, 'Active');
 
-    const requestType = (request['Request Type'] || 'student').toLowerCase().trim();
-
-    if (requestType === 'new-class') {
-      // Class request — just mark approved, no user provisioning needed
+    if (reqType === 'new-class') {
       res.json({ ok: true, requestType: 'new-class' }); return;
     }
 
-    if (requestType === 'tutor') {
-      // ── Tutor / staff approval ───────────────────────────────────────
-      const applicantName = request['Student Name'] || '';
-      const applicantEmail = (request['Parent Email'] || '').toLowerCase().trim();
-      const subjects = request['Classes Interested'] || '';
+    const users = await readUsersTab(sheetId);
+    const userMap = new Map(users.map(u => [u.userId, u]));
 
-      // Generate tutor UserID and add to Teachers tab
-      if (applicantName) {
-        const teacherId = await generateUserId('tutor', sheetId);
+    if (reqType === 'tutor') {
+      // Activate the tutor's Users tab entry
+      const applicantUserId = request['UserID'] || '';
+      const user = userMap.get(applicantUserId);
+      if (user) {
+        const sCol = colLetter('users', 'Status');
+        await updateCell(sheetId, `${SHEET_TABS.users}!${sCol}${user._row}`, 'Active');
+        await touchUser(sheetId, user._row);
+        // Add to Teachers tab (extension)
         await appendRow(sheetId, SHEET_TABS.teachers, [
-          teacherId, applicantName, applicantEmail, subjects, 'Tutor', 'Active',
+          applicantUserId, applicantUserId,
+          extra['subjects'] || '', '', extra['subjects'] || '', extra['extra'] || '',
         ]);
-        // Activate / create the Users tab entry
-        if (applicantEmail) {
-          const users = await readUsersTab(sheetId);
-          const existing = users.find(u => u.email === applicantEmail);
-          if (!existing) {
-            await appendRow(sheetId, SHEET_TABS.users, [
-              teacherId, applicantEmail, 'tutor', applicantName, today, 'Active',
-            ]);
-          } else {
-            const statusCol = colLetter('users', 'Status');
-            await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${existing._row}`, 'Active');
-          }
-        }
       }
     } else {
-      // ── Student / family approval (default) ─────────────────────────
-      // 2. Add / activate parent in Users tab
-      if (parentEmail) {
-        const users = await readUsersTab(sheetId);
-        const existing = users.find(u => u.email === parentEmail);
-        if (!existing) {
-          const userId = await generateUserId('parent', sheetId);
-          await appendRow(sheetId, SHEET_TABS.users, [
-            userId, parentEmail, 'parent', parentName, today, 'Active',
-          ]);
-        } else if (existing.status !== 'active') {
-          const statusCol = colLetter('users', 'Status');
-          await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${existing._row}`, 'Active');
-        }
+      // Student / family approval
+      const parentEmail  = extra['parentEmail']  || '';
+      const parentName   = extra['parentName']   || 'Parent';
+      const studentName  = extra['studentName']  || '';
+      const studentEmail = (extra['studentEmail'] || '').toLowerCase().trim();
+      const parentPhone  = extra['parentPhone']  || '';
+
+      // Activate the parent in Users tab (already exists as Inactive from enroll step)
+      const parentUser = users.find(u => u.email === parentEmail.toLowerCase().trim());
+      let parentId = parentUser?.userId || '';
+      if (parentUser) {
+        const sCol = colLetter('users', 'Status');
+        await updateCell(sheetId, `${SHEET_TABS.users}!${sCol}${parentUser._row}`, 'Active');
+        await touchUser(sheetId, parentUser._row);
+      } else if (parentEmail) {
+        // Edge case: parent not in Users yet
+        parentId = await generateUserId('parent', sheetId);
+        await appendRow(sheetId, SHEET_TABS.users, [
+          parentId, parentEmail.toLowerCase().trim(), 'parent', parentName, 'Active', today, now,
+        ]);
       }
 
-      // 3. Register student in Users tab FIRST, then add to Students tab
+      // Create student in Users tab + Students extension
       if (studentName) {
         const studentId = await generateUserId('student', sheetId);
-        // Users tab is the master ID registry
         await appendRow(sheetId, SHEET_TABS.users, [
-          studentId, studentEmail, 'student', studentName, today, 'Active',
+          studentId, studentEmail, 'student', studentName, 'Active', today, now,
         ]);
         await appendRow(sheetId, SHEET_TABS.students, [
-          studentId, studentName, studentEmail, '', 'Active', parentPhone, parentEmail, '',
+          studentId, studentId, parentId, '', parentPhone, extra['extra'] || '',
         ]);
+        // Also update Parents extension tab
+        const parentRows = await readTabRows(sheetId, SHEET_TABS.parents);
+        const parentExt  = parentRows.find(r => r['UserID'] === parentId || r['ParentID'] === parentId);
+        if (parentExt) {
+          const existingChildren = (parentExt['Children'] || '').split(';').map((s: string) => s.trim()).filter(Boolean);
+          if (!existingChildren.includes(studentName)) {
+            existingChildren.push(studentName);
+            const childrenColIdx = 2; // Children is col C (index 2) in new parents schema
+            const col = String.fromCharCode(65 + childrenColIdx);
+            await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${parentExt._row}`, existingChildren.join('; '));
+          }
+        } else if (parentId) {
+          await appendRow(sheetId, SHEET_TABS.parents, [
+            parentId, parentId, studentName, parentPhone, extra['extra'] || '',
+          ]);
+        }
       }
     }
 
@@ -326,15 +338,15 @@ router.post('/enrollment-requests/:row/approve', async (req, res): Promise<void>
   }
 });
 
-// POST /api/enrollment-requests/:row/reject
+// ─── POST /api/enrollment-requests/:row/reject ─────────────────────────────
 router.post('/enrollment-requests/:row/reject', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
-  const rowNum = parseInt(req.params.row, 10);
+  const rowNum  = parseInt(req.params.row, 10);
   if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: 'sheetId and valid row required' }); return; }
 
   try {
-    const statusCol = colLetter('enrollment_requests', 'Status');
-    await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${statusCol}${rowNum}`, 'Rejected');
+    const statusColLetter = colLetter('enrollment_requests', 'Status');
+    await updateCell(sheetId, `${SHEET_TABS.enrollment_requests}!${statusColLetter}${rowNum}`, 'Rejected');
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

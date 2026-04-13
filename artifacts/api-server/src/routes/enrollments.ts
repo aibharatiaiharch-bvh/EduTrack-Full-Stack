@@ -1,22 +1,11 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS } from '../lib/googleSheets.js';
-
-async function readTabRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
-  const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });
-  const rows = res.data.values || [];
-  if (rows.length < 1) return [];
-  const headerRow = rows[0] as string[];
-  return rows.slice(1).map((row, i) => {
-    const obj: any = { _row: i + 2 };
-    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
-    return obj;
-  });
-}
+import {
+  getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS,
+  readTabRows, readUsersTab, appendRow, generateTabId,
+} from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
-
-const TAB = SHEET_TABS.enrollments;
+const TAB     = SHEET_TABS.enrollments;
 const HEADERS = SHEET_HEADERS.enrollments;
 
 function getSheetId(req: any): string {
@@ -25,122 +14,203 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
-async function readEnrollmentRows(spreadsheetId: string): Promise<{ _row: number;[k: string]: any }[]> {
-  const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${TAB}!A1:Z`,
-  });
-  const rows = res.data.values || [];
-  if (rows.length < 1) return [];
-  const headerRow = rows[0] as string[];
-  return rows.slice(1).map((row, i) => {
-    const obj: any = { _row: i + 2 };
-    headerRow.forEach((h, idx) => {
-      obj[h] = (row as string[])[idx] || '';
-    });
-    return obj;
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function readEnrollmentRows(spreadsheetId: string) {
+  return readTabRows(spreadsheetId, TAB);
+}
+
+async function readSubjectRows(spreadsheetId: string) {
+  return readTabRows(spreadsheetId, SHEET_TABS.subjects);
+}
+
+/** Enrich raw enrollment rows with resolved display names (joined server-side). */
+async function enrichEnrollments(
+  rows: any[],
+  spreadsheetId: string,
+): Promise<any[]> {
+  const [users, subjects] = await Promise.all([
+    readUsersTab(spreadsheetId),
+    readSubjectRows(spreadsheetId),
+  ]);
+  const userMap    = new Map(users.map(u => [u.userId, u]));
+  const subjectMap = new Map(subjects.map(s => [s['SubjectID'] || '', s]));
+
+  return rows.map(r => {
+    const student  = userMap.get(r['UserID']    || '');
+    const teacher  = userMap.get(r['TeacherID'] || '');
+    const parent   = userMap.get(r['ParentID']  || '');
+    const subject  = subjectMap.get(r['ClassID'] || '');
+    return {
+      ...r,
+      // ── Resolved display fields ──
+      'Student Name':  student?.name  || r['UserID']    || '',
+      'Student Email': student?.email || '',
+      'Class Name':    subject?.['Name'] || r['ClassID'] || '',
+      'Class Date':    r['ClassDate'] || r['Class Date'] || '',
+      'Class Time':    r['ClassTime'] || r['Class Time'] || '',
+      'Parent Email':  parent?.email  || r['ParentID']  || '',
+      'Teacher':       teacher?.name  || r['TeacherID'] || '',
+      'Teacher Email': r['TeacherEmail'] || teacher?.email || '',
+    };
   });
 }
 
 function classStartsInMoreThan24Hours(classDate: string, classTime: string): boolean {
   if (!classDate) return true;
-  const dateStr = classTime ? `${classDate} ${classTime}` : classDate;
+  const dateStr  = classTime ? `${classDate} ${classTime}` : classDate;
   const classStart = new Date(dateStr);
   if (isNaN(classStart.getTime())) return true;
-  const diffMs = classStart.getTime() - Date.now();
-  return diffMs > 24 * 60 * 60 * 1000;
+  return classStart.getTime() - Date.now() > 24 * 60 * 60 * 1000;
 }
 
-async function readSubjectsRows(spreadsheetId: string): Promise<{ _row: number; [k: string]: any }[]> {
-  const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${SHEET_TABS.subjects}!A1:Z` });
-  const rows = res.data.values || [];
-  if (rows.length < 1) return [];
-  const headerRow = rows[0] as string[];
-  return rows.slice(1).map((row, i) => {
-    const obj: any = { _row: i + 2 };
-    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
-    return obj;
-  });
-}
-
-// GET /api/enrollments?sheetId=&parentEmail=&teacherEmail=&studentEmail=&studentName=&status=
+// ─── GET /api/enrollments ───────────────────────────────────────────────────
 router.get('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   try {
     let rows = await readEnrollmentRows(spreadsheetId);
+    const enriched = await enrichEnrollments(rows, spreadsheetId);
+
+    // Filter on resolved display fields OR raw ID fields
+    let filtered = enriched;
     if (req.query.parentEmail) {
-      const email = (req.query.parentEmail as string).toLowerCase();
-      rows = rows.filter(r => (r['Parent Email'] || '').toLowerCase() === email);
+      const q = (req.query.parentEmail as string).toLowerCase();
+      filtered = filtered.filter(r =>
+        (r['Parent Email'] || '').toLowerCase() === q ||
+        (r['ParentID'] || '').toLowerCase() === q
+      );
     }
     if (req.query.teacherEmail) {
-      const email = (req.query.teacherEmail as string).toLowerCase();
-      rows = rows.filter(r => (r['Teacher Email'] || '').toLowerCase() === email);
+      const q = (req.query.teacherEmail as string).toLowerCase();
+      filtered = filtered.filter(r => (r['Teacher Email'] || '').toLowerCase() === q);
     }
     if (req.query.studentEmail) {
-      const email = (req.query.studentEmail as string).toLowerCase();
-      rows = rows.filter(r => (r['Student Email'] || '').toLowerCase() === email);
+      const q = (req.query.studentEmail as string).toLowerCase();
+      filtered = filtered.filter(r => (r['Student Email'] || '').toLowerCase() === q);
     }
     if (req.query.studentName) {
-      const name = (req.query.studentName as string).toLowerCase();
-      rows = rows.filter(r => (r['Student Name'] || '').toLowerCase().includes(name));
+      const q = (req.query.studentName as string).toLowerCase();
+      filtered = filtered.filter(r => (r['Student Name'] || '').toLowerCase().includes(q));
+    }
+    if (req.query.userId) {
+      const q = req.query.userId as string;
+      filtered = filtered.filter(r => r['UserID'] === q);
     }
     if (req.query.status) {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
-      rows = rows.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
+      filtered = filtered.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
     }
-    res.json(rows);
+    res.json(filtered);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/enrollments/join — student joins a class from the class browser
-// Must be registered BEFORE /enrollments/:row to avoid Express matching "join" as :row
+// ─── POST /api/enrollments/join ─────────────────────────────────────────────
+// Student joins a class from the class browser.
+// Accepts either studentUserId (preferred) or studentName + studentEmail for legacy.
 router.post('/enrollments/join', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
-  const { studentName, studentEmail, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink } = req.body;
-  if (!studentName || !subjectName) {
-    res.status(400).json({ error: 'studentName and subjectName are required' }); return;
+  const {
+    studentName, studentEmail, studentUserId,
+    parentEmail, parentUserId,
+    subjectName, subjectId,
+    subjectType, teacherName, teacherEmail, teacherUserId, zoomLink,
+  } = req.body;
+
+  if ((!studentName && !studentUserId) || (!subjectName && !subjectId)) {
+    res.status(400).json({ error: 'student identifier and class identifier are required' }); return;
   }
 
   try {
-    const subjects = await readSubjectsRows(spreadsheetId);
-    const subject = subjects.find(s => (s['Name'] || '').toLowerCase().trim() === (subjectName || '').toLowerCase().trim());
+    const [users, subjects, currentEnrollments] = await Promise.all([
+      readUsersTab(spreadsheetId),
+      readSubjectRows(spreadsheetId),
+      readEnrollmentRows(spreadsheetId),
+    ]);
+
+    // Resolve student UserID
+    let resolvedStudentId = studentUserId || '';
+    let resolvedStudentName = studentName || '';
+    if (!resolvedStudentId && studentEmail) {
+      const u = users.find(u => u.email === studentEmail.toLowerCase().trim());
+      resolvedStudentId = u?.userId || '';
+      resolvedStudentName = u?.name || studentName || '';
+    }
+
+    // Resolve class (SubjectID)
+    let resolvedClassId = subjectId || '';
+    let resolvedClassName = subjectName || '';
+    if (!resolvedClassId && subjectName) {
+      const s = subjects.find(s => (s['Name'] || '').toLowerCase().trim() === subjectName.toLowerCase().trim());
+      resolvedClassId = s?.['SubjectID'] || subjectName;
+      resolvedClassName = s?.['Name'] || subjectName;
+    }
+
+    // Resolve parent UserID
+    let resolvedParentId = parentUserId || '';
+    if (!resolvedParentId && parentEmail) {
+      const p = users.find(u => u.email === parentEmail.toLowerCase().trim());
+      resolvedParentId = p?.userId || '';
+    }
+
+    // Resolve teacher UserID
+    let resolvedTeacherId = teacherUserId || '';
+    if (!resolvedTeacherId && teacherEmail) {
+      const t = users.find(u => u.email === teacherEmail.toLowerCase().trim());
+      resolvedTeacherId = t?.userId || '';
+    }
+
+    // Capacity check
+    const subject    = subjects.find(s => s['SubjectID'] === resolvedClassId || (s['Name'] || '').toLowerCase() === resolvedClassName.toLowerCase());
     const maxCapacity = Math.max(parseInt(subject?.['MaxCapacity'] || '8', 10) || 8, 1);
-    const currentEnrollments = await readEnrollmentRows(spreadsheetId);
     const activeCount = currentEnrollments.filter(r =>
-      (r['Class Name'] || '').toLowerCase().trim() === (subjectName || '').toLowerCase().trim() &&
+      r['ClassID'] === resolvedClassId &&
       !['cancelled', 'late cancellation', 'rejected'].includes((r['Status'] || '').toLowerCase().trim())
     ).length;
 
     if (activeCount >= maxCapacity) {
-      await appendPrincipalReviewRequest(spreadsheetId, studentName, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink);
-      res.json({ ok: true, queuedForReview: true });
-      return;
+      // Queue for principal review
+      const reqId  = `REQ-${Date.now()}`;
+      const now    = new Date().toISOString();
+      const packed = JSON.stringify({
+        studentName:  resolvedStudentName,
+        studentEmail: studentEmail || '',
+        parentEmail:  parentEmail || '',
+        classWanted:  resolvedClassName,
+        extra: `Auto-review needed for ${subjectType || ''} class${teacherName ? ` (${teacherName})` : ''}`,
+      });
+      await appendRow(spreadsheetId, SHEET_TABS.enrollment_requests, [
+        reqId, resolvedStudentId, 'student', resolvedClassId, 'Pending', now, packed,
+      ]);
+      res.json({ ok: true, queuedForReview: true }); return;
     }
 
-    const sheets = await getUncachableGoogleSheetClient();
+    // Enroll
+    const enrollmentId = await generateTabId('ENR', spreadsheetId, TAB);
+    const now = new Date().toISOString();
     const rowValues = HEADERS.map(h => {
-      if (h === 'Student Name')    return studentName || '';
-      if (h === 'Student Email')   return studentEmail || '';
-      if (h === 'Class Name')      return subjectName || '';
-      if (h === 'Class Date')      return 'TBD';
-      if (h === 'Class Time')      return 'TBD';
-      if (h === 'Parent Email')    return parentEmail || '';
-      if (h === 'Status')          return 'Active';
+      if (h === 'EnrollmentID')  return enrollmentId;
+      if (h === 'UserID')        return resolvedStudentId;
+      if (h === 'ClassID')       return resolvedClassId;
+      if (h === 'ParentID')      return resolvedParentId;
+      if (h === 'Status')        return 'Active';
+      if (h === 'EnrolledAt')    return now;
       if (h === 'Override Action') return '';
-      if (h === 'Teacher')         return teacherName || '';
-      if (h === 'Teacher Email')   return teacherEmail || '';
-      if (h === 'Zoom Link')       return zoomLink || '';
-      if (h === 'Class Type')      return subjectType || '';
+      if (h === 'TeacherID')     return resolvedTeacherId;
+      if (h === 'TeacherEmail')  return teacherEmail || '';
+      if (h === 'Zoom Link')     return zoomLink || '';
+      if (h === 'Class Type')    return subjectType || '';
+      if (h === 'ClassDate')     return 'TBD';
+      if (h === 'ClassTime')     return 'TBD';
       return '';
     });
+
+    const sheets = await getUncachableGoogleSheetClient();
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: `${TAB}!A1`,
@@ -154,53 +224,18 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
   }
 });
 
-async function appendPrincipalReviewRequest(
-  spreadsheetId: string,
-  studentName: string,
-  parentEmail: string,
-  subjectName: string,
-  subjectType: string,
-  teacherName: string,
-  teacherEmail: string,
-  zoomLink: string,
-): Promise<void> {
-  const sheets = await getUncachableGoogleSheetClient();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${SHEET_TABS.enrollment_requests}!A1`,
-    valueInputOption: 'RAW',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: {
-      values: [[
-        studentName,
-        '',
-        'No',
-        '',
-        '',
-        '',
-        subjectName,
-        parentEmail,
-        '',
-        '',
-        '',
-        `Auto-review needed for ${subjectType} class${teacherName ? ` (${teacherName})` : ''}`,
-        new Date().toLocaleDateString('en-AU'),
-        'Pending',
-        'student',
-      ]],
-    },
-  });
-}
-
-// POST /api/enrollments — add a new enrollment row
+// ─── POST /api/enrollments — add a raw enrollment row ───────────────────────
 router.post('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
   try {
+    const enrollmentId = await generateTabId('ENR', spreadsheetId, TAB);
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
-      if (h === 'Status') return req.body[h] || 'Active';
+      if (h === 'EnrollmentID')  return enrollmentId;
+      if (h === 'Status')        return req.body[h] || 'Active';
+      if (h === 'EnrolledAt')    return new Date().toISOString();
       if (h === 'Override Action') return '';
       return req.body[h] ?? '';
     });
@@ -211,13 +246,13 @@ router.post('/enrollments', async (req, res): Promise<void> => {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [rowValues] },
     });
-    res.json({ ok: true });
+    res.json({ ok: true, enrollmentId });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/enrollments/:row/cancel — cancel with 24-hour check
+// ─── POST /api/enrollments/:row/cancel ──────────────────────────────────────
 router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -226,26 +261,26 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
 
   try {
-    const rows = await readEnrollmentRows(spreadsheetId);
+    const rows       = await readEnrollmentRows(spreadsheetId);
     const enrollment = rows.find(r => r._row === rowNum);
     if (!enrollment) { res.status(404).json({ error: 'Enrollment not found' }); return; }
 
     const moreThan24h = classStartsInMoreThan24Hours(
-      enrollment['Class Date'],
-      enrollment['Class Time']
+      enrollment['ClassDate'] || enrollment['Class Date'] || '',
+      enrollment['ClassTime'] || enrollment['Class Time'] || '',
     );
     const newStatus = moreThan24h ? 'Cancelled' : 'Late Cancellation';
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status') return newStatus;
+      if (h === 'Status')          return newStatus;
       if (h === 'Override Action') return enrollment['Override Action'] || '';
       return enrollment[h] || '';
     });
-    const colLetter = String.fromCharCode(64 + HEADERS.length);
+    const colEnd = String.fromCharCode(64 + HEADERS.length);
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${TAB}!A${rowNum}:${colLetter}${rowNum}`,
+      range: `${TAB}!A${rowNum}:${colEnd}${rowNum}`,
       valueInputOption: 'RAW',
       requestBody: { values: [updatedValues] },
     });
@@ -256,7 +291,7 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/enrollments/:row/override — principal waives or confirms fee
+// ─── POST /api/enrollments/:row/override ────────────────────────────────────
 router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -266,25 +301,24 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
 
   const action = req.body.action as string;
   if (action !== 'Fee Waived' && action !== 'Fee Confirmed') {
-    res.status(400).json({ error: 'action must be "Fee Waived" or "Fee Confirmed"' });
-    return;
+    res.status(400).json({ error: 'action must be "Fee Waived" or "Fee Confirmed"' }); return;
   }
 
   try {
-    const rows = await readEnrollmentRows(spreadsheetId);
+    const rows       = await readEnrollmentRows(spreadsheetId);
     const enrollment = rows.find(r => r._row === rowNum);
     if (!enrollment) { res.status(404).json({ error: 'Enrollment not found' }); return; }
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status') return action;
+      if (h === 'Status')          return action;
       if (h === 'Override Action') return action;
       return enrollment[h] || '';
     });
-    const colLetter = String.fromCharCode(64 + HEADERS.length);
+    const colEnd = String.fromCharCode(64 + HEADERS.length);
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${TAB}!A${rowNum}:${colLetter}${rowNum}`,
+      range: `${TAB}!A${rowNum}:${colEnd}${rowNum}`,
       valueInputOption: 'RAW',
       requestBody: { values: [updatedValues] },
     });
@@ -295,12 +329,11 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
   }
 });
 
-// PUT /api/enrollments/:row/assign-teacher
-// Assigns (or reassigns) a teacher to an enrollment row.
-// Looks up the teacher from the Teachers tab and copies their Name, Email, and Zoom Link.
+// ─── PUT /api/enrollments/:row/assign-teacher ───────────────────────────────
+// Assigns (or reassigns) a teacher. Looks up teacher by email from Users tab.
 router.put('/enrollments/:row/assign-teacher', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
-  const rowNum = parseInt(req.params.row, 10);
+  const rowNum        = parseInt(req.params.row, 10);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
   if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
 
@@ -308,40 +341,47 @@ router.put('/enrollments/:row/assign-teacher', async (req, res): Promise<void> =
   if (!teacherEmail) { res.status(400).json({ error: 'teacherEmail is required' }); return; }
 
   try {
-    // Look up teacher in the Teachers tab
-    const teachers = await readTabRows(spreadsheetId, SHEET_TABS.teachers);
-    const teacher = teachers.find(t =>
-      (t['Email'] || '').toLowerCase().trim() === teacherEmail.toLowerCase().trim()
-    );
-    if (!teacher) { res.status(404).json({ error: 'Teacher not found in Teachers tab' }); return; }
+    const [users, enrollments] = await Promise.all([
+      readUsersTab(spreadsheetId),
+      readEnrollmentRows(spreadsheetId),
+    ]);
 
-    // Read the current enrollment row
-    const enrollments = await readEnrollmentRows(spreadsheetId);
+    // Find teacher in Users tab (master)
+    const teacher = users.find(u =>
+      u.email === teacherEmail.toLowerCase().trim() &&
+      (u.role === 'tutor' || u.role === 'teacher')
+    );
+    if (!teacher) { res.status(404).json({ error: 'Teacher not found in Users tab' }); return; }
+
+    // Also look for zoom link from Teachers extension tab
+    const teacherExt = await readTabRows(spreadsheetId, SHEET_TABS.teachers);
+    const extRecord  = teacherExt.find(t => t['UserID'] === teacher.userId || t['TeacherID'] === teacher.userId);
+    const zoomLink   = extRecord?.['Zoom Link'] || '';
+
     const enrollment = enrollments.find(r => r._row === rowNum);
     if (!enrollment) { res.status(404).json({ error: 'Enrollment not found' }); return; }
 
-    // Build updated row — preserve all existing values, overwrite Teacher fields
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Teacher')       return teacher['Name'] || '';
-      if (h === 'Teacher Email') return teacher['Email'] || '';
-      if (h === 'Zoom Link')     return teacher['Zoom Link'] || '';
+      if (h === 'TeacherID')    return teacher.userId;
+      if (h === 'TeacherEmail') return teacher.email;
+      if (h === 'Zoom Link')    return zoomLink;
       return enrollment[h] || '';
     });
 
     const sheets = await getUncachableGoogleSheetClient();
-    const colLetter = String.fromCharCode(64 + HEADERS.length);
+    const colEnd  = String.fromCharCode(64 + HEADERS.length);
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${TAB}!A${rowNum}:${colLetter}${rowNum}`,
+      range: `${TAB}!A${rowNum}:${colEnd}${rowNum}`,
       valueInputOption: 'RAW',
       requestBody: { values: [updatedValues] },
     });
 
     res.json({
       ok: true,
-      teacher: teacher['Name'],
-      teacherEmail: teacher['Email'],
-      zoomLink: teacher['Zoom Link'] || '',
+      teacher:      teacher.name,
+      teacherEmail: teacher.email,
+      zoomLink,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

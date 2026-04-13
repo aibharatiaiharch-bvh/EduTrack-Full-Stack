@@ -481,6 +481,30 @@ export default function PrincipalDashboard() {
       .catch(() => {});
   }, [sheetId]);
 
+  // Reconcile Job
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState<any>(null);
+  const [showReconcileDialog, setShowReconcileDialog] = useState(false);
+  async function runReconcile() {
+    if (!sheetId) return;
+    setReconciling(true);
+    try {
+      const res = await fetch(apiUrl("/principals/reconcile"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Reconcile failed");
+      setReconcileResult(data);
+      setShowReconcileDialog(true);
+    } catch (err: any) {
+      toast({ title: "Reconcile failed", description: err.message, variant: "destructive" });
+    } finally {
+      setReconciling(false);
+    }
+  }
+
   const pending = requests ?? [];
 
   return (
@@ -497,16 +521,29 @@ export default function PrincipalDashboard() {
               <p className="text-muted-foreground mt-1">Manage enrolments, staff, and students.</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 shrink-0"
-            onClick={downloadBackup}
-            disabled={backingUp || !sheetId}
-          >
-            {backingUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            <span className="hidden sm:inline">{backingUp ? "Downloading…" : "Download Backup"}</span>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={runReconcile}
+              disabled={reconciling || !sheetId}
+              title="Run data integrity check on all tabs"
+            >
+              {reconciling ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              <span className="hidden sm:inline">{reconciling ? "Reconciling…" : "Reconcile"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={downloadBackup}
+              disabled={backingUp || !sheetId}
+            >
+              {backingUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span className="hidden sm:inline">{backingUp ? "Downloading…" : "Download Backup"}</span>
+            </Button>
+          </div>
         </header>
 
         {!sheetId && (
@@ -1525,6 +1562,73 @@ export default function PrincipalDashboard() {
             >
               {addSubjectMutation.isPending ? "Creating…" : "Create Subject"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reconcile Results Dialog */}
+      <Dialog open={showReconcileDialog} onOpenChange={setShowReconcileDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Data Reconcile Report
+            </DialogTitle>
+          </DialogHeader>
+          {reconcileResult && (
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">{reconcileResult.message}</p>
+              {/* Summary badges */}
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${reconcileResult.summary.orphans > 0 ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                  {reconcileResult.summary.orphans} orphaned ID{reconcileResult.summary.orphans !== 1 ? "s" : ""}
+                </span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${reconcileResult.summary.missingExtensions > 0 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                  {reconcileResult.summary.missingExtensions} missing extension row{reconcileResult.summary.missingExtensions !== 1 ? "s" : ""}
+                </span>
+                {reconcileResult.summary.fixedUpdatedAt > 0 && (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                    {reconcileResult.summary.fixedUpdatedAt} UpdatedAt fields backfilled
+                  </span>
+                )}
+              </div>
+              {/* Orphan details */}
+              {reconcileResult.details?.orphans?.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Orphaned IDs</p>
+                  <div className="rounded border divide-y text-xs">
+                    {reconcileResult.details.orphans.map((o: any, i: number) => (
+                      <div key={i} className="px-3 py-2 flex gap-2 text-muted-foreground">
+                        <span className="font-mono text-foreground">{o.id}</span>
+                        <span>in <strong>{o.tab}</strong> ({o.field})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Missing extensions */}
+              {reconcileResult.details?.missingExtensions?.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-foreground uppercase tracking-wide">Missing Extension Rows</p>
+                  <div className="rounded border divide-y text-xs">
+                    {reconcileResult.details.missingExtensions.map((m: any, i: number) => (
+                      <div key={i} className="px-3 py-2 text-muted-foreground">
+                        <span className="font-mono text-foreground">{m.userId}</span> — no {m.role} extension row
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {reconcileResult.summary.orphans === 0 && reconcileResult.summary.missingExtensions === 0 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 text-sm">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  All data integrity checks passed.
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowReconcileDialog(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

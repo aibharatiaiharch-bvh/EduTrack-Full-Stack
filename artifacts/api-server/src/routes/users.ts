@@ -1,44 +1,13 @@
 import { Router, type IRouter } from 'express';
 import {
-  getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS, colLetter,
+  getUncachableGoogleSheetClient, SHEET_TABS, colLetter,
+  readTabRows, appendRow, updateCell, readUsersTab, touchUser,
 } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
 function getSheetId(req: any): string {
   return req.query.sheetId || req.body?.sheetId || '';
-}
-
-async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: number; [k: string]: any }[]> {
-  const sheets = await getUncachableGoogleSheetClient();
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${tab}!A1:Z` });
-  const rows = res.data.values || [];
-  if (rows.length < 1) return [];
-  const headerRow = rows[0] as string[];
-  return rows.slice(1).map((row, i) => {
-    const obj: any = { _row: i + 2 };
-    headerRow.forEach((h, idx) => { obj[h] = (row as string[])[idx] || ''; });
-    return obj;
-  });
-}
-
-async function appendRow(spreadsheetId: string, tab: string, values: string[]): Promise<void> {
-  const sheets = await getUncachableGoogleSheetClient();
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: `${tab}!A1`,
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [values] },
-  });
-}
-
-async function updateCell(spreadsheetId: string, range: string, value: string): Promise<void> {
-  const sheets = await getUncachableGoogleSheetClient();
-  await sheets.spreadsheets.values.update({
-    spreadsheetId, range, valueInputOption: 'RAW',
-    requestBody: { values: [[value]] },
-  });
 }
 
 async function deleteSheetRow(spreadsheetId: string, tabTitle: string, rowNum: number): Promise<void> {
@@ -59,53 +28,50 @@ async function deleteSheetRow(spreadsheetId: string, tabTitle: string, rowNum: n
   });
 }
 
-// GET /api/users?sheetId=X — list all users from Users tab
+// GET /api/users?sheetId=X — list all users from Users tab (master source of truth)
 router.get('/users', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.users);
-    const users = rows.map(r => ({
-      _row: r._row,
-      userId: r['UserID'] || '',
-      email: r['Email'] || '',
-      role: r['Role'] || '',
-      name: r['Name'] || '',
-      addedDate: r['Added Date'] || '',
-      status: r['Status'] || '',
-    }));
-    res.json(users);
+    const rows = await readUsersTab(sheetId);
+    res.json(rows.map(u => ({
+      _row:      u._row,
+      userId:    u.userId,
+      email:     u.email,
+      role:      u.role,
+      name:      u.name,
+      status:    u.status,
+      addedDate: u.createdAt,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
+    })));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/users/deactivate — set Status=Inactive and copy row to Archive tab
+// POST /api/users/deactivate — set Status=Inactive, archive snapshot, update UpdatedAt
 router.post('/users/deactivate', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const { userId } = req.body;
   if (!sheetId || !userId) { res.status(400).json({ error: 'sheetId and userId are required' }); return; }
 
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.users);
-    const user = rows.find(r => r['UserID'] === userId);
+    const users = await readUsersTab(sheetId);
+    const user = users.find(u => u.userId === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
-    // 1. Copy row to Archive tab
-    const archivedDate = new Date().toLocaleDateString('en-AU');
+    // 1. Append snapshot to Archive tab
+    const now = new Date().toISOString();
+    const archiveId = `ARC-${Date.now()}`;
     await appendRow(sheetId, SHEET_TABS.archive, [
-      user['UserID'] || '',
-      user['Email'] || '',
-      user['Role'] || '',
-      user['Name'] || '',
-      user['Added Date'] || '',
-      user['Status'] || '',
-      archivedDate,
+      archiveId, user.userId, user.email, user.role, user.name, user.status, now,
     ]);
 
-    // 2. Set Status to Inactive in Users tab
+    // 2. Set Status=Inactive in Users tab (master) + update audit column
     const statusCol = colLetter('users', 'Status');
     await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${user._row}`, 'Inactive');
+    await touchUser(sheetId, user._row);
 
     res.json({ ok: true });
   } catch (err: any) {
@@ -113,36 +79,20 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/users/reactivate — set Status=Active in Users tab and mirror to role tabs
+// POST /api/users/reactivate — set Status=Active (Users tab is the login gate)
 router.post('/users/reactivate', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const { userId } = req.body;
   if (!sheetId || !userId) { res.status(400).json({ error: 'sheetId and userId are required' }); return; }
 
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.users);
-    const user = rows.find(r => r['UserID'] === userId);
+    const users = await readUsersTab(sheetId);
+    const user = users.find(u => u.userId === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
-    // 1. Update Users tab — this is the login gate
     const statusCol = colLetter('users', 'Status');
     await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${user._row}`, 'Active');
-
-    const role = (user['Role'] || '').toLowerCase().trim();
-    const emailNorm = (user['Email'] || '').toLowerCase().trim();
-
-    if (role === 'student' || role === 'tutor' || role === 'teacher') {
-      const tab = role === 'student' ? SHEET_TABS.students : SHEET_TABS.teachers;
-      const statusCol = role === 'student' ? colLetter('students', 'Status') : colLetter('teachers', 'Status');
-      const rowsToSync = await readRows(sheetId, tab);
-      const targetRow = rowsToSync.find(r =>
-        (r['UserID'] || '') === userId ||
-        (emailNorm && (r['Email'] || '').toLowerCase().trim() === emailNorm)
-      );
-      if (targetRow) {
-        await updateCell(sheetId, `${tab}!${statusCol}${targetRow._row}`, 'Active');
-      }
-    }
+    await touchUser(sheetId, user._row);
 
     res.json({ ok: true });
   } catch (err: any) {
@@ -150,14 +100,14 @@ router.post('/users/reactivate', async (req, res): Promise<void> => {
   }
 });
 
-// DELETE /api/users/:userId?sheetId=X — hard delete (removes row from Users tab entirely)
+// DELETE /api/users/:userId?sheetId=X — hard delete from Users tab
 router.delete('/users/:userId', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const { userId } = req.params;
   if (!sheetId || !userId) { res.status(400).json({ error: 'sheetId and userId are required' }); return; }
 
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.users);
+    const rows = await readTabRows(sheetId, SHEET_TABS.users);
     const user = rows.find(r => r['UserID'] === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
@@ -168,21 +118,24 @@ router.delete('/users/:userId', async (req, res): Promise<void> => {
   }
 });
 
-// GET /api/users/archive?sheetId=X — list archived users
+// GET /api/users/archive?sheetId=X — list archived user snapshots
 router.get('/users/archive', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
   try {
-    const rows = await readRows(sheetId, SHEET_TABS.archive);
+    const rows = await readTabRows(sheetId, SHEET_TABS.archive);
     res.json(rows.map(r => ({
-      _row: r._row,
-      userId: r['UserID'] || '',
-      email: r['Email'] || '',
-      role: r['Role'] || '',
-      name: r['Name'] || '',
-      addedDate: r['Added Date'] || '',
-      status: r['Status'] || '',
-      archivedDate: r['Archived Date'] || '',
+      _row:        r._row,
+      archiveId:   r['ArchiveID']  || '',
+      userId:      r['UserID']     || '',
+      email:       r['Email']      || '',
+      role:        r['Role']       || '',
+      name:        r['Name']       || '',
+      status:      r['Status']     || '',
+      archivedAt:  r['ArchivedAt'] || '',
+      // legacy alias
+      addedDate:   r['ArchivedAt'] || '',
+      archivedDate: r['ArchivedAt'] || '',
     })));
   } catch {
     res.json([]);
