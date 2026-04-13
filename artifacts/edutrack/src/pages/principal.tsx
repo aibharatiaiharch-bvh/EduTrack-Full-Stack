@@ -310,7 +310,6 @@ export default function PrincipalDashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
   const [userStatusFilter, setUserStatusFilter] = useState("all");
-  const [actioningUser, setActioningUser] = useState<string | null>(null);
 
   function loadUsers() {
     if (!sheetId) return;
@@ -920,19 +919,7 @@ export default function PrincipalDashboard() {
                             {u.addedDate && <><span>·</span><span>{u.addedDate}</span></>}
                           </div>
                         </div>
-                        <div className="shrink-0">
-                          {statusKey !== "inactive" ? (
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-amber-700 border-amber-200 hover:bg-amber-50" onClick={() => deactivateUser(u.userId)} disabled={isActioning}>
-                              {isActioning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserX className="w-3 h-3" />}
-                              Deactivate
-                            </Button>
-                          ) : (
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-green-700 border-green-200 hover:bg-green-50" onClick={() => reactivateUser(u.userId)} disabled={isActioning}>
-                              {isActioning ? <RefreshCw className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
-                              Reactivate
-                            </Button>
-                          )}
-                        </div>
+                        <div className="shrink-0" />
                       </div>
                     </div>
                   );

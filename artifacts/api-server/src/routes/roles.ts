@@ -187,14 +187,12 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       // The family can sign in after this — they will see the "Awaiting Activation" screen
       // until the principal confirms payment and activates the account.
       // Priority: use the form's parentEmail (explicitly entered). Fall back to Clerk userEmail.
-      if (registrantEmail) {
-        if (!existingUser) {
-          const userId = await generateUserId('parent', sheetId);
-          await appendRow(sheetId, SHEET_TABS.users, [
-            userId, registrantEmail, 'parent',
-            parentName || userName || '', submissionDate, 'Inactive',
-          ]);
-        }
+      if (registrantEmail && !existingUser) {
+        const userId = await generateUserId('parent', sheetId);
+        await appendRow(sheetId, SHEET_TABS.users, [
+          userId, registrantEmail, 'parent',
+          parentName || userName || '', submissionDate, 'Inactive',
+        ]);
       }
     }
 
