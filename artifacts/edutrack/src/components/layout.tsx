@@ -63,7 +63,7 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
     {
       label: "Overview",
       items: [
-        { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { name: "Dashboard", href: "/principal", icon: ShieldCheck },
         { name: "Check-in", href: "/checkin", icon: CheckSquare },
         ...(features.schedule ? [{ name: "Schedule", href: "/schedule", icon: Calendar }] : []),
       ],
