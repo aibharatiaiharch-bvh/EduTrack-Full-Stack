@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useUser } from "@clerk/react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -37,6 +37,8 @@ type EligibleStudent = {
   enrolled?: boolean;
 };
 
+type ClassStudents = Record<string, EligibleStudent[]>;
+
 export default function BrowseClasses() {
   const { user } = useUser();
   const sheetId = localStorage.getItem(SHEET_KEY);
@@ -54,22 +56,14 @@ export default function BrowseClasses() {
   const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualEmail, setManualEmail] = useState(email);
+  const [principalClassName, setPrincipalClassName] = useState("");
+  const [principalStudents, setPrincipalStudents] = useState<ClassStudents>({});
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
     queryKey: ["subjects-capacity", sheetId],
     enabled: !!sheetId,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/subjects/with-capacity?sheetId=${encodeURIComponent(sheetId!)}&status=active`));
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  });
-
-  const { data: availability = [], isLoading: loadingAvailability } = useQuery<EligibleStudent[]>({
-    queryKey: ["students-availability", sheetId],
-    enabled: !!sheetId && isPrincipal,
-    queryFn: async () => {
-      const res = await fetch(apiUrl(`/principals/students-availability?sheetId=${encodeURIComponent(sheetId!)}&className=`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -88,8 +82,22 @@ export default function BrowseClasses() {
     },
   });
 
+  useEffect(() => {
+    if (!isPrincipal || !sheetId || !classes?.length) return;
+    const load = async () => {
+      const next: ClassStudents = {};
+      for (const cls of classes) {
+        const res = await fetch(apiUrl(`/principals/students-availability?sheetId=${encodeURIComponent(sheetId)}&className=${encodeURIComponent(cls.Name)}`));
+        if (!res.ok) continue;
+        next[cls.Name] = await res.json();
+      }
+      setPrincipalStudents(next);
+    };
+    load();
+  }, [classes, isPrincipal, sheetId]);
+
   function studentsForClass(cls: SubjectWithCapacity): EligibleStudent[] {
-    if (isPrincipal) return availability;
+    if (isPrincipal) return principalStudents[cls.Name] || [];
     return eligibleStudents;
   }
 
@@ -280,13 +288,24 @@ export default function BrowseClasses() {
                           <div className="space-y-2 pt-1">
                             {isPrincipal ? (
                               <>
-                                <input
+                                <select
                                   className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                  placeholder="Student name *"
-                                  value={manualName}
-                                  onChange={e => setManualName(e.target.value)}
+                                  value={selectedStudent?.name || manualName}
+                                  onChange={e => {
+                                    const s = myStudents.find(s => s.name === e.target.value) || null;
+                                    setSelectedStudent(s);
+                                    setManualName(s?.name || "");
+                                    setManualEmail(s?.parentEmail || "");
+                                  }}
                                   autoFocus
-                                />
+                                >
+                                  <option value="">— Select student —</option>
+                                  {myStudents.map(s => (
+                                    <option key={s.userId || s.email || s.name} value={s.name} disabled={Boolean(s.enrolled)}>
+                                      {s.name}{s.enrolled ? " (enrolled)" : " (eligible)"}
+                                    </option>
+                                  ))}
+                                </select>
                                 <input
                                   className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                   placeholder="Parent email"
