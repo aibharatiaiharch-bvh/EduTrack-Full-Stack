@@ -99,8 +99,8 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
       user['Role'] || '',
       user['Name'] || '',
       user['Added Date'] || '',
-      archivedDate,
       user['Status'] || '',
+      archivedDate,
     ]);
 
     // 2. Set Status to Inactive in Users tab
@@ -113,7 +113,7 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/users/reactivate — set Status=Active in Users tab (and Students tab if role=student)
+// POST /api/users/reactivate — set Status=Active in Users tab and mirror to role tabs
 router.post('/users/reactivate', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const { userId } = req.body;
@@ -128,20 +128,19 @@ router.post('/users/reactivate', async (req, res): Promise<void> => {
     const statusCol = colLetter('users', 'Status');
     await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${user._row}`, 'Active');
 
-    // 2. If this user is a student, also activate their Students tab record
-    //    so both tabs stay in sync (login is controlled by Users tab only)
-    if ((user['Role'] || '').toLowerCase().trim() === 'student') {
-      const studentRows = await readRows(sheetId, SHEET_TABS.students);
-      const emailNorm = (user['Email'] || '').toLowerCase().trim();
+    const role = (user['Role'] || '').toLowerCase().trim();
+    const emailNorm = (user['Email'] || '').toLowerCase().trim();
 
-      // Match by UserID first; fall back to email match
-      const studentRow = studentRows.find(r =>
+    if (role === 'student' || role === 'tutor' || role === 'teacher') {
+      const tab = role === 'student' ? SHEET_TABS.students : SHEET_TABS.teachers;
+      const statusCol = role === 'student' ? colLetter('students', 'Status') : colLetter('teachers', 'Status');
+      const rowsToSync = await readRows(sheetId, tab);
+      const targetRow = rowsToSync.find(r =>
         (r['UserID'] || '') === userId ||
         (emailNorm && (r['Email'] || '').toLowerCase().trim() === emailNorm)
       );
-      if (studentRow) {
-        const studentStatusCol = colLetter('students', 'Status');
-        await updateCell(sheetId, `${SHEET_TABS.students}!${studentStatusCol}${studentRow._row}`, 'Active');
+      if (targetRow) {
+        await updateCell(sheetId, `${tab}!${statusCol}${targetRow._row}`, 'Active');
       }
     }
 
