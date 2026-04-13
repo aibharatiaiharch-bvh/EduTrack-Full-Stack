@@ -319,4 +319,45 @@ router.get('/principals/eligible-students', async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/principals/students-availability
+// Returns all active students plus enrollment state for a given class.
+router.get('/principals/students-availability', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  const className = ((req.query.className as string) || '').toLowerCase().trim();
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  if (!className) { res.status(400).json({ error: 'className is required' }); return; }
+
+  try {
+    const [students, enrollments] = await Promise.all([
+      readRows(sheetId, SHEET_TABS.students),
+      readRows(sheetId, SHEET_TABS.enrollments),
+    ]);
+
+    const enrolledNames = new Set(
+      enrollments
+        .filter(r => (r['Class Name'] || '').toLowerCase().trim() === className)
+        .map(r => (r['Student Name'] || '').toLowerCase().trim())
+        .filter(Boolean),
+    );
+
+    const activeStudents = students
+      .filter(r => (r['Status'] || '').toLowerCase().trim() === 'active')
+      .map(r => {
+        const name = r['Name'] || '';
+        return {
+          name,
+          email: r['Email'] || '',
+          userId: r['UserID'] || '',
+          parentEmail: r['Parent Email'] || '',
+          classes: r['Classes'] || '',
+          enrolled: enrolledNames.has(name.toLowerCase().trim()),
+        };
+      });
+
+    res.json(activeStudents);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

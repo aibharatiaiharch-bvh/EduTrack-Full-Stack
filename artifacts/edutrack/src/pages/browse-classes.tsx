@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck, ChevronDown } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
-const ROLE_KEY  = "edutrack_user_role";
+const ROLE_KEY = "edutrack_user_role";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
@@ -34,25 +34,26 @@ type EligibleStudent = {
   userId: string;
   parentEmail: string;
   classes: string;
+  enrolled?: boolean;
 };
 
 export default function BrowseClasses() {
   const { user } = useUser();
-  const sheetId  = localStorage.getItem(SHEET_KEY);
-  const role     = localStorage.getItem(ROLE_KEY) || "tutor";
-  const email    = user?.primaryEmailAddress?.emailAddress || "";
+  const sheetId = localStorage.getItem(SHEET_KEY);
+  const role = localStorage.getItem(ROLE_KEY) || "tutor";
+  const email = user?.primaryEmailAddress?.emailAddress || "";
 
   const isPrincipal = role === "principal" || role === "admin" || role === "developer";
-  const isParent    = role === "parent";
-  const isStudent   = role === "student";
+  const isParent = role === "parent";
+  const isStudent = role === "student";
 
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [joiningRow, setJoiningRow]     = useState<number | null>(null);
+  const [joiningRow, setJoiningRow] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
-  const [manualName,  setManualName]    = useState("");
-  const [manualEmail, setManualEmail]   = useState(email);
+  const [manualName, setManualName] = useState("");
+  const [manualEmail, setManualEmail] = useState(email);
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
     queryKey: ["subjects-capacity", sheetId],
@@ -64,37 +65,38 @@ export default function BrowseClasses() {
     },
   });
 
-  // Fetch eligible students (Active students linked to this parent/student email)
+  const { data: availability = [], isLoading: loadingAvailability } = useQuery<EligibleStudent[]>({
+    queryKey: ["students-availability", sheetId],
+    enabled: !!sheetId && isPrincipal,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/principals/students-availability?sheetId=${encodeURIComponent(sheetId!)}&className=`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
   const { data: eligibleStudents = [], isLoading: loadingStudents } = useQuery<EligibleStudent[]>({
     queryKey: ["eligible-students", sheetId, email, role],
     enabled: !!sheetId && !!email && (isParent || isStudent),
     queryFn: async () => {
       const params = new URLSearchParams({ sheetId: sheetId! });
-      if (isParent)   params.set("parentEmail",  email);
-      if (isStudent)  params.set("studentEmail", email);
+      if (isParent) params.set("parentEmail", email);
+      if (isStudent) params.set("studentEmail", email);
       const res = await fetch(apiUrl(`/principals/eligible-students?${params}`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
   });
 
-  // For a given class type, filter eligible students
   function studentsForClass(cls: SubjectWithCapacity): EligibleStudent[] {
-    if (isPrincipal) return []; // principal uses manual entry
-    return eligibleStudents.filter(s => {
-      // Both types accept all active students
-      if (cls.Type === "Both") return true;
-      // Individual: check the student isn't already enrolled in an Individual slot for this class
-      if (cls.Type === "Individual") return true;
-      // Group: anyone active is eligible
-      return true;
-    });
+    if (isPrincipal) return availability;
+    return eligibleStudents;
   }
 
   const joinMutation = useMutation({
     mutationFn: async (subject: SubjectWithCapacity) => {
-      const studentName  = isPrincipal ? manualName.trim()  : (selectedStudent?.name  || manualName.trim());
-      const parentEmail  = isPrincipal ? manualEmail.trim() : (selectedStudent?.parentEmail || manualEmail.trim());
+      const studentName = isPrincipal ? manualName.trim() : (selectedStudent?.name || manualName.trim());
+      const parentEmail = isPrincipal ? manualEmail.trim() : (selectedStudent?.parentEmail || manualEmail.trim());
       if (!studentName) throw new Error("Please select or enter a student name.");
 
       const res = await fetch(apiUrl("/enrollments/join"), {
@@ -129,7 +131,7 @@ export default function BrowseClasses() {
 
   function capacityColor(cls: SubjectWithCapacity) {
     const pct = cls.currentEnrolled / cls.MaxCapacity;
-    if (pct >= 1)    return "text-destructive";
+    if (pct >= 1) return "text-destructive";
     if (pct >= 0.75) return "text-amber-600";
     return "text-emerald-600";
   }
@@ -149,13 +151,10 @@ export default function BrowseClasses() {
           </div>
         )}
 
-        {/* No eligible students warning for parents/students */}
         {!loadingStudents && (isParent || isStudent) && eligibleStudents.length === 0 && sheetId && (
           <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
             <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm">
-              No active students are linked to your account. A principal must activate your student account before you can join classes.
-            </p>
+            <p className="text-sm">No active students are linked to your account. A principal must activate your student account before you can join classes.</p>
           </div>
         )}
 
@@ -185,11 +184,11 @@ export default function BrowseClasses() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {classes.map(cls => {
-                  const isJoining    = joiningRow === cls._row;
-                  const canJoin      = !cls.isFull || isPrincipal;
-                  const spotsLeft    = cls.MaxCapacity - cls.currentEnrolled;
-                  const myStudents   = studentsForClass(cls);
-                  const hasEligible  = isPrincipal || myStudents.length > 0;
+                  const isJoining = joiningRow === cls._row;
+                  const canJoin = !cls.isFull || isPrincipal;
+                  const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
+                  const myStudents = studentsForClass(cls);
+                  const hasEligible = isPrincipal || myStudents.length > 0;
 
                   return (
                     <Card key={cls._row} className={`overflow-hidden transition-shadow hover:shadow-md ${cls.isFull && !isPrincipal ? "opacity-80" : ""}`}>
@@ -235,7 +234,6 @@ export default function BrowseClasses() {
                           )}
                         </div>
 
-                        {/* Capacity bar */}
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">Enrolment</span>
@@ -255,10 +253,31 @@ export default function BrowseClasses() {
                           </div>
                         </div>
 
-                        {/* Join form */}
+                        {isPrincipal && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-medium text-muted-foreground">Active students</div>
+                            <div className="flex flex-wrap gap-2">
+                              {myStudents.map(student => {
+                                const enrolled = Boolean(student.enrolled);
+                                return (
+                                  <span
+                                    key={student.userId || student.email || student.name}
+                                    className={`rounded-full px-2.5 py-1 text-xs border ${
+                                      enrolled
+                                        ? "bg-muted text-muted-foreground border-border"
+                                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    }`}
+                                  >
+                                    {student.name}{enrolled ? " · enrolled" : " · eligible"}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {isJoining ? (
                           <div className="space-y-2 pt-1">
-                            {/* Principal uses free-text; parent/student gets a dropdown */}
                             {isPrincipal ? (
                               <>
                                 <input
