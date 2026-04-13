@@ -73,7 +73,9 @@ export default function ClassCalendar() {
   const [bookingSlot, setBookingSlot] = useState<{ slot: CalendarSlot; date: string } | null>(null);
   const [studentName, setStudentName] = useState("");
   const [parentEmail, setParentEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
-  const [selectedWeek, setSelectedWeek] = useState<0 | 1>(0);
+  const isPrincipal = role === "principal" || role === "admin" || role === "developer";
+  const weekCount = isPrincipal ? 3 : 2;
+  const [selectedWeek, setSelectedWeek] = useState<0 | 1 | 2>(0);
 
   // Request a new class
   const [showRequestDialog, setShowRequestDialog] = useState(false);
@@ -107,10 +109,10 @@ export default function ClassCalendar() {
   });
 
   const { data, isLoading, error } = useQuery<CalendarData>({
-    queryKey: ["class-calendar", sheetId],
+    queryKey: ["class-calendar", sheetId, weekCount],
     enabled: !!sheetId,
     queryFn: async () => {
-      const res = await fetch(apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId!)}&weeks=2`));
+      const res = await fetch(apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId!)}&weeks=${weekCount}`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -151,16 +153,21 @@ export default function ClassCalendar() {
 
   const allDays = data?.days ?? [];
 
-  // Group days into two weeks
-  const week1 = useMemo(() => allDays.filter((_, i) => i < 7), [allDays]);
-  const week2 = useMemo(() => allDays.filter((_, i) => i >= 7), [allDays]);
+  // Group days into weeks (up to 3 for principal)
+  const weekDays = useMemo(() => [
+    allDays.filter((_, i) => i < 7),
+    allDays.filter((_, i) => i >= 7 && i < 14),
+    allDays.filter((_, i) => i >= 14),
+  ], [allDays]);
 
-  const currentWeekDays = selectedWeek === 0 ? week1 : week2;
+  const currentWeekDays = weekDays[selectedWeek] ?? [];
 
   const weekLabel = (days: CalendarDay[]) => {
     if (!days.length) return "";
     return `${days[0].date} – ${days[days.length - 1].date}`;
   };
+
+  const weekTabLabels = ["This week", "Next week", "Week 3"];
 
   return (
     <AppLayout>
@@ -168,7 +175,11 @@ export default function ClassCalendar() {
         <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Class Calendar</h1>
-            <p className="text-muted-foreground">View available classes for the next 2 weeks and book a spot.</p>
+            <p className="text-muted-foreground">
+              {isPrincipal
+                ? "View all scheduled classes across this week and the next 2 weeks."
+                : "View available classes for the next 2 weeks and book a spot."}
+            </p>
           </div>
           {sheetId && (
             <Button
@@ -193,13 +204,10 @@ export default function ClassCalendar() {
 
         {/* Week tabs */}
         <div className="flex gap-2 border-b border-border pb-0">
-          {[
-            { idx: 0, label: "This week", sublabel: weekLabel(week1) },
-            { idx: 1, label: "Next week", sublabel: weekLabel(week2) },
-          ].map(({ idx, label, sublabel }) => (
+          {weekTabLabels.slice(0, weekCount).map((label, idx) => (
             <button
               key={idx}
-              onClick={() => setSelectedWeek(idx as 0 | 1)}
+              onClick={() => setSelectedWeek(idx as 0 | 1 | 2)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 selectedWeek === idx
                   ? "border-primary text-primary"
@@ -207,7 +215,9 @@ export default function ClassCalendar() {
               }`}
             >
               {label}
-              {sublabel && <span className="ml-1.5 text-xs font-normal hidden sm:inline">({sublabel})</span>}
+              {weekLabel(weekDays[idx]) && (
+                <span className="ml-1.5 text-xs font-normal hidden sm:inline">({weekLabel(weekDays[idx])})</span>
+              )}
             </button>
           ))}
         </div>
@@ -254,14 +264,19 @@ export default function ClassCalendar() {
                   {day.slots.map((slot, i) => (
                     <Card
                       key={`${slot.subjectId}-${i}`}
-                      className={`overflow-hidden transition-shadow hover:shadow-md ${slot.isFull ? "opacity-70" : ""}`}
+                      className={`overflow-hidden transition-shadow hover:shadow-md ${slot.isFull && !isPrincipal ? "opacity-70" : ""}`}
                     >
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm leading-tight">{slot.className}</p>
                             {slot.teacherName && (
-                              <p className="text-xs text-muted-foreground mt-0.5">{slot.teacherName}</p>
+                              <p className={`text-xs mt-0.5 ${isPrincipal ? "text-primary font-medium" : "text-muted-foreground"}`}>
+                                {isPrincipal ? "👤 " : ""}{slot.teacherName}
+                              </p>
+                            )}
+                            {!slot.teacherName && isPrincipal && (
+                              <p className="text-xs mt-0.5 text-amber-600 font-medium">⚠ No teacher assigned</p>
                             )}
                           </div>
                           <div className="flex items-center gap-1 text-muted-foreground shrink-0">
@@ -308,26 +323,41 @@ export default function ClassCalendar() {
                           </div>
                         </div>
 
-                        <Button
-                          size="sm"
-                          variant={slot.isFull ? "outline" : "default"}
-                          className="w-full gap-1.5"
-                          disabled={slot.isFull}
-                          onClick={() => {
-                            setBookingSlot({ slot, date: day.date });
-                            setStudentName("");
-                            setParentEmail(user?.primaryEmailAddress?.emailAddress || "");
-                          }}
-                        >
-                          {slot.isFull ? (
-                            "Class Full"
-                          ) : (
-                            <>
-                              Book a Spot
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </>
-                          )}
-                        </Button>
+                        {/* Principal: show enrolled student names */}
+                        {isPrincipal && slot.students.length > 0 && (
+                          <div className="pt-1 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground font-medium mb-1">Students:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {slot.students.map((s, si) => (
+                                <span key={si} className="text-xs bg-muted rounded px-1.5 py-0.5">{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Booking button — hide for principal */}
+                        {!isPrincipal && (
+                          <Button
+                            size="sm"
+                            variant={slot.isFull ? "outline" : "default"}
+                            className="w-full gap-1.5"
+                            disabled={slot.isFull}
+                            onClick={() => {
+                              setBookingSlot({ slot, date: day.date });
+                              setStudentName("");
+                              setParentEmail(user?.primaryEmailAddress?.emailAddress || "");
+                            }}
+                          >
+                            {slot.isFull ? (
+                              "Class Full"
+                            ) : (
+                              <>
+                                Book a Spot
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
