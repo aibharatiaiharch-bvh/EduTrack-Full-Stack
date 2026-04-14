@@ -111,7 +111,10 @@ export default function Settings() {
       if (newId) {
         setSheetId(newId);
         await refreshFiles();
-        toast({ title: "Spreadsheet created", description: "A new EduTrack spreadsheet has been set up and linked." });
+        toast({
+          title: "Spreadsheet created and ready",
+          description: "All 9 tabs have been created, sample data loaded, and dropdowns applied. You're all set!",
+        });
       }
     } catch (err: any) {
       toast({ title: "Failed to create spreadsheet", description: err.message, variant: "destructive" });
@@ -241,7 +244,7 @@ export default function Settings() {
 
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Don't have a sheet yet? Create a new one pre-configured for EduTrack.
+                Don't have a sheet yet? Create a brand-new one — all 9 tabs are created, sample data is loaded, and dropdown rules are applied automatically. The sheet will be linked immediately.
               </p>
               <Button
                 variant="outline"
@@ -254,7 +257,7 @@ export default function Settings() {
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                Create new EduTrack spreadsheet
+                {creating ? "Creating spreadsheet…" : "Create new EduTrack spreadsheet"}
               </Button>
             </div>
 

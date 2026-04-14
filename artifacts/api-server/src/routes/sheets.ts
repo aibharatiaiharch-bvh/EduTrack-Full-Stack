@@ -51,181 +51,165 @@ router.get('/sheets/drive-files', async (_req, res): Promise<void> => {
   }
 });
 
-// POST /api/sheets/setup — create a new spreadsheet with EduTrack tabs
+// ─── Internal helper: build seed data rows (shared by setup + seed endpoints) ──
+function buildSeedData() {
+  function dateFromNow(days: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+  const today  = new Date().toLocaleDateString('en-AU');
+  const nowIso = new Date().toISOString();
+
+  const userRows = [
+    ['PRN-001', 'p.anderson@edutrack.edu', 'principal', 'Principal Anderson', 'Active',   today, nowIso],
+    ['TCH-001', 's.chen@edutrack.edu',     'tutor',     'Dr. Sarah Chen',     'Active',   today, nowIso],
+    ['TCH-002', 'j.taylor@edutrack.edu',   'tutor',     'Mr. James Taylor',   'Active',   today, nowIso],
+    ['TCH-003', 'r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     'Active',   today, nowIso],
+    ['PAR-001', 'sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      'Active',   today, nowIso],
+    ['PAR-002', 'mike.smith@gmail.com',    'parent',    'Mike Smith',         'Active',   today, nowIso],
+    ['PAR-003', 'lisa.brown@gmail.com',    'parent',    'Lisa Brown',         'Active',   today, nowIso],
+    ['PAR-004', 'karen.davis@gmail.com',   'parent',    'Karen Davis',        'Active',   today, nowIso],
+    ['PAR-005', 'james.martin@gmail.com',  'parent',    'James Martin',       'Inactive', today, nowIso],
+    ['STU-001', 'emma.j@student.com',      'student',   'Emma Johnson',       'Active',   today, nowIso],
+    ['STU-002', 'liam.s@student.com',      'student',   'Liam Smith',         'Active',   today, nowIso],
+    ['STU-003', 'olivia.b@student.com',    'student',   'Olivia Brown',       'Active',   today, nowIso],
+    ['STU-004', 'noah.d@student.com',      'student',   'Noah Davis',         'Active',   today, nowIso],
+    ['STU-005', 'ava.w@student.com',       'student',   'Ava Wilson',         'Inactive', today, nowIso],
+  ];
+  const studentRows = [
+    ['STU-001', 'STU-001', 'PAR-001', 'SUB-001; SUB-005', '555-0101', ''],
+    ['STU-002', 'STU-002', 'PAR-002', 'SUB-001; SUB-004', '555-0102', ''],
+    ['STU-003', 'STU-003', 'PAR-003', 'SUB-005; SUB-007', '555-0103', ''],
+    ['STU-004', 'STU-004', 'PAR-004', 'SUB-004',          '555-0104', ''],
+    ['STU-005', 'STU-005', 'PAR-001', 'SUB-006',          '555-0105', ''],
+  ];
+  const teacherRows = [
+    ['TCH-001', 'TCH-001', 'Mathematics, Science',    'https://zoom.us/j/555001', 'STEM',          ''],
+    ['TCH-002', 'TCH-002', 'English',                 'https://zoom.us/j/555002', 'Literacy',      ''],
+    ['TCH-003', 'TCH-003', 'Art, Physical Education', '',                         'Creative Arts', ''],
+  ];
+  const parentRows = [
+    ['PAR-001', 'PAR-001', 'STU-001; STU-005', '555-0201', ''],
+    ['PAR-002', 'PAR-002', 'STU-002',          '555-0202', ''],
+    ['PAR-003', 'PAR-003', 'STU-003',          '555-0203', ''],
+    ['PAR-004', 'PAR-004', 'STU-004',          '555-0204', ''],
+    ['PAR-005', 'PAR-005', '',                 '555-0301', ''],
+  ];
+  const subjectRows = [
+    ['SUB-001', 'Mathematics',        'Individual', 'TCH-001', 'Room 101', 'Mon, Wed',      'Active', '6'],
+    ['SUB-002', 'Mathematics',        'Group',      'TCH-001', 'Room 101', 'Tue, Thu',      'Active', '8'],
+    ['SUB-003', 'English',            'Individual', 'TCH-002', 'Room 201', 'Mon, Wed',      'Active', '6'],
+    ['SUB-004', 'English',            'Group',      'TCH-002', 'Room 201', 'Tue, Thu, Fri', 'Active', '10'],
+    ['SUB-005', 'Science',            'Group',      'TCH-001', 'Lab 1',    'Fri',           'Active', '8'],
+    ['SUB-006', 'Art',                'Individual', 'TCH-003', 'Studio',   'Wed',           'Active', '4'],
+    ['SUB-007', 'Art',                'Group',      'TCH-003', 'Studio',   'Thu',           'Active', '8'],
+    ['SUB-008', 'Physical Education', 'Group',      'TCH-003', 'Gym',      'Mon, Fri',      'Active', '12'],
+  ];
+  const enrollmentRows = [
+    ['ENR-001', 'STU-001', 'SUB-001', 'PAR-001', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
+    ['ENR-002', 'STU-001', 'SUB-005', 'PAR-001', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
+    ['ENR-003', 'STU-002', 'SUB-001', 'PAR-002', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
+    ['ENR-004', 'STU-002', 'SUB-004', 'PAR-002', 'Active',            nowIso, '',              'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
+    ['ENR-005', 'STU-003', 'SUB-005', 'PAR-003', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
+    ['ENR-006', 'STU-003', 'SUB-007', 'PAR-003', 'Active',            nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(10), '03:00 PM'],
+    ['ENR-007', 'STU-004', 'SUB-004', 'PAR-004', 'Active',            nowIso, '',              'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
+    ['ENR-008', 'STU-005', 'SUB-006', 'PAR-001', 'Active',            nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Individual', dateFromNow(11), '03:00 PM'],
+    ['ENR-009', 'STU-004', 'SUB-008', 'PAR-004', 'Cancelled',         nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(3),  '09:00 AM'],
+    ['ENR-010', 'STU-002', 'SUB-008', 'PAR-002', 'Late Cancellation', nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(1),  '10:00 AM'],
+    ['ENR-011', 'STU-003', 'SUB-001', 'PAR-003', 'Late Cancellation', nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '11:00 AM'],
+    ['ENR-012', 'STU-001', 'SUB-008', 'PAR-001', 'Fee Waived',        nowIso, 'Fee Waived',    'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
+    ['ENR-013', 'STU-005', 'SUB-004', 'PAR-001', 'Fee Confirmed',     nowIso, 'Fee Confirmed', 'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
+  ];
+  const enrollmentRequestRows = [
+    ['REQ-001', 'PAR-005', 'student', 'SUB-001', 'Pending', nowIso, JSON.stringify({
+      studentName: 'Sophia Martin', studentEmail: 'sophia.m@student.com',
+      parentEmail: 'james.martin@gmail.com', parentPhone: '555-0301', parentName: 'James Martin',
+      age: '9', currentGrade: 'Year 4', currentSchool: 'Westfield Primary',
+      previouslyEnrolled: 'No', classesInterested: 'Mathematics',
+      reference: 'Google', promoCode: 'WELCOME10',
+      extra: 'Sophia struggles with fractions — would love extra support.',
+      submissionDate: today,
+    })],
+  ];
+  const announcementRows = [
+    ['ANN-001', 'Term 2 Enrolments Open', 'Term 2 enrolments are now open. Contact us to secure your spot before places fill up!', 'Standard', 'true', today],
+    ['ANN-002', 'Public Holiday Closure',  'EduTrack will be closed on Monday 22 April for the public holiday. All classes are cancelled.', 'Urgent', 'true', today],
+  ];
+
+  return [
+    { tab: SHEET_TABS.users,               headers: SHEET_HEADERS.users,               rows: userRows },
+    { tab: SHEET_TABS.students,            headers: SHEET_HEADERS.students,            rows: studentRows },
+    { tab: SHEET_TABS.teachers,            headers: SHEET_HEADERS.teachers,            rows: teacherRows },
+    { tab: SHEET_TABS.parents,             headers: SHEET_HEADERS.parents,             rows: parentRows },
+    { tab: SHEET_TABS.subjects,            headers: SHEET_HEADERS.subjects,            rows: subjectRows },
+    { tab: SHEET_TABS.enrollments,         headers: SHEET_HEADERS.enrollments,         rows: enrollmentRows },
+    { tab: SHEET_TABS.enrollment_requests, headers: SHEET_HEADERS.enrollment_requests, rows: enrollmentRequestRows },
+    { tab: SHEET_TABS.announcements,       headers: SHEET_HEADERS.announcements,       rows: announcementRows },
+  ];
+}
+
+// POST /api/sheets/setup — create a brand-new spreadsheet with all EduTrack tabs,
+// seed it with sample data, and apply dropdown validation.
+// After this call the sheet is immediately ready to use.
 router.post('/sheets/setup', async (req, res): Promise<void> => {
   try {
-    const sheets = await getUncachableGoogleSheetClient();
+    const sheets  = await getUncachableGoogleSheetClient();
+    const tabData = buildSeedData();
+    const allTabs = Object.values(SHEET_TABS);
 
+    // 1. Create the spreadsheet with all required tabs at once
     const createRes = await sheets.spreadsheets.create({
       requestBody: {
         properties: { title: 'EduTrack Data' },
-        sheets: [
-          { properties: { title: SHEET_TABS.students } },
-          { properties: { title: SHEET_TABS.teachers } },
-          { properties: { title: SHEET_TABS.subjects } },
-          { properties: { title: SHEET_TABS.enrollments } },
-        ],
+        sheets: allTabs.map(title => ({ properties: { title } })),
       },
     });
 
-    const spreadsheetId = createRes.data.spreadsheetId!;
+    const spreadsheetId  = createRes.data.spreadsheetId!;
     const spreadsheetUrl = createRes.data.spreadsheetUrl!;
 
-    const data = [
-      { range: `${SHEET_TABS.students}!A1`, values: [SHEET_HEADERS.students] },
-      { range: `${SHEET_TABS.teachers}!A1`, values: [SHEET_HEADERS.teachers] },
-      { range: `${SHEET_TABS.subjects}!A1`, values: [SHEET_HEADERS.subjects] },
-      { range: `${SHEET_TABS.enrollments}!A1`, values: [SHEET_HEADERS.enrollments] },
-    ];
+    // 2. Write headers + seed data into every tab in one batch
+    const batchData = tabData.map(({ tab, headers, rows }) => ({
+      range:  `${tab}!A1`,
+      values: [headers, ...rows],
+    }));
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId,
-      requestBody: { valueInputOption: 'RAW', data },
+      requestBody: { valueInputOption: 'RAW', data: batchData },
     });
 
-    res.json({ spreadsheetId, spreadsheetUrl });
+    // 3. Apply dropdown validation (non-fatal)
+    try { await applyDropdownValidation(sheets, spreadsheetId); } catch {}
+
+    res.json({ spreadsheetId, spreadsheetUrl, tabs: tabData.map(t => t.tab), seeded: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // POST /api/sheets/seed — MUST be before /:tab to avoid Express matching "seed" as :tab
+// Clears and re-seeds an existing spreadsheet with all tabs + sample data + dropdowns.
 router.post('/sheets/seed', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing spreadsheetId' }); return; }
 
   try {
-    const sheets = await getUncachableGoogleSheetClient();
+    const sheets   = await getUncachableGoogleSheetClient();
+    const tabData  = buildSeedData();
 
-    function dateFromNow(days: number): string {
-      const d = new Date();
-      d.setDate(d.getDate() + days);
-      return d.toISOString().slice(0, 10);
-    }
-
-    // Ensure all required tabs exist, add missing ones
+    // Ensure all required tabs exist, add any that are missing
     const meta = await sheets.spreadsheets.get({ spreadsheetId });
     const existingTabs = (meta.data.sheets || []).map((s: any) => s.properties?.title as string);
-    const requiredTabs = Object.values(SHEET_TABS);
-    const missingTabs = requiredTabs.filter(t => !existingTabs.includes(t));
-
+    const missingTabs  = Object.values(SHEET_TABS).filter(t => !existingTabs.includes(t));
     if (missingTabs.length > 0) {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
-        requestBody: {
-          requests: missingTabs.map(title => ({
-            addSheet: { properties: { title } },
-          })),
-        },
+        requestBody: { requests: missingTabs.map(title => ({ addSheet: { properties: { title } } })) },
       });
     }
 
-    const today = new Date().toLocaleDateString('en-AU');
-    const nowIso = new Date().toISOString();
-
-    // ── MASTER: Users tab ['UserID', 'Email', 'Role', 'Name', 'Status', 'CreatedAt', 'UpdatedAt']
-    const userRows = [
-      ['PRN-001', 'p.anderson@edutrack.edu', 'principal', 'Principal Anderson', 'Active',   today, nowIso],
-      ['TCH-001', 's.chen@edutrack.edu',     'tutor',     'Dr. Sarah Chen',     'Active',   today, nowIso],
-      ['TCH-002', 'j.taylor@edutrack.edu',   'tutor',     'Mr. James Taylor',   'Active',   today, nowIso],
-      ['TCH-003', 'r.kim@edutrack.edu',      'tutor',     'Ms. Rachel Kim',     'Active',   today, nowIso],
-      ['PAR-001', 'sarah.johnson@gmail.com', 'parent',    'Sarah Johnson',      'Active',   today, nowIso],
-      ['PAR-002', 'mike.smith@gmail.com',    'parent',    'Mike Smith',         'Active',   today, nowIso],
-      ['PAR-003', 'lisa.brown@gmail.com',    'parent',    'Lisa Brown',         'Active',   today, nowIso],
-      ['PAR-004', 'karen.davis@gmail.com',   'parent',    'Karen Davis',        'Active',   today, nowIso],
-      ['PAR-005', 'james.martin@gmail.com',  'parent',    'James Martin',       'Inactive', today, nowIso],
-      ['STU-001', 'emma.j@student.com',      'student',   'Emma Johnson',       'Active',   today, nowIso],
-      ['STU-002', 'liam.s@student.com',      'student',   'Liam Smith',         'Active',   today, nowIso],
-      ['STU-003', 'olivia.b@student.com',    'student',   'Olivia Brown',       'Active',   today, nowIso],
-      ['STU-004', 'noah.d@student.com',      'student',   'Noah Davis',         'Active',   today, nowIso],
-      ['STU-005', 'ava.w@student.com',       'student',   'Ava Wilson',         'Inactive', today, nowIso],
-    ];
-
-    // ── EXTENSIONS: Students ['StudentID', 'UserID', 'ParentID', 'Classes', 'Phone', 'Notes']
-    const studentRows = [
-      ['STU-001', 'STU-001', 'PAR-001', 'SUB-001; SUB-005', '555-0101', ''],
-      ['STU-002', 'STU-002', 'PAR-002', 'SUB-001; SUB-004', '555-0102', ''],
-      ['STU-003', 'STU-003', 'PAR-003', 'SUB-005; SUB-007', '555-0103', ''],
-      ['STU-004', 'STU-004', 'PAR-004', 'SUB-004',          '555-0104', ''],
-      ['STU-005', 'STU-005', 'PAR-001', 'SUB-006',          '555-0105', ''],
-    ];
-
-    // ── EXTENSIONS: Teachers ['TeacherID', 'UserID', 'Subjects', 'Zoom Link', 'Specialty', 'Notes']
-    const teacherRows = [
-      ['TCH-001', 'TCH-001', 'Mathematics, Science',    'https://zoom.us/j/555001', 'STEM',           ''],
-      ['TCH-002', 'TCH-002', 'English',                 'https://zoom.us/j/555002', 'Literacy',       ''],
-      ['TCH-003', 'TCH-003', 'Art, Physical Education', '',                         'Creative Arts',  ''],
-    ];
-
-    // ── EXTENSIONS: Parents ['ParentID', 'UserID', 'Children', 'Phone', 'Notes']
-    const parentRows = [
-      ['PAR-001', 'PAR-001', 'STU-001; STU-005', '555-0201', ''],
-      ['PAR-002', 'PAR-002', 'STU-002',          '555-0202', ''],
-      ['PAR-003', 'PAR-003', 'STU-003',          '555-0203', ''],
-      ['PAR-004', 'PAR-004', 'STU-004',          '555-0204', ''],
-      ['PAR-005', 'PAR-005', '',                 '555-0301', ''],
-    ];
-
-    // ── CLASSES: Subjects ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Status', 'MaxCapacity']
-    const subjectRows = [
-      ['SUB-001', 'Mathematics',        'Individual', 'TCH-001', 'Room 101', 'Mon, Wed',      'Active', '6'],
-      ['SUB-002', 'Mathematics',        'Group',      'TCH-001', 'Room 101', 'Tue, Thu',      'Active', '8'],
-      ['SUB-003', 'English',            'Individual', 'TCH-002', 'Room 201', 'Mon, Wed',      'Active', '6'],
-      ['SUB-004', 'English',            'Group',      'TCH-002', 'Room 201', 'Tue, Thu, Fri', 'Active', '10'],
-      ['SUB-005', 'Science',            'Group',      'TCH-001', 'Lab 1',    'Fri',           'Active', '8'],
-      ['SUB-006', 'Art',                'Individual', 'TCH-003', 'Studio',   'Wed',           'Active', '4'],
-      ['SUB-007', 'Art',                'Group',      'TCH-003', 'Studio',   'Thu',           'Active', '8'],
-      ['SUB-008', 'Physical Education', 'Group',      'TCH-003', 'Gym',      'Mon, Fri',      'Active', '12'],
-    ];
-
-    // ── TRANSACTIONS: Enrollments
-    // ['EnrollmentID','UserID','ClassID','ParentID','Status','EnrolledAt','Override Action','TeacherID','TeacherEmail','Zoom Link','Class Type','ClassDate','ClassTime']
-    const enrollmentRows = [
-      ['ENR-001', 'STU-001', 'SUB-001', 'PAR-001', 'Active',           nowIso, '', 'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
-      ['ENR-002', 'STU-001', 'SUB-005', 'PAR-001', 'Active',           nowIso, '', 'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
-      ['ENR-003', 'STU-002', 'SUB-001', 'PAR-002', 'Active',           nowIso, '', 'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
-      ['ENR-004', 'STU-002', 'SUB-004', 'PAR-002', 'Active',           nowIso, '', 'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
-      ['ENR-005', 'STU-003', 'SUB-005', 'PAR-003', 'Active',           nowIso, '', 'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
-      ['ENR-006', 'STU-003', 'SUB-007', 'PAR-003', 'Active',           nowIso, '', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(10), '03:00 PM'],
-      ['ENR-007', 'STU-004', 'SUB-004', 'PAR-004', 'Active',           nowIso, '', 'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
-      ['ENR-008', 'STU-005', 'SUB-006', 'PAR-001', 'Active',           nowIso, '', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Individual', dateFromNow(11), '03:00 PM'],
-      ['ENR-009', 'STU-004', 'SUB-008', 'PAR-004', 'Cancelled',        nowIso, '', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(3),  '09:00 AM'],
-      ['ENR-010', 'STU-002', 'SUB-008', 'PAR-002', 'Late Cancellation',nowIso, '', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(1),  '10:00 AM'],
-      ['ENR-011', 'STU-003', 'SUB-001', 'PAR-003', 'Late Cancellation',nowIso, '', 'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '11:00 AM'],
-      ['ENR-012', 'STU-001', 'SUB-008', 'PAR-001', 'Fee Waived',       nowIso, 'Fee Waived',    'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
-      ['ENR-013', 'STU-005', 'SUB-004', 'PAR-001', 'Fee Confirmed',    nowIso, 'Fee Confirmed', 'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
-    ];
-
-    // ── TRANSACTIONS: Enrollment Requests
-    // ['RequestID','UserID','RequestType','ClassID','Status','Timestamp','Notes']
-    const enrollmentRequestRows = [
-      ['REQ-001', 'PAR-005', 'student', 'SUB-001', 'Pending', nowIso, JSON.stringify({
-        studentName: 'Sophia Martin', studentEmail: 'sophia.m@student.com',
-        parentEmail: 'james.martin@gmail.com', parentPhone: '555-0301', parentName: 'James Martin',
-        age: '9', currentGrade: 'Year 4', currentSchool: 'Westfield Primary',
-        previouslyEnrolled: 'No', classesInterested: 'Mathematics',
-        reference: 'Google', promoCode: 'WELCOME10',
-        extra: 'Sophia struggles with fractions — would love extra support.',
-        submissionDate: today,
-      })],
-    ];
-
-    // ── Announcements ['AnnouncementID','Title','Message','Priority','IsActive','CreatedAt']
-    const announcementRows = [
-      ['ANN-001', 'Term 2 Enrolments Open', 'Term 2 enrolments are now open. Contact us to secure your spot before places fill up!', 'Standard', 'true', today],
-      ['ANN-002', 'Public Holiday Closure', 'EduTrack will be closed on Monday 22 April for the public holiday. All classes are cancelled.', 'Urgent', 'true', today],
-    ];
-
-    const tabData: Array<{ tab: string; headers: string[]; rows: string[][] }> = [
-      { tab: SHEET_TABS.users,                headers: SHEET_HEADERS.users,                rows: userRows },
-      { tab: SHEET_TABS.students,             headers: SHEET_HEADERS.students,             rows: studentRows },
-      { tab: SHEET_TABS.teachers,             headers: SHEET_HEADERS.teachers,             rows: teacherRows },
-      { tab: SHEET_TABS.parents,              headers: SHEET_HEADERS.parents,              rows: parentRows },
-      { tab: SHEET_TABS.subjects,             headers: SHEET_HEADERS.subjects,             rows: subjectRows },
-      { tab: SHEET_TABS.enrollments,          headers: SHEET_HEADERS.enrollments,          rows: enrollmentRows },
-      { tab: SHEET_TABS.enrollment_requests,  headers: SHEET_HEADERS.enrollment_requests,  rows: enrollmentRequestRows },
-      { tab: SHEET_TABS.announcements,        headers: SHEET_HEADERS.announcements,        rows: announcementRows },
-    ];
-
+    // Clear then write each tab sequentially (avoids quota bursts on large data)
     for (const { tab, headers, rows } of tabData) {
       await sheets.spreadsheets.values.clear({ spreadsheetId, range: `${tab}!A1:Z` });
       await sheets.spreadsheets.values.update({
@@ -236,10 +220,8 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       });
     }
 
-    // Apply dropdown validation to all status columns (non-fatal — seed data is already written)
-    try {
-      await applyDropdownValidation(sheets, spreadsheetId);
-    } catch {}
+    // Apply dropdown validation (non-fatal — seed data is already written)
+    try { await applyDropdownValidation(sheets, spreadsheetId); } catch {}
 
     res.json({ ok: true, tabs: tabData.map(t => t.tab) });
   } catch (err: any) {
