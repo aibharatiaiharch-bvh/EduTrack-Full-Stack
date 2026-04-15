@@ -141,8 +141,12 @@ function ClerkProviderWithRoutes() {
           <Route path="/student">
             <ProtectedRoute component={StudentPortal} />
           </Route>
-          <Route path="/parent" component={ParentView} />
-          <Route path="/calendar" component={ClassCalendar} />
+          <Route path="/parent">
+            <ProtectedRoute component={ParentView} />
+          </Route>
+          <Route path="/calendar">
+            <ProtectedRoute component={ClassCalendar} />
+          </Route>
           <Route path="/principal">
             <ProtectedRoute component={PrincipalDashboard} />
           </Route>
