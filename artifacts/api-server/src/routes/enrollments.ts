@@ -14,6 +14,19 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
+function normalizeEnrollmentStatus(value: string | undefined): string {
+  const v = (value || '').toLowerCase().trim();
+  if (v === 'active' || v === 'enrolled') return 'Active';
+  if (v === 'inactive') return 'Inactive';
+  if (v === 'pending') return 'Pending';
+  if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
+  if (v === 'late cancellation') return 'Late Cancellation';
+  if (v === 'fee waived') return 'Fee Waived';
+  if (v === 'fee confirmed') return 'Fee Confirmed';
+  if (v === 'rejected') return 'Rejected';
+  return 'Pending';
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 async function readEnrollmentRows(spreadsheetId: string) {
@@ -102,7 +115,7 @@ router.get('/enrollments', async (req, res): Promise<void> => {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
       filtered = filtered.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
     }
-    res.json(filtered);
+    res.json(filtered.map(r => ({ ...r, Status: normalizeEnrollmentStatus(r['Status']) })));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -198,7 +211,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       if (h === 'UserID')        return resolvedStudentId;
       if (h === 'ClassID')       return resolvedClassId;
       if (h === 'ParentID')      return resolvedParentId;
-      if (h === 'Status')        return 'Active';
+      if (h === 'Status')        return normalizeEnrollmentStatus('Active');
       if (h === 'EnrolledAt')    return now;
       if (h === 'Override Action') return '';
       if (h === 'TeacherID')     return resolvedTeacherId;
@@ -234,7 +247,7 @@ router.post('/enrollments', async (req, res): Promise<void> => {
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
       if (h === 'EnrollmentID')  return enrollmentId;
-      if (h === 'Status')        return req.body[h] || 'Active';
+      if (h === 'Status')        return normalizeEnrollmentStatus(req.body[h] || 'Active');
       if (h === 'EnrolledAt')    return new Date().toISOString();
       if (h === 'Override Action') return '';
       return req.body[h] ?? '';
