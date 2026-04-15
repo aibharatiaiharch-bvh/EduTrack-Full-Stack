@@ -264,7 +264,7 @@ export default function ParentView() {
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead>Date / Time</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead />
                   </TableRow>
@@ -274,7 +274,7 @@ export default function ParentView() {
                     <TableRow key={enrollment._row}>
                       <TableCell className="font-medium">{enrollment["Student Name"]}</TableCell>
                       <TableCell>{enrollment["Class Name"]}</TableCell>
-                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                         {[enrollment["Class Date"], enrollment["Class Time"]].filter(Boolean).join(" · ") || "—"}
                       </TableCell>
                       <TableCell>
