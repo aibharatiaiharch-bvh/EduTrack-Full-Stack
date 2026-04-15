@@ -63,7 +63,9 @@ router.get('/subjects/with-capacity', async (req, res): Promise<void> => {
     const userMap = new Map(users.map(u => [u.userId, u]));
 
     const withCapacity = subjects.map(s => {
-      const maxCap    = parseInt(s['MaxCapacity'] || '8', 10) || 8;
+      const isGroup   = String(s['Type'] || '').toLowerCase() === 'group';
+      const defaultCap = isGroup ? 8 : 999;
+      const maxCap    = parseInt(s['MaxCapacity'] || String(defaultCap), 10) || defaultCap;
       const classId   = s['SubjectID'] || '';
       const enrolled  = enrollmentRows.filter(e => e['ClassID'] === classId).length;
 
@@ -153,7 +155,7 @@ router.post('/subjects', async (req, res): Promise<void> => {
       if (h === 'Room')        return (room || '').trim();
       if (h === 'Days')        return (days || '').trim();
       if (h === 'Status')      return 'Active';
-      if (h === 'MaxCapacity') return (maxCapacity || '8').trim();
+      if (h === 'MaxCapacity') return type === 'Group' ? (maxCapacity || '8').trim() : (maxCapacity || '999').trim();
       return '';
     });
     await sheets.spreadsheets.values.append({
