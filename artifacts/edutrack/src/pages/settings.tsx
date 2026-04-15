@@ -265,6 +265,9 @@ export default function Settings() {
                     Link
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Use the long ID between <code>/d/</code> and <code>/edit</code> in the Google Sheets URL.
+                </p>
               </div>
             )}
 
