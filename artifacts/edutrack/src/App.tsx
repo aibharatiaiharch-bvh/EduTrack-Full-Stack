@@ -71,9 +71,6 @@ function SignUpPage() {
 
 function ProtectedRoute({ component: Component }: { component: any }) {
   const { isLoaded, isSignedIn } = useUser();
-  // If auth-redirect already validated and stored a role, allow access without Clerk
-  const hasStoredRole = !!localStorage.getItem("edutrack_user_role");
-  if (hasStoredRole) return <Component />;
   if (!isLoaded) return null;
   if (!isSignedIn) return <Redirect to="/" />;
   return <Component />;
