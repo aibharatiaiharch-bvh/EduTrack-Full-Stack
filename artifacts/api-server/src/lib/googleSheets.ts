@@ -66,7 +66,6 @@ export const SHEET_TABS = {
   teachers: 'Teachers',
   subjects: 'Subjects',
   enrollments: 'Enrollments',
-  enrollment_requests: 'Enrollment Requests',
   parents: 'Parents',
   announcements: 'Announcements',
 };
@@ -74,7 +73,7 @@ export const SHEET_TABS = {
 // ─── SCHEMA (Users = master, all others use IDs) ────────────────────────────
 // Master: Users tab is the SINGLE SOURCE OF TRUTH for Name, Email, Role, Status.
 // Extension tabs (Students, Teachers, Parents) store role-specific fields only.
-// Transaction tabs (Enrollments, Enrollment Requests) store IDs + events.
+// Transaction tabs (Enrollments) store IDs + events.
 // Never duplicate Name/Email/Status in transactional tabs — join server-side.
 export const SHEET_HEADERS = {
   // MASTER — all profile data lives here
@@ -94,9 +93,6 @@ export const SHEET_HEADERS = {
     'TeacherID', 'Teacher Name', 'TeacherEmail', 'Zoom Link', 'Class Type',
     'ClassDate', 'ClassTime',
   ],
-
-  // Enrollment Requests — lean schema; extra form data packed in Notes (JSON)
-  enrollment_requests: ['RequestID', 'UserID', 'RequestType', 'ClassID', 'Status', 'Timestamp', 'Notes'],
 
   // Announcements — standalone, no user FK needed
   announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive', 'CreatedAt'],
