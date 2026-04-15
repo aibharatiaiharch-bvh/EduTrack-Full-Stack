@@ -63,9 +63,18 @@ async function getReplitAccessToken() {
 
 async function getAuthClient() {
   if (hasServiceAccountConfig()) {
-    const auth = getServiceAccountAuth();
-    if (!auth) throw new Error('Google service account config invalid');
-    return auth;
+    try {
+      const auth = getServiceAccountAuth();
+      if (!auth) throw new Error('Google service account config invalid');
+      await auth.authorize();
+      return auth;
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[googleSheets] Service account auth failed, falling back to Replit connector:', err);
+      } else {
+        throw err;
+      }
+    }
   }
 
   const accessToken = await getReplitAccessToken();

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClerkProvider, SignUp, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
@@ -43,7 +43,9 @@ async function loadDefaultSheetId() {
   }
 }
 
-loadDefaultSheetId();
+const sheetIdReadyPromise = localStorage.getItem("edutrack_sheet_id")
+  ? Promise.resolve()
+  : loadDefaultSheetId();
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
@@ -102,6 +104,15 @@ function ClerkQueryClientCacheInvalidator() {
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
+  const [sheetReady, setSheetReady] = useState(!!localStorage.getItem("edutrack_sheet_id"));
+
+  useEffect(() => {
+    if (!sheetReady) {
+      sheetIdReadyPromise.then(() => setSheetReady(true));
+    }
+  }, [sheetReady]);
+
+  if (!sheetReady) return null;
 
   return (
     <ClerkProvider
