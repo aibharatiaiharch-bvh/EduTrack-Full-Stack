@@ -20,8 +20,11 @@ import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } fro
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
   XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
-  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers, PlusCircle,
+  UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers, PlusCircle, ChevronRight,
 } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
@@ -373,6 +376,9 @@ export default function PrincipalDashboard() {
     },
     onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
   });
+  // Teacher drilldown dialog
+  const [teacherDrilldown, setTeacherDrilldown] = useState<TeacherRow | null>(null);
+
   // Add Subject dialog
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [subjectForm, setSubjectForm] = useState({ name: "", type: "Individual", teachers: "", room: "", days: "" });
@@ -610,6 +616,82 @@ export default function PrincipalDashboard() {
                 Housekeeping
               </Button>
             </Link>
+          </CardContent>
+        </Card>
+
+        {/* Teachers Table */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                  Teachers
+                </CardTitle>
+                <CardDescription className="mt-1">All active teachers. Click a row to see their assigned classes.</CardDescription>
+              </div>
+              <Button size="sm" variant="outline" className="gap-2 shrink-0" onClick={() => setShowAddTeacher(true)} disabled={!sheetId && !isPrivileged}>
+                <UserPlus className="w-3.5 h-3.5" /> Add Teacher
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {(activeTeachers ?? []).length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm border-t">No teachers found.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Subjects</TableHead>
+                    <TableHead className="hidden md:table-cell">Zoom</TableHead>
+                    <TableHead className="text-right">Classes</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(activeTeachers ?? []).map((teacher) => {
+                    const teacherClasses = (allEnrollments ?? []).filter(
+                      e => e["Teacher"] === teacher["Name"] &&
+                      !["cancelled","late cancellation","rejected"].includes((e["Status"] || "").toLowerCase())
+                    );
+                    return (
+                      <TableRow
+                        key={teacher._row}
+                        className="cursor-pointer"
+                        onClick={() => setTeacherDrilldown(teacher)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-bold">
+                              {(teacher["Name"] || "?")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm leading-none">{teacher["Name"]}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{teacher["Email"] || "—"}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs text-muted-foreground max-w-[180px] truncate">{teacher["Subjects"] || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {teacher["Zoom Link"] ? (
+                            <a href={teacher["Zoom Link"]} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                              <Video className="h-3 w-3" /> Link
+                            </a>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="secondary" className="text-xs">{teacherClasses.length}</Badge>
+                        </TableCell>
+                        <TableCell className="w-6">
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
@@ -938,78 +1020,64 @@ export default function PrincipalDashboard() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-0">
             {loadingAllEnrollments ? (
-              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
+              <div className="p-4 space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded" />)}
+              </div>
             ) : assignableEnrollments.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
-                <BookOpen className="h-8 w-8 text-muted-foreground/40" />
-                <p className="font-medium">No active enrollments</p>
-                <p className="text-sm">Enrollments will appear here once added.</p>
+              <div className="text-center py-10 text-muted-foreground border-t text-sm flex flex-col items-center gap-2">
+                <BookOpen className="h-7 w-7 opacity-30" />
+                <p>No active enrollments</p>
               </div>
             ) : (
-              assignableEnrollments.map((enrollment) => {
-                const hasTeacher = !!enrollment["Teacher"];
-                return (
-                  <div
-                    key={enrollment._row}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${hasTeacher ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-600"}`}>
-                        <BookOpen className="w-4 h-4" />
-                      </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="font-semibold text-foreground text-sm">{enrollment["Student Name"]}</p>
-                        <p className="text-sm text-muted-foreground">{enrollment["Class Name"]}</p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
-                          {enrollment["Class Date"] && (
-                            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{enrollment["Class Date"]}</span>
-                          )}
-                          {enrollment["Class Time"] && (
-                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{enrollment["Class Time"]}</span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {assignableEnrollments.map((enrollment) => {
+                    const hasTeacher = !!enrollment["Teacher"];
+                    return (
+                      <TableRow key={enrollment._row}>
+                        <TableCell className="font-medium text-sm">{enrollment["Student Name"]}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{enrollment["Class Name"]}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                          {[enrollment["Class Date"], enrollment["Class Time"]].filter(Boolean).join(" · ") || "—"}
+                        </TableCell>
+                        <TableCell>
                           {hasTeacher ? (
-                            <>
-                              <span className="flex items-center gap-1 text-green-700 font-medium">
-                                <UserCheck className="h-3 w-3" />
-                                {enrollment["Teacher"]}
-                              </span>
-                              {enrollment["Zoom Link"] && (
-                                <a
-                                  href={enrollment["Zoom Link"]}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-blue-600 hover:underline"
-                                >
-                                  <Video className="h-3 w-3" />
-                                  Zoom Link
-                                </a>
-                              )}
-                            </>
+                            <span className="flex items-center gap-1 text-xs text-green-700 font-medium">
+                              <UserCheck className="h-3 w-3" />{enrollment["Teacher"]}
+                            </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-amber-600 font-medium">
-                              <AlertTriangle className="h-3 w-3" />
-                              No teacher assigned
+                            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+                              <AlertTriangle className="h-3 w-3" />Unassigned
                             </span>
                           )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={hasTeacher ? "outline" : "default"}
-                      className="shrink-0 gap-1.5"
-                      onClick={() => { setAssignDialog({ open: true, enrollment }); setAssignSearch(""); }}
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      {hasTeacher ? "Reassign" : "Assign Teacher"}
-                    </Button>
-                  </div>
-                );
-              })
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant={hasTeacher ? "outline" : "default"}
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => { setAssignDialog({ open: true, enrollment }); setAssignSearch(""); }}
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            {hasTeacher ? "Reassign" : "Assign"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
@@ -1042,65 +1110,66 @@ export default function PrincipalDashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="p-0">
             {loadingAllEnrollments ? (
-              Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)
+              <div className="p-4 space-y-2">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full rounded" />)}
+              </div>
             ) : Object.keys(scheduleEnrollments).length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
-                <Calendar className="h-8 w-8 opacity-40" />
-                <p className="font-medium">No classes to display</p>
+              <div className="text-center py-10 text-muted-foreground border-t text-sm flex flex-col items-center gap-2">
+                <Calendar className="h-7 w-7 opacity-30" />
+                <p>No classes to display</p>
               </div>
             ) : (
-              Object.entries(scheduleEnrollments).map(([teacherName, enrs]) => (
-                <div key={teacherName} className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold
-                      ${teacherName === "Unassigned" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}>
-                      {teacherName === "Unassigned" ? "?" : teacherName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-sm">{teacherName}</p>
-                      <p className="text-xs text-muted-foreground">{enrs.length} {enrs.length === 1 ? "class" : "classes"}</p>
-                    </div>
-                  </div>
-                  <div className="ml-10 space-y-2">
-                    {enrs.map(enr => (
-                      <div
-                        key={enr._row}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="space-y-0.5 min-w-0">
-                          <p className="font-medium text-sm">{enr["Class Name"] || "—"}</p>
-                          <p className="text-xs text-muted-foreground">Student: {enr["Student Name"]}</p>
-                          <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
-                            {enr["Class Date"] && (
-                              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{enr["Class Date"]}</span>
-                            )}
-                            {enr["Class Time"] && (
-                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{enr["Class Time"]}</span>
-                            )}
-                            {enr["Zoom Link"] && (
-                              <a href={enr["Zoom Link"]} target="_blank" rel="noreferrer"
-                                className="flex items-center gap-1 text-primary hover:underline">
-                                <Video className="h-3 w-3" />Zoom
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="shrink-0 gap-1.5 self-start sm:self-auto"
-                          onClick={() => { setAssignDialog({ open: true, enrollment: enr }); setAssignSearch(""); }}
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                          Reassign
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead className="hidden sm:table-cell">Zoom</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(scheduleEnrollments).flatMap(([teacherName, enrs]) =>
+                    enrs.map((enr, i) => (
+                      <TableRow key={enr._row}>
+                        <TableCell className="font-medium text-sm">
+                          {i === 0 ? (
+                            <span className={teacherName === "Unassigned" ? "text-amber-600" : ""}>{teacherName}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">↳</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">{enr["Class Name"] || "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{enr["Student Name"]}</TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                          {[enr["Class Date"], enr["Class Time"]].filter(Boolean).join(" · ") || "—"}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {enr["Zoom Link"] ? (
+                            <a href={enr["Zoom Link"]} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                              <Video className="h-3 w-3" />Zoom
+                            </a>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => { setAssignDialog({ open: true, enrollment: enr }); setAssignSearch(""); }}
+                          >
+                            <UserPlus className="h-3 w-3" /> Reassign
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>
@@ -1205,43 +1274,52 @@ export default function PrincipalDashboard() {
               </div>
             </div>
 
-            {/* User list */}
+            {/* User table */}
             {loadingUsers ? (
-              <p className="text-sm text-muted-foreground py-3 text-center">Loading users…</p>
+              <div className="space-y-2 pt-2">
+                {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-full rounded" />)}
+              </div>
             ) : filteredUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground py-3 text-center">
                 {userList.length === 0 ? "No users found in the Users tab." : "No users match the current filters."}
               </p>
             ) : (
-              <div className="divide-y divide-border">
-                {filteredUsers.map(u => {
-                  const statusKey = u.status.toLowerCase();
-                  const roleKey = u.role.toLowerCase();
-                  const isActioning = actioningUser === u.userId;
-                  return (
-                    <div key={u.userId} className="py-3 first:pt-0 last:pb-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm">{u.name || u.email}</span>
+              <div className="-mx-4 sm:-mx-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name / ID</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map(u => {
+                      const statusKey = u.status.toLowerCase();
+                      const roleKey = u.role.toLowerCase();
+                      return (
+                        <TableRow key={u.userId}>
+                          <TableCell>
+                            <p className="font-medium text-sm leading-none">{u.name || u.email}</p>
+                            <p className="text-xs text-muted-foreground font-mono mt-0.5">{u.userId || "—"}</p>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{u.email}</TableCell>
+                          <TableCell>
                             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${ROLE_COLORS[roleKey] || "bg-muted text-muted-foreground"}`}>
                               {u.role || "—"}
                             </span>
+                          </TableCell>
+                          <TableCell>
                             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[statusKey] || "bg-muted text-muted-foreground"}`}>
                               {u.status || "—"}
                             </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono">{u.userId || "—"}</span>
-                            <span>·</span><span>{u.email}</span>
-                            {u.addedDate && <><span>·</span><span>{u.addedDate}</span></>}
-                          </div>
-                        </div>
-                        <div className="shrink-0" />
-                      </div>
-                    </div>
-                  );
-                })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
             <p className="text-xs text-muted-foreground">
@@ -1273,6 +1351,82 @@ export default function PrincipalDashboard() {
           </Card>
         )}
       </div>
+
+      {/* Teacher Drilldown Dialog */}
+      <Dialog open={!!teacherDrilldown} onOpenChange={open => { if (!open) setTeacherDrilldown(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                {(teacherDrilldown?.["Name"] || "?")[0].toUpperCase()}
+              </div>
+              {teacherDrilldown?.["Name"]}
+            </DialogTitle>
+          </DialogHeader>
+          {teacherDrilldown && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Email</p>
+                  <p>{teacherDrilldown["Email"] || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Subjects</p>
+                  <p>{teacherDrilldown["Subjects"] || "—"}</p>
+                </div>
+                {teacherDrilldown["Zoom Link"] && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground font-medium">Zoom Link</p>
+                    <a href={teacherDrilldown["Zoom Link"]} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline flex items-center gap-1 text-sm">
+                      <Video className="h-3.5 w-3.5" />{teacherDrilldown["Zoom Link"]}
+                    </a>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-semibold mb-2">Assigned Classes</p>
+                {(() => {
+                  const classes = (allEnrollments ?? []).filter(
+                    e => e["Teacher"] === teacherDrilldown["Name"] &&
+                    !["cancelled","late cancellation","rejected"].includes((e["Status"] || "").toLowerCase())
+                  );
+                  return classes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">No classes assigned yet.</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Date / Time</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {classes.map(enr => (
+                          <TableRow key={enr._row}>
+                            <TableCell className="text-sm">{enr["Student Name"]}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">{enr["Class Name"] || "—"}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                              {[enr["Class Date"], enr["Class Time"]].filter(Boolean).join(" · ") || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">{enr["Status"] || "—"}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTeacherDrilldown(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Assign Teacher Dialog */}
       <Dialog
