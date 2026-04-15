@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { useUser } from "@clerk/react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -202,7 +203,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
             );
 
             return (
-                <React.Fragment key={subject._row}>
+                <Fragment key={subject._row}>
                 <div className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
                   {subject["Subject Name"]}
                 </div>
@@ -238,7 +239,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                     </div>
                   );
                 })}
-                </React.Fragment>
+                </Fragment>
             );
           })}
         </div>
