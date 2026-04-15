@@ -1292,12 +1292,14 @@ export default function PrincipalDashboard() {
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map(u => {
                       const statusKey = u.status.toLowerCase();
                       const roleKey = u.role.toLowerCase();
+                      const canDeactivate = statusKey === "active";
                       return (
                         <TableRow key={u.userId}>
                           <TableCell>
@@ -1314,6 +1316,23 @@ export default function PrincipalDashboard() {
                             <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[statusKey] || "bg-muted text-muted-foreground"}`}>
                               {u.status || "—"}
                             </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant={canDeactivate ? "outline" : "default"}
+                              className={`h-8 px-2 text-xs ${canDeactivate ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}`}
+                              onClick={() => {
+                                if (canDeactivate) {
+                                  deactivateUser(u.userId);
+                                } else {
+                                  reactivateUser(u.userId);
+                                }
+                              }}
+                              disabled={actioningUser === u.userId}
+                            >
+                              {u.status.toLowerCase() === "active" ? "Make Inactive" : "Reactivate"}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
