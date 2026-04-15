@@ -38,19 +38,19 @@ export function DevModeBanner() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm shadow-xl border border-purple-500">
+    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white text-sm shadow-xl border border-red-500">
       <FlaskConical className="w-4 h-4 shrink-0" />
       <span>Dev preview: <strong>{ROLE_LABELS[override] || override}</strong></span>
       <button
         onClick={dismissBanner}
-        className="ml-1 rounded p-0.5 text-white hover:bg-purple-700 transition-colors"
+        className="ml-1 rounded p-0.5 text-white hover:bg-white/20 transition-colors"
         title="Dismiss banner"
       >
-        <X className="w-3.5 h-3.5 text-white" />
+        <X className="w-4 h-4 text-white" />
       </button>
       <button
         onClick={exitTestMode}
-        className="ml-1 rounded px-2 py-0.5 text-xs bg-purple-700 hover:bg-purple-800 transition-colors"
+        className="ml-1 rounded px-2 py-0.5 text-xs bg-white/15 hover:bg-white/25 transition-colors text-white"
         title="Exit test mode"
       >
         Exit
