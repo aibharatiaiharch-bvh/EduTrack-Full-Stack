@@ -18,6 +18,7 @@ export default function SignInPage() {
         </div>
         <div className="space-y-3">
           <Input
+            autoFocus
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -26,7 +27,7 @@ export default function SignInPage() {
           <Button
             className="w-full"
             disabled={!email.trim()}
-            onClick={() => setLocation(`${BASE}/auth-redirect`)}
+            onClick={() => setLocation(`${BASE}/auth-redirect?email=${encodeURIComponent(email.trim())}`)}
           >
             Continue
           </Button>
