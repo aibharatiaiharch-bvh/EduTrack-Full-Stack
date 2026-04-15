@@ -125,6 +125,7 @@ export default function EnrollPage() {
     try {
       const userEmail = user?.primaryEmailAddress?.emailAddress || "";
       const userName = user?.fullName || "";
+      const resolvedSheetId = sheetId || localStorage.getItem(SHEET_KEY) || "";
       let body: Record<string, string>;
 
       if (requestType === "tutor") {
@@ -138,7 +139,7 @@ export default function EnrollPage() {
           classesInterested: tutorForm.subjects,
           reference: tutorForm.zoomLink,
           notes: tutorForm.notes,
-          sheetId,
+          sheetId: resolvedSheetId,
           userEmail,
           userName,
         };
@@ -146,7 +147,7 @@ export default function EnrollPage() {
         body = {
           requestType: "student",
           ...studentForm,
-          sheetId,
+          sheetId: resolvedSheetId,
           userEmail,
           userName,
         };

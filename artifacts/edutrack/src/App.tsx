@@ -23,6 +23,7 @@ import AdminPortal from "@/pages/admin";
 import MySchedule from "@/pages/my-schedule";
 import BrowseClasses from "@/pages/browse-classes";
 import StudentPortal from "@/pages/student";
+import SignInPage from "@/pages/sign-in";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -36,24 +37,6 @@ function stripBase(path: string): string {
 
 if (!clerkPubKey) {
   throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
-}
-
-function SignInPage() {
-  return (
-    <div className="flex justify-center items-center min-h-screen bg-background p-6">
-      <div className="w-full max-w-md space-y-4 rounded-xl border bg-white p-6 shadow-sm">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
-          <p className="text-sm text-muted-foreground">Enter your email to continue.</p>
-        </div>
-        <div className="space-y-3">
-          <Button className="w-full" onClick={() => window.location.assign(`${basePath}/auth-redirect`)}>
-            Continue
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function SignUpPage() {
