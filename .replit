@@ -34,3 +34,5 @@ channel = "stable-25_05"
 [userenv.shared]
 DEVELOPER_EMAIL = "aibharatiaiharch@gmail.com"
 DEVELOPER_NAME = "App Developer"
+PRINCIPAL_EMAIL = "rajnihal033@gmail.com"
+PRINCIPAL_NAME = "Test Principal"
