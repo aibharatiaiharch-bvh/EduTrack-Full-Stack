@@ -48,7 +48,7 @@ router.get('/subjects/with-capacity', async (req, res): Promise<void> => {
     let enrollmentRows: any[] = [];
     try {
       enrollmentRows = await readTabRows(spreadsheetId, SHEET_TABS.enrollments);
-      enrollmentRows = enrollmentRows.filter(r => (r['Status'] || '').toLowerCase() === 'active');
+      enrollmentRows = enrollmentRows.filter(r => (r['Status'] || '').toLowerCase() === 'approved');
     } catch {}
 
     // Join Teachers extension + Users for display name
