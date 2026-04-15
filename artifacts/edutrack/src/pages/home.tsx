@@ -81,16 +81,14 @@ export default function Home() {
           </button>
 
           <Link href="/sign-in">
-            <div className="group cursor-pointer rounded-lg border border-border bg-white/70 p-3 text-left hover:border-primary/60 hover:bg-white transition-all duration-200 opacity-70">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
+            <div className="group cursor-pointer rounded-md border border-border bg-white/60 p-2.5 text-left hover:border-primary/60 hover:bg-white transition-all duration-200 opacity-60 w-full max-w-sm mx-auto">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-xs font-semibold text-foreground">Developer / Admin</h2>
-                  <p className="text-[11px] text-muted-foreground">
-                    Setup and system tools
-                  </p>
+                  <h2 className="text-[11px] font-semibold text-foreground">Developer / Admin</h2>
+                  <p className="text-[10px] text-muted-foreground">Setup and system tools</p>
                 </div>
               </div>
             </div>
