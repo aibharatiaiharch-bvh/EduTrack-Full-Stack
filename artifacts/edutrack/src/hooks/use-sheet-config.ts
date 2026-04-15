@@ -19,6 +19,7 @@ export function useSheetConfig() {
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [filesError, setFilesError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [manualSheetId, setManualSheetId] = useState<string>("");
 
   const setSheetId = useCallback((id: string | null) => {
     setSheetIdState(id);
@@ -86,6 +87,8 @@ export function useSheetConfig() {
   return {
     sheetId,
     setSheetId,
+    manualSheetId,
+    setManualSheetId,
     driveFiles,
     loadingFiles,
     filesError,

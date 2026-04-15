@@ -18,6 +18,8 @@ export default function Settings() {
   const {
     sheetId,
     setSheetId,
+    manualSheetId,
+    setManualSheetId,
     driveFiles,
     loadingFiles,
     filesError,
@@ -33,6 +35,13 @@ export default function Settings() {
   const [applyingDropdowns, setApplyingDropdowns] = useState(false);
 
   const selectedFile = driveFiles.find((f) => f.id === sheetId);
+
+  const handleManualLink = () => {
+    const value = manualSheetId.trim();
+    if (!value) return;
+    setSheetId(value);
+    toast({ title: "Google Sheet linked", description: "The spreadsheet ID has been saved." });
+  };
 
   const handleSyncHeaders = async () => {
     if (!sheetId) {
@@ -242,6 +251,22 @@ export default function Settings() {
                 </Select>
               )}
             </div>
+
+            {!loadingFiles && driveFiles.length === 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Paste spreadsheet ID manually</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={manualSheetId}
+                    onChange={(e) => setManualSheetId(e.target.value)}
+                    placeholder="Spreadsheet ID from the Google Sheets URL"
+                  />
+                  <Button onClick={handleManualLink} disabled={!manualSheetId.trim()}>
+                    Link
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="flex-1 border-t" />
