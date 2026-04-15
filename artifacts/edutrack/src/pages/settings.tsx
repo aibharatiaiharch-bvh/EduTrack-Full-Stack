@@ -151,9 +151,9 @@ export default function Settings() {
         <Card>
           <CardHeader>
             <CardTitle>Google Sheet</CardTitle>
-            <CardDescription>
-              Link a Google Spreadsheet to use as your EduTrack data source. The sheet must have
-              tabs named <strong>Students</strong>, <strong>Teachers</strong>, and <strong>Subjects</strong>.
+          <CardDescription>
+              Link a Google Spreadsheet to use as your EduTrack data source. If nothing is linked yet,
+              create a new one or select an existing file from Drive.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -181,6 +181,13 @@ export default function Settings() {
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   A sheet is linked but was not found in your Drive. Select a new one below.
+                </p>
+              </div>
+            ) : !sheetId && !loadingFiles ? (
+              <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/40">
+                <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  No spreadsheet is linked yet. Choose one from Drive or create a new EduTrack spreadsheet.
                 </p>
               </div>
             ) : null}
