@@ -34,17 +34,14 @@ export default function EnrollPage() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
 
-  // Resolve sheetId: prefer URL param (shareable school link), fall back to localStorage
   const urlSheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
   const sheetId = urlSheetId || localStorage.getItem(SHEET_KEY) || "";
 
-  // Persist sheetId from URL into localStorage so subsequent sign-in works correctly
   useEffect(() => {
     if (urlSheetId) localStorage.setItem(SHEET_KEY, urlSheetId);
   }, [urlSheetId]);
 
   const [requestType, setRequestType] = useState<RequestType | null>(null);
-
   const [studentForm, setStudentForm] = useState({
     studentName: "",
     studentEmail: "",
@@ -59,10 +56,21 @@ export default function EnrollPage() {
     promoCode: "",
     notes: "",
   });
-
-  // Available subjects fetched from the school's sheet
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [tutorForm, setTutorForm] = useState({
+    applicantName: "",
+    applicantEmail: "",
+    applicantPhone: "",
+    previousUser: "No",
+    timeZone: "",
+    zoomLink: "",
+    subjects: "",
+    notes: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!sheetId) return;
@@ -71,6 +79,14 @@ export default function EnrollPage() {
       .then((rows: SubjectRow[]) => setSubjects(rows))
       .catch(() => setSubjects([]));
   }, [sheetId]);
+
+  function setStudent(field: string, value: string) {
+    setStudentForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function setTutor(field: string, value: string) {
+    setTutorForm((prev) => ({ ...prev, [field]: value }));
+  }
 
   function addSubject(name: string) {
     if (!name || selectedSubjects.includes(name)) return;
@@ -85,34 +101,14 @@ export default function EnrollPage() {
     setStudent("classesInterested", next.join(", "));
   }
 
-  const [tutorForm, setTutorForm] = useState({
-    applicantName: "",
-    applicantEmail: "",
-    applicantPhone: "",
-    previousUser: "No",
-    timeZone: "",
-    zoomLink: "",
-    subjects: "",
-    notes: "",
-  });
-
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
-
-  function setStudent(field: string, value: string) {
-    setStudentForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function setTutor(field: string, value: string) {
-    setTutorForm((prev) => ({ ...prev, [field]: value }));
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!sheetId) return;
+    if (!sheetId) {
+      setError("No spreadsheet is linked. Please open the enrolment link from your school settings.");
+      return;
+    }
 
     if (requestType === "student") {
       if (!studentForm.studentName.trim() || !studentForm.parentEmail.trim() || !studentForm.parentPhone.trim()) {
@@ -129,7 +125,6 @@ export default function EnrollPage() {
     try {
       const userEmail = user?.primaryEmailAddress?.emailAddress || "";
       const userName = user?.fullName || "";
-
       let body: Record<string, string>;
 
       if (requestType === "tutor") {
@@ -209,7 +204,6 @@ export default function EnrollPage() {
           <span className="text-xl font-semibold text-foreground">EduTrack</span>
         </div>
       </header>
-
       <main className="flex-1 flex justify-center p-4 md:p-8">
         <div className="w-full max-w-2xl space-y-6">
           <div>
@@ -218,15 +212,9 @@ export default function EnrollPage() {
               Select how you are applying below, fill in your details, and the principal will review your request.
             </p>
           </div>
-
-          {/* Role selector */}
           {!requestType && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setRequestType("student")}
-                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
-              >
+              <button type="button" onClick={() => setRequestType("student")} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
                   <Users className="w-6 h-6 text-blue-600" />
                 </div>
@@ -235,12 +223,7 @@ export default function EnrollPage() {
                   <p className="text-sm text-muted-foreground mt-1">Enrol a student and set up a parent account.</p>
                 </div>
               </button>
-
-              <button
-                type="button"
-                onClick={() => setRequestType("tutor")}
-                className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
-              >
+              <button type="button" onClick={() => setRequestType("tutor")} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
                   <GraduationCap className="w-6 h-6 text-green-600" />
                 </div>
@@ -251,8 +234,6 @@ export default function EnrollPage() {
               </button>
             </div>
           )}
-
-          {/* Selected role badge + back link */}
           {requestType && (
             <div className="flex items-center gap-3">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${requestType === "tutor" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
@@ -264,8 +245,6 @@ export default function EnrollPage() {
               </button>
             </div>
           )}
-
-          {/* Student / Family form */}
           {requestType === "student" && (
             <form onSubmit={handleSubmit} className="space-y-6">
               <Card>
@@ -284,27 +263,18 @@ export default function EnrollPage() {
                       <Input id="studentEmail" type="email" value={studentForm.studentEmail} onChange={e => setStudent("studentEmail", e.target.value)} placeholder="e.g. emma@email.com" />
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Previously Enrolled at This School? <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
                       {["Yes", "No"].map(opt => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setStudent("previouslyEnrolled", opt)}
-                          className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
-                            studentForm.previouslyEnrolled === opt
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-foreground hover:border-primary/40"
-                          }`}
-                        >
+                        <button key={opt} type="button" onClick={() => setStudent("previouslyEnrolled", opt)} className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                          studentForm.previouslyEnrolled === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"
+                        }`}>
                           {opt}
                         </button>
                       ))}
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2 sm:col-span-2">
                       <Label htmlFor="currentSchool">Current School Attending <span className="text-destructive">*</span></Label>
@@ -315,7 +285,6 @@ export default function EnrollPage() {
                       <Input id="currentGrade" value={studentForm.currentGrade} onChange={e => setStudent("currentGrade", e.target.value)} placeholder="e.g. Year 5" />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="age">Age <span className="text-destructive">*</span></Label>
@@ -324,7 +293,6 @@ export default function EnrollPage() {
                   </div>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Classes Interested In</CardTitle>
@@ -333,46 +301,25 @@ export default function EnrollPage() {
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
-                    <select
-                      id="classesInterested"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      value=""
-                      onChange={e => addSubject(e.target.value)}
-                    >
+                    <select id="classesInterested" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" value="" onChange={e => addSubject(e.target.value)}>
                       <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "No classes available"}</option>
-                      {subjects
-                        .filter(s => {
-                          const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
-                          return !selectedSubjects.includes(label);
-                        })
-                        .map(s => {
-                          const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
-                          return (
-                            <option key={s._row} value={label}>
-                              {label}
-                            </option>
-                          );
-                        })}
+                      {subjects.filter(s => {
+                        const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                        return !selectedSubjects.includes(label);
+                      }).map(s => {
+                        const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                        return <option key={s._row} value={label}>{label}</option>;
+                      })}
                     </select>
                     <p className="text-xs text-muted-foreground">Pick from the list to add classes. Selected classes appear below.</p>
                   </div>
                   {subjects.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {selectedSubjects.map(name => (
-                        <span
-                          key={name}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1"
-                        >
+                        <span key={name} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1">
                           <BookOpen className="h-3 w-3" />
                           {name}
-                          <button
-                            type="button"
-                            onClick={() => removeSubject(name)}
-                            className="ml-0.5 hover:text-destructive transition-colors"
-                            aria-label={`Remove ${name}`}
-                          >
-                            ×
-                          </button>
+                          <button type="button" onClick={() => removeSubject(name)} className="ml-0.5 hover:text-destructive transition-colors" aria-label={`Remove ${name}`}>×</button>
                         </span>
                       ))}
                     </div>
@@ -381,7 +328,6 @@ export default function EnrollPage() {
                   )}
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Parent / Guardian Contact</CardTitle>
@@ -400,7 +346,6 @@ export default function EnrollPage() {
                   </div>
                 </CardContent>
               </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Additional Information</CardTitle>
@@ -419,32 +364,21 @@ export default function EnrollPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
-                    <textarea
-                      id="notes"
-                      rows={3}
-                      value={studentForm.notes}
-                      onChange={e => setStudent("notes", e.target.value)}
-                      placeholder="Any extra requests, scheduling needs, or information for the principal…"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    />
+                    <textarea id="notes" rows={3} value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder="Any extra requests, scheduling needs, or information for the principal…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
                   </div>
                 </CardContent>
               </Card>
-
               {error && (
                 <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
                   <AlertTriangle className="h-5 w-5 shrink-0" />
                   <p className="text-sm">{error}</p>
                 </div>
               )}
-
-              <Button type="submit" className="w-full" disabled={submitting || !sheetId}>
+              <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? "Submitting…" : "Submit Enrolment Request"}
               </Button>
             </form>
           )}
-
-          {/* Tutor / Staff form */}
           {requestType === "tutor" && (
             <form onSubmit={handleSubmit} className="space-y-6">
               <Card>
@@ -471,16 +405,9 @@ export default function EnrollPage() {
                     <Label>Previous User?</Label>
                     <div className="flex gap-2">
                       {["Yes", "No"].map(opt => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setTutor("previousUser", opt)}
-                          className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
-                            tutorForm.previousUser === opt
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border bg-background text-foreground hover:border-primary/40"
-                          }`}
-                        >
+                        <button key={opt} type="button" onClick={() => setTutor("previousUser", opt)} className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+                          tutorForm.previousUser === opt ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"
+                        }`}>
                           {opt}
                         </button>
                       ))}
@@ -489,12 +416,7 @@ export default function EnrollPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="timeZone">Time Zone</Label>
-                      <select
-                        id="timeZone"
-                        value={tutorForm.timeZone}
-                        onChange={e => setTutor("timeZone", e.target.value)}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
+                      <select id="timeZone" value={tutorForm.timeZone} onChange={e => setTutor("timeZone", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring">
                         <option value="">Select time zone</option>
                         <option value="East">East</option>
                         <option value="Central">Central</option>
@@ -516,22 +438,19 @@ export default function EnrollPage() {
                   </div>
                 </CardContent>
               </Card>
-
               {error && (
                 <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
                   <AlertTriangle className="h-5 w-5 shrink-0" />
                   <p className="text-sm">{error}</p>
                 </div>
               )}
-
-              <Button type="submit" className="w-full" disabled={submitting || !sheetId}>
+              <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? "Submitting…" : "Submit Application"}
               </Button>
             </form>
           )}
         </div>
       </main>
-
       <footer className="py-6 text-center text-sm text-muted-foreground border-t border-border bg-white space-y-1">
         <p>© {new Date().getFullYear()} EduTrack. All rights reserved.</p>
         <p>App by <a href="https://qb2bsol.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground underline underline-offset-2 transition-colors">Qb2bsol.com</a></p>
