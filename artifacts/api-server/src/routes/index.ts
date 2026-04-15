@@ -26,6 +26,5 @@ router.use(tutorsRouter);
 router.use(subjectsRouter);
 router.use(announcementsRouter);
 router.use(scheduleCalendarRouter);
-router.use(classesRouter);
 
 export default router;
