@@ -11,6 +11,7 @@ import tutorsRouter from "./tutors";
 import subjectsRouter from "./subjects";
 import announcementsRouter from "./announcements";
 import scheduleCalendarRouter from "./scheduleCalendar";
+import enrollmentRequestsRouter from "./enrollmentRequests";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(tutorsRouter);
 router.use(subjectsRouter);
 router.use(announcementsRouter);
 router.use(scheduleCalendarRouter);
+router.use(enrollmentRequestsRouter);
 
 export default router;
