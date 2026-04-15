@@ -121,17 +121,6 @@ function buildSeedData() {
     ['ENR-012', 'STU-001', 'SUB-008', 'PAR-001', 'Active',   nowIso, 'Fee Waived', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
     ['ENR-013', 'STU-005', 'SUB-004', 'PAR-001', 'Inactive', nowIso, 'Fee Confirmed','TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
   ];
-  const enrollmentRequestRows = [
-    ['REQ-001', 'PAR-005', 'student', 'SUB-001', 'Pending', nowIso, JSON.stringify({
-      studentName: 'Sophia Martin', studentEmail: 'sophia.m@student.com',
-      parentEmail: 'james.martin@gmail.com', parentPhone: '555-0301', parentName: 'James Martin',
-      age: '9', currentGrade: 'Year 4', currentSchool: 'Westfield Primary',
-      previouslyEnrolled: 'No', classesInterested: 'Mathematics',
-      reference: 'Google', promoCode: 'WELCOME10',
-      extra: 'Sophia struggles with fractions — would love extra support.',
-      submissionDate: today,
-    })],
-  ];
   const announcementRows = [
     ['ANN-001', 'Term 2 Enrolments Open', 'Term 2 enrolments are now open. Contact us to secure your spot before places fill up!', 'Standard', 'true', today],
     ['ANN-002', 'Public Holiday Closure',  'EduTrack will be closed on Monday 22 April for the public holiday. All classes are cancelled.', 'Urgent', 'true', today],
@@ -144,7 +133,6 @@ function buildSeedData() {
     { tab: SHEET_TABS.parents,             headers: SHEET_HEADERS.parents,             rows: parentRows },
     { tab: SHEET_TABS.subjects,            headers: SHEET_HEADERS.subjects,            rows: subjectRows },
     { tab: SHEET_TABS.enrollments,         headers: SHEET_HEADERS.enrollments,         rows: enrollmentRows },
-    { tab: SHEET_TABS.enrollment_requests, headers: SHEET_HEADERS.enrollment_requests, rows: enrollmentRequestRows },
     { tab: SHEET_TABS.announcements,       headers: SHEET_HEADERS.announcements,       rows: announcementRows },
   ];
 }
