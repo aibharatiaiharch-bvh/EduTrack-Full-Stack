@@ -85,12 +85,13 @@ export default function ParentView() {
     );
   }, [parents, search]);
 
-  // Load classes for the selected parent
+  // Load classes — all when no parent selected, filtered when a parent is selected
   const { data: enrollments, isLoading: loadingClasses } = useQuery<Enrollment[]>({
-    queryKey: ["classes", selectedParent?.["Email"], sheetId],
-    enabled: !!selectedParent && !!sheetId,
+    queryKey: ["classes", selectedParent?.["Email"] ?? "all", sheetId],
+    enabled: !!sheetId,
     queryFn: async () => {
-      const params = new URLSearchParams({ parentEmail: selectedParent!["Email"], sheetId: sheetId! });
+      const params = new URLSearchParams({ sheetId: sheetId! });
+      if (selectedParent) params.set("parentEmail", selectedParent["Email"]);
       const res = await fetch(apiUrl(`/enrollments?${params}`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -227,15 +228,16 @@ export default function ParentView() {
           </CardContent>
         </Card>
 
-        {/* Results */}
-        {selectedParent && (
+        {/* Results — always shown when sheet is linked */}
+        {sheetId && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">
-                {studentFilter === "all"
-                  ? <>Classes for <span className="text-primary">{selectedParent["Parent Name"] || selectedParent["Email"]}</span></>
-                  : <>Classes for <span className="text-primary">{studentFilter}</span></>
-                }
+                {selectedParent
+                  ? studentFilter === "all"
+                    ? <>Classes for <span className="text-primary">{selectedParent["Parent Name"] || selectedParent["Email"]}</span></>
+                    : <>Classes for <span className="text-primary">{studentFilter}</span></>
+                  : "All Students"}
               </h2>
               {!loadingClasses && enrollments && (
                 <Badge variant="secondary" className="text-sm">
@@ -253,9 +255,11 @@ export default function ParentView() {
                 <BookOpen className="h-8 w-8 opacity-40" />
                 <p className="font-medium">No classes found</p>
                 <p className="text-sm">
-                  {studentFilter !== "all"
-                    ? `No classes found for ${studentFilter}.`
-                    : "No classes found for this parent."}
+                  {selectedParent
+                    ? studentFilter !== "all"
+                      ? `No classes found for ${studentFilter}.`
+                      : "No classes found for this parent."
+                    : "No classes found in this sheet."}
                 </p>
               </div>
             ) : (
@@ -283,7 +287,7 @@ export default function ParentView() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {enrollment["Status"] === "Active" && (
+                        {enrollment["Status"] === "Active" && selectedParent && (
                           <Button
                             size="sm"
                             variant="outline"
