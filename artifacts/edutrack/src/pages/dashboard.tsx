@@ -54,6 +54,12 @@ export default function Dashboard() {
   const tutorName = data?.tutor?.["Name"] || storedName || email;
   const subjects = data?.tutor?.["Subjects"] || "";
   const tutorRole = data?.tutor?.["Role"] || "Tutor";
+  const summaryLinks = [
+    { href: "#today-classes", title: "Classes Today" },
+    { href: "/classes", title: "Active Enrolments" },
+    { href: "/classes", title: "Students" },
+    { href: "/classes", title: "Total Active Students" },
+  ];
 
   return (
     <AppLayout>
@@ -86,7 +92,8 @@ export default function Dashboard() {
           <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-sm">{error}</div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
+            <Card className="hover:border-primary/50 transition-colors">
+              <Link href={summaryLinks[0].href} className="block">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Classes Today</CardTitle>
                 <CalendarCheck className="h-4 w-4 text-muted-foreground" />
@@ -95,9 +102,11 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">{data?.todayCount ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">scheduled for today</p>
               </CardContent>
+              </Link>
             </Card>
 
-            <Card>
+            <Card className="hover:border-primary/50 transition-colors">
+              <Link href={summaryLinks[1].href} className="block">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Enrolments</CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -106,9 +115,11 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">{data?.activeEnrollmentCount ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">enrolled classes</p>
               </CardContent>
+              </Link>
             </Card>
 
-            <Card>
+            <Card className="hover:border-primary/50 transition-colors">
+              <Link href={summaryLinks[2].href} className="block">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Students</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -117,9 +128,11 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">{data?.uniqueStudentCount ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">across all classes</p>
               </CardContent>
+              </Link>
             </Card>
 
-            <Card>
+            <Card className="hover:border-primary/50 transition-colors">
+              <Link href={summaryLinks[3].href} className="block">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Active Students</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -128,12 +141,13 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">{data?.activeStudentCount ?? 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">in the system</p>
               </CardContent>
+              </Link>
             </Card>
           </div>
         )}
 
         {/* Today's schedule */}
-        <Card>
+        <Card id="today-classes">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
