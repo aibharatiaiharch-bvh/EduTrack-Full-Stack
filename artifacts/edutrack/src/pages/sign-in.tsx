@@ -27,7 +27,12 @@ export default function SignInPage() {
           <Button
             className="w-full"
             disabled={!email.trim()}
-            onClick={() => setLocation(`${BASE}/auth-redirect?email=${encodeURIComponent(email.trim())}`)}
+            onClick={async () => {
+              const next = email.trim().toLowerCase();
+              if (!next) return;
+              localStorage.setItem("edutrack_login_email", next);
+              setLocation(`${BASE}/auth-redirect?email=${encodeURIComponent(next)}`);
+            }}
           >
             Continue
           </Button>
