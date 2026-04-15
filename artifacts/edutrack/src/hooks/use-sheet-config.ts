@@ -34,8 +34,9 @@ export function useSheetConfig() {
     setFilesError(null);
     try {
       const res = await fetch(apiUrl("/sheets/drive-files"));
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(text);
+      const data = JSON.parse(text);
       setDriveFiles(data.files ?? []);
     } catch (err: any) {
       setFilesError(err.message ?? "Failed to load spreadsheets");
@@ -48,8 +49,9 @@ export function useSheetConfig() {
     setCreating(true);
     try {
       const res = await fetch(apiUrl("/sheets/setup"), { method: "POST" });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(text);
+      const data = JSON.parse(text);
       return data.spreadsheetId as string;
     } catch (err: any) {
       throw err;
@@ -68,7 +70,8 @@ export function useSheetConfig() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ spreadsheetId: id }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      const text = await res.text();
+      if (!res.ok) throw new Error(text);
     } catch (err: any) {
       throw err;
     } finally {
