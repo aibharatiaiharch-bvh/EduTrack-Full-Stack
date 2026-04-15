@@ -347,8 +347,7 @@ const DROPDOWN_RULES: Array<{ tab: string; col: string; values: string[] }> = [
   { tab: SHEET_TABS.subjects,            col: 'Status',          values: ['Active', 'Inactive'] },
   { tab: SHEET_TABS.subjects,            col: 'Type',            values: ['Individual', 'Group', 'Both'] },
   // Transactions
-  { tab: SHEET_TABS.enrollments,         col: 'Status',          values: ['Active'] },
-  { tab: SHEET_TABS.enrollments,         col: 'Override Action', values: ['Fee Waived', 'Fee Confirmed'] },
+  { tab: SHEET_TABS.enrollments,         col: 'Status',          values: ['Approved', 'Pending', 'Reject'] },
   { tab: SHEET_TABS.enrollment_requests, col: 'Status',          values: ['Approve', 'Reject'] },
   { tab: SHEET_TABS.enrollment_requests, col: 'RequestType',     values: ['student', 'tutor', 'new-class'] },
   // Announcements

@@ -16,8 +16,10 @@ function getSheetId(req: any): string {
 
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
-  if (v === 'active' || v === 'enrolled') return 'Active';
-  return 'Active';
+  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled') return 'Approved';
+  if (v === 'pending') return 'Pending';
+  if (v === 'reject' || v === 'rejected') return 'Reject';
+  return 'Pending';
 }
 
 function normalizeEnrollmentRow(row: any) {
@@ -186,24 +188,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       !['cancelled', 'late cancellation', 'rejected'].includes((r['Status'] || '').toLowerCase().trim())
     ).length;
 
-    if (activeCount >= maxCapacity) {
-      // Queue for principal review
-      const reqId  = `REQ-${Date.now()}`;
-      const now    = new Date().toISOString();
-      const packed = JSON.stringify({
-        studentName:  resolvedStudentName,
-        studentEmail: studentEmail || '',
-        parentEmail:  parentEmail || '',
-        classWanted:  resolvedClassName,
-        extra: `Auto-review needed for ${subjectType || ''} class${teacherName ? ` (${teacherName})` : ''}`,
-      });
-      await appendRow(spreadsheetId, SHEET_TABS.enrollment_requests, [
-        reqId, resolvedStudentId, 'student', resolvedClassId, 'Approve', now, packed,
-      ]);
-      res.json({ ok: true, queuedForReview: true }); return;
-    }
-
-    // Enroll
+    const status = activeCount >= maxCapacity ? 'Pending' : 'Approved';
     const enrollmentId = await generateTabId('ENR', spreadsheetId, TAB);
     const now = new Date().toISOString();
     const rowValues = HEADERS.map(h => {
@@ -211,9 +196,8 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       if (h === 'UserID')        return resolvedStudentId;
       if (h === 'ClassID')       return resolvedClassId;
       if (h === 'ParentID')      return resolvedParentId;
-      if (h === 'Status')        return normalizeEnrollmentStatus('Active');
+      if (h === 'Status')        return status;
       if (h === 'EnrolledAt')    return now;
-      if (h === 'Override Action') return '';
       if (h === 'TeacherID')     return resolvedTeacherId;
       if (h === 'TeacherEmail')  return teacherEmail || '';
       if (h === 'Zoom Link')     return zoomLink || '';
@@ -231,7 +215,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [rowValues] },
     });
-    res.json({ ok: true });
+    res.json({ ok: true, status });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -247,9 +231,8 @@ router.post('/enrollments', async (req, res): Promise<void> => {
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
       if (h === 'EnrollmentID')  return enrollmentId;
-      if (h === 'Status')        return normalizeEnrollmentStatus(req.body[h] || 'Active');
+      if (h === 'Status')        return normalizeEnrollmentStatus(req.body[h] || 'Approved');
       if (h === 'EnrolledAt')    return new Date().toISOString();
-      if (h === 'Override Action') return '';
       return req.body[h] ?? '';
     });
     await sheets.spreadsheets.values.append({
@@ -282,12 +265,11 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
       enrollment['ClassDate'] || enrollment['Class Date'] || '',
       enrollment['ClassTime'] || enrollment['Class Time'] || '',
     );
-    const newStatus = 'Active';
+    const newStatus = 'Approved';
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
       if (h === 'Status')          return normalizeEnrollmentStatus(newStatus);
-      if (h === 'Override Action') return enrollment['Override Action'] || '';
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);
@@ -324,8 +306,7 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return 'Active';
-      if (h === 'Override Action') return action;
+      if (h === 'Status')          return 'Approved';
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);
