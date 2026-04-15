@@ -1,9 +1,25 @@
-// Google Sheets integration via Replit Connector
+// Google Sheets integration via Replit Connector in development,
+// with service-account fallback for Railway/production.
 import { google } from 'googleapis';
 
 let connectionSettings: any;
 
-async function getAccessToken() {
+function hasServiceAccountConfig() {
+  return !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && !!process.env.GOOGLE_PRIVATE_KEY;
+}
+
+function getServiceAccountAuth() {
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  if (!email || !privateKey) return null;
+  return new google.auth.JWT({
+    email,
+    key: privateKey,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
+  });
+}
+
+async function getReplitAccessToken() {
   if (
     connectionSettings &&
     connectionSettings.settings.expires_at &&
@@ -19,8 +35,8 @@ async function getAccessToken() {
     ? 'depl ' + process.env.WEB_REPL_RENEWAL
     : null;
 
-  if (!xReplitToken) {
-    throw new Error('X-Replit-Token not found for repl/depl');
+  if (!hostname || !xReplitToken) {
+    throw new Error('Google Sheets connector unavailable');
   }
 
   connectionSettings = await fetch(
@@ -45,19 +61,28 @@ async function getAccessToken() {
   return accessToken;
 }
 
-// WARNING: Never cache this client. Tokens expire.
-export async function getUncachableGoogleSheetClient() {
-  const accessToken = await getAccessToken();
+async function getAuthClient() {
+  if (hasServiceAccountConfig()) {
+    const auth = getServiceAccountAuth();
+    if (!auth) throw new Error('Google service account config invalid');
+    return auth;
+  }
+
+  const accessToken = await getReplitAccessToken();
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });
-  return google.sheets({ version: 'v4', auth: oauth2Client });
+  return oauth2Client;
+}
+
+// WARNING: Never cache this client. Tokens expire.
+export async function getUncachableGoogleSheetClient() {
+  const auth = await getAuthClient();
+  return google.sheets({ version: 'v4', auth });
 }
 
 export async function getUncachableGoogleDriveClient() {
-  const accessToken = await getAccessToken();
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.drive({ version: 'v3', auth: oauth2Client });
+  const auth = await getAuthClient();
+  return google.drive({ version: 'v3', auth });
 }
 
 export const SHEET_TABS = {
