@@ -118,12 +118,15 @@ router.get('/enrollments', async (req, res): Promise<void> => {
       filtered = filtered.filter(r => r['UserID'] === q);
     }
     if (req.query.status) {
+      // Compare against normalized status so callers can use canonical values (e.g. Active, Cancelled)
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
-      filtered = filtered.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
+      filtered = filtered.filter(r =>
+        statuses.includes(normalizeEnrollmentStatus(r['Status']).toLowerCase())
+      );
     }
 
-    // Period filter: upcoming (default) | past | all
-    const period = (req.query.period as string) || 'upcoming';
+    // Period filter: upcoming | past | all (default — callers opt-in to date filtering)
+    const period = (req.query.period as string) || 'all';
     if (period !== 'all') {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
