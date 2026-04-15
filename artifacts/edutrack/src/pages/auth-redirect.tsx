@@ -167,9 +167,6 @@ export default function AuthRedirect() {
     const hasEmail = !!(emailFromUrl || emailFromStorage);
     if (!hasEmail && !isLoaded) return;
 
-    const sid = localStorage.getItem(SHEET_KEY) || "";
-    setSheetId(sid);
-
     const activeEmail =
       emailFromUrl ||
       emailFromStorage ||
@@ -181,9 +178,32 @@ export default function AuthRedirect() {
       return;
     }
 
+    // Resolve sheet ID — use localStorage, or fetch from server config if missing
+    const resolveSheetId = async (): Promise<string> => {
+      const stored = localStorage.getItem(SHEET_KEY);
+      if (stored) return stored;
+      try {
+        const res = await fetch(apiUrl("/config"));
+        if (res.ok) {
+          const { sheetId: serverSheetId } = await res.json();
+          if (serverSheetId) {
+            localStorage.setItem(SHEET_KEY, serverSheetId);
+            return serverSheetId;
+          }
+        }
+      } catch {
+        // ignore — will proceed with empty sheetId
+      }
+      return "";
+    };
+
     setStatusMsg("Looking up your account…");
-    fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
-      .then((r) => r.json())
+
+    resolveSheetId().then((sid) => {
+      setSheetId(sid);
+      return fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
+        .then((r) => r.json());
+    })
       .then((data) => {
         if (data.tabMissing) {
           setScreen("setup-required");
