@@ -9,7 +9,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 // Pages
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
-import Dashboard from "@/pages/dashboard";
 import TeacherDashboard from "@/pages/teacher-dashboard";
 import ClassCalendar from "@/pages/class-calendar";
 import Settings from "@/pages/settings";
@@ -59,16 +58,6 @@ function SignUpPage() {
   );
 }
 
-function HomeRedirect() {
-  return <Home />;
-}
-
-function StartRedirect() {
-  const path = window.location.pathname;
-  if (path === basePath || path === `${basePath}/`) return <Home />;
-  return <Home />;
-}
-
 function ProtectedRoute({ component: Component }: { component: any }) {
   const { isLoaded, isSignedIn } = useUser();
   if (!isLoaded) return null;
@@ -111,12 +100,12 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <Switch>
-          <Route path="/" component={StartRedirect} />
+          <Route path="/" component={Home} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/auth-redirect" component={AuthRedirect} />
           <Route path="/enroll" component={EnrollPage} />
-          
+
           <Route path="/dashboard">
             <ProtectedRoute component={TeacherDashboard} />
           </Route>
@@ -128,15 +117,6 @@ function ClerkProviderWithRoutes() {
           </Route>
           <Route path="/classes">
             <ProtectedRoute component={BrowseClasses} />
-          </Route>
-          <Route path="/assessments">
-            <ProtectedRoute component={Dashboard} />
-          </Route>
-          <Route path="/teachers">
-            <ProtectedRoute component={Dashboard} />
-          </Route>
-          <Route path="/billing">
-            <ProtectedRoute component={Dashboard} />
           </Route>
           <Route path="/settings">
             <ProtectedRoute component={Settings} />
@@ -155,7 +135,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/admin">
             <ProtectedRoute component={AdminPortal} />
           </Route>
-          
+
           <Route component={NotFound} />
         </Switch>
       </QueryClientProvider>

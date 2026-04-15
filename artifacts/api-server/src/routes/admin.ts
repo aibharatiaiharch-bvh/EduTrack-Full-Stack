@@ -15,7 +15,7 @@ router.get('/admin/contact', (_req, res): void => {
 // Feature flags are managed entirely in the browser via localStorage.
 // This endpoint exists only as a no-op compat shim; returns hardcoded defaults.
 router.get('/admin/features', (_req, res): void => {
-  res.json({ assessments: true, billing: true, schedule: true });
+  res.json({ schedule: true });
 });
 
 // PUT /api/admin/features

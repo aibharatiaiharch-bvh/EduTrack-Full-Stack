@@ -16,10 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { getFeatures, FEATURE_META as FEATURE_META_CONFIG, type FeatureKey } from "@/config/features";
 import {
   ShieldCheck, BookOpen, Calendar, Clock, AlertTriangle, CheckCircle2,
-  XCircle, Rocket, Lock, Mail, Download, RefreshCw, UserPlus, GraduationCap,
+  XCircle, Mail, Download, RefreshCw, UserPlus, GraduationCap,
   UserCheck, UserX, Search, ChevronDown, Video, Users2, LinkIcon, Layers, PlusCircle, ChevronRight,
 } from "lucide-react";
 import {
@@ -28,12 +27,6 @@ import {
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 function apiUrl(path: string) { return `${BASE}/api${path}`; }
-
-const FEATURE_META = (Object.keys(FEATURE_META_CONFIG) as FeatureKey[]).map(key => ({
-  key,
-  label: FEATURE_META_CONFIG[key].label,
-  description: FEATURE_META_CONFIG[key].description,
-}));
 
 const SHEET_KEY = "edutrack_sheet_id";
 
@@ -1196,45 +1189,6 @@ export default function PrincipalDashboard() {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Feature Upgrades */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Features & Upgrades</CardTitle>
-            <CardDescription>See which features are active on your plan.</CardDescription>
-          </CardHeader>
-          <CardContent className="divide-y divide-border">
-            {FEATURE_META.map((feat, i) => {
-              const active = getFeatures()[feat.key];
-              return (
-                <div key={feat.key} className={`flex items-center justify-between gap-4 py-3 ${i === 0 ? "pt-0" : ""}`}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"}`}>
-                      {active ? <CheckCircle2 className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm">{feat.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">{feat.description}</p>
-                    </div>
-                  </div>
-                  {active ? (
-                    <Badge variant="secondary" className="text-xs shrink-0 text-green-700 bg-green-100">Active</Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1.5 text-primary border-primary/40 hover:bg-primary/5"
-                      onClick={() => toast({ title: "Upgrade request sent", description: `Your interest in ${feat.label} has been noted.` })}
-                    >
-                      <Rocket className="h-3.5 w-3.5" />
-                      Request Upgrade
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
           </CardContent>
         </Card>
 

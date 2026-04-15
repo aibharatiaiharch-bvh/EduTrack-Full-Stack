@@ -85,14 +85,17 @@ Note: The `Config` tab has been removed. Feature flags are localStorage-only. De
 | Route | Component | Who sees it |
 |---|---|---|
 | `/` | `home.tsx` | Everyone |
-| `/dashboard` | `dashboard.tsx` | Tutors |
+| `/dashboard` | `teacher-dashboard.tsx` | Tutors |
 | `/schedule` | `my-schedule.tsx` | Tutors — classes filtered by their email |
 | `/classes` | `browse-classes.tsx` | All logged-in — class list with capacity badges + Join button |
 | `/checkin` | `checkin.tsx` | Tutors |
+| `/student` | `student.tsx` | Students — schedule view |
 | `/parent` | `parent.tsx` | Parents — cancel classes, view schedule |
+| `/calendar` | `class-calendar.tsx` | Public — class calendar view |
 | `/principal` | `principal.tsx` | Principal — enrollment requests, late-cancel overrides |
+| `/housekeeping` | `housekeeping.tsx` | Principal — class/subject management |
 | `/admin` | `admin.tsx` | Developer Portal |
-| `/settings` | `settings.tsx` | All — link sheet, toggle features |
+| `/settings` | `settings.tsx` | All — link sheet |
 | `/enroll` | `enroll.tsx` | Public — new student enrollment form |
 
 ## Announcement Banner
@@ -108,9 +111,9 @@ Note: The `Config` tab has been removed. Feature flags are localStorage-only. De
 
 ## Features System
 
-Feature flags (`assessments`, `billing`, `schedule`) are stored in **localStorage only** (no sheet dependency).
+Feature flag (`schedule`) is stored in **localStorage only** (no sheet dependency). Controls whether the Full Schedule nav item appears in the Tutor sidebar.
 
-`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → Developer Portal toggles call these directly with no API round-trip.
+`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → Developer Portal toggle calls these directly with no API round-trip.
 
 ## Key Commands
 

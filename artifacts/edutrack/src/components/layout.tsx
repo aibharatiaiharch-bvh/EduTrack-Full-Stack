@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CheckSquare, Calendar, BookOpen, FileText, Users, CreditCard, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
+import { LayoutDashboard, CheckSquare, Calendar, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
@@ -13,7 +13,6 @@ function getStoredRole(): string {
   return localStorage.getItem("edutrack_user_role") || "tutor";
 }
 
-// The "home" page for each role — where they land after login
 const ROLE_HOME: Record<string, string> = {
   tutor:     "/dashboard",
   student:   "/student",
@@ -23,7 +22,6 @@ const ROLE_HOME: Record<string, string> = {
   admin:     "/admin",
 };
 
-// Human-readable page names for breadcrumbs
 const PAGE_NAMES: Record<string, string> = {
   "/dashboard":  "Today's Classes",
   "/student":    "My Schedule",
@@ -31,13 +29,11 @@ const PAGE_NAMES: Record<string, string> = {
   "/classes":    "Browse Classes",
   "/calendar":   "Class Calendar",
   "/checkin":    "Check-in",
-  "/assessments":"Assessments",
   "/settings":   "Settings",
   "/parent":     "My Classes",
   "/principal":  "Principal Dashboard",
   "/admin":      "Developer Tools",
-  "/teachers":   "Teachers",
-  "/billing":    "Billing",
+  "/housekeeping": "Housekeeping",
 };
 
 function buildNavigation(role: string, features: ReturnType<typeof getFeatures>) {
@@ -56,7 +52,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         items: [
           { name: "Browse Classes", href: "/classes", icon: BookOpen },
           { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
-          ...(features.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
         ],
       },
       {
@@ -118,26 +113,23 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       label: "Academics",
       items: [
         { name: "Browse Classes", href: "/classes", icon: BookOpen },
-        ...(features.assessments ? [{ name: "Assessments", href: "/assessments", icon: FileText }] : []),
+        { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
+        { name: "Housekeeping", href: "/housekeeping", icon: Settings },
       ],
     },
     {
-      label: "Management",
+      label: "Account",
       items: [
-        { name: "Teachers", href: "/teachers", icon: Users },
-        ...(features.billing ? [{ name: "Billing", href: "/billing", icon: CreditCard }] : []),
         { name: "Settings", href: "/settings", icon: Settings },
+        ...(role === "developer" || role === "admin"
+          ? [{ name: "Developer Tools", href: "/admin", icon: FlaskConical }]
+          : []),
       ],
     },
     {
       label: "Portals",
       items: [
         { name: "Parent Portal", href: "/parent", icon: UserRound },
-        { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
-        { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
-        ...(role === "developer" || role === "admin"
-          ? [{ name: "Developer Tools", href: "/admin", icon: FlaskConical }]
-          : []),
       ],
     },
   ];
