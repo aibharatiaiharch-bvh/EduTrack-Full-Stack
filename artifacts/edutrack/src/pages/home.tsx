@@ -38,7 +38,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Link href="/sign-in">
               <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
@@ -56,21 +56,9 @@ export default function Home() {
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                   <Users className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Parent Portal</h2>
+                <h2 className="text-base font-semibold text-foreground mb-1">Parent / Student Portal</h2>
                 <p className="text-sm text-muted-foreground">
                   View your child's enrolments, attendance, and manage cancellations.
-                </p>
-              </div>
-            </Link>
-
-            <Link href="/sign-in">
-              <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <ShieldCheck className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Developer / Admin</h2>
-                <p className="text-sm text-muted-foreground">
-                  Sign in to manage setup, users, and system tools.
                 </p>
               </div>
             </Link>
@@ -91,6 +79,22 @@ export default function Home() {
             </div>
             <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </button>
+
+          <Link href="/sign-in">
+            <div className="group cursor-pointer rounded-lg border border-border bg-white/70 p-3 text-left hover:border-primary/60 hover:bg-white transition-all duration-200 opacity-70">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xs font-semibold text-foreground">Developer / Admin</h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    Setup and system tools
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Link>
         </div>
       </main>
 
