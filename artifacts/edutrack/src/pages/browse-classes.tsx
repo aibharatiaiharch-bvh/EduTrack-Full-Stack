@@ -56,7 +56,6 @@ export default function BrowseClasses() {
   const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
   const [manualName, setManualName] = useState("");
   const [manualEmail, setManualEmail] = useState(email);
-  const [principalClassName, setPrincipalClassName] = useState("");
   const [principalStudents, setPrincipalStudents] = useState<ClassStudents>({});
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
@@ -101,6 +100,10 @@ export default function BrowseClasses() {
     return eligibleStudents;
   }
 
+  function resolveStudentEnrollment(cls: SubjectWithCapacity, student: EligibleStudent) {
+    return Boolean(student.enrolled) || (cls.currentEnrolled >= cls.MaxCapacity && !isPrincipal);
+  }
+
   const joinMutation = useMutation({
     mutationFn: async (subject: SubjectWithCapacity) => {
       const studentName = isPrincipal ? manualName.trim() : (selectedStudent?.name || manualName.trim());
@@ -126,6 +129,14 @@ export default function BrowseClasses() {
     },
     onSuccess: (_, subject) => {
       qc.invalidateQueries({ queryKey: ["subjects-capacity"] });
+      if (isPrincipal) {
+        setPrincipalStudents(prev => ({
+          ...prev,
+          [subject.Name]: (prev[subject.Name] || []).map(student =>
+            student.name === selectedStudent?.name ? { ...student, enrolled: true } : student
+          ),
+        }));
+      }
       const name = isPrincipal ? manualName : (selectedStudent?.name || manualName);
       toast({ title: "Enrolled!", description: `${name} has been added to ${subject.Name}.` });
       setJoiningRow(null);
@@ -196,7 +207,8 @@ export default function BrowseClasses() {
                   const canJoin = !cls.isFull || isPrincipal;
                   const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
                   const myStudents = studentsForClass(cls);
-                  const hasEligible = isPrincipal || myStudents.length > 0;
+                  const selectableStudents = myStudents.filter(student => !resolveStudentEnrollment(cls, student));
+                  const hasEligible = isPrincipal || selectableStudents.length > 0;
 
                   return (
                     <Card key={cls._row} className={`overflow-hidden transition-shadow hover:shadow-md ${cls.isFull && !isPrincipal ? "opacity-80" : ""}`}>
@@ -266,7 +278,7 @@ export default function BrowseClasses() {
                             <div className="text-xs font-medium text-muted-foreground">Active students</div>
                             <div className="flex flex-wrap gap-2">
                               {myStudents.map(student => {
-                                const enrolled = Boolean(student.enrolled);
+                                const enrolled = resolveStudentEnrollment(cls, student);
                                 return (
                                   <span
                                     key={student.userId || student.email || student.name}
@@ -290,9 +302,9 @@ export default function BrowseClasses() {
                               <>
                                 <select
                                   className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                  value={selectedStudent?.name || manualName}
+                                  value={selectedStudent?.name || ""}
                                   onChange={e => {
-                                    const s = myStudents.find(s => s.name === e.target.value) || null;
+                                    const s = selectableStudents.find(s => s.name === e.target.value) || null;
                                     setSelectedStudent(s);
                                     setManualName(s?.name || "");
                                     setManualEmail(s?.parentEmail || "");
@@ -300,9 +312,9 @@ export default function BrowseClasses() {
                                   autoFocus
                                 >
                                   <option value="">— Select student —</option>
-                                  {myStudents.map(s => (
-                                    <option key={s.userId || s.email || s.name} value={s.name} disabled={Boolean(s.enrolled)}>
-                                      {s.name}{s.enrolled ? " (enrolled)" : " (eligible)"}
+                                  {selectableStudents.map(s => (
+                                    <option key={s.userId || s.email || s.name} value={s.name}>
+                                      {s.name} (eligible)
                                     </option>
                                   ))}
                                 </select>
@@ -324,13 +336,14 @@ export default function BrowseClasses() {
                                   className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring pr-8"
                                   value={selectedStudent?.name || ""}
                                   onChange={e => {
-                                    const s = myStudents.find(s => s.name === e.target.value) || null;
+                                    const s = selectableStudents.find(s => s.name === e.target.value) || null;
                                     setSelectedStudent(s);
+                                    setManualName(s?.name || "");
                                   }}
                                   autoFocus
                                 >
                                   <option value="">— Select student —</option>
-                                  {myStudents.map(s => (
+                                  {selectableStudents.map(s => (
                                     <option key={s.userId || s.name} value={s.name}>
                                       {s.name}{cls.Type === "Individual" ? " (1-on-1)" : ""}
                                     </option>
@@ -346,7 +359,7 @@ export default function BrowseClasses() {
                                 className="flex-1"
                                 disabled={
                                   joinMutation.isPending ||
-                                  (isPrincipal ? !manualName.trim() : (!selectedStudent && myStudents.length > 0))
+                                  (isPrincipal ? !manualName.trim() : (!selectedStudent && selectableStudents.length > 0))
                                 }
                                 onClick={() => joinMutation.mutate(cls)}
                               >
