@@ -27,6 +27,13 @@ function normalizeEnrollmentStatus(value: string | undefined): string {
   return 'Pending';
 }
 
+function normalizeEnrollmentRow(row: any) {
+  return {
+    ...row,
+    Status: normalizeEnrollmentStatus(row['Status']),
+  };
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 async function readEnrollmentRows(spreadsheetId: string) {
@@ -115,7 +122,7 @@ router.get('/enrollments', async (req, res): Promise<void> => {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
       filtered = filtered.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
     }
-    res.json(filtered.map(r => ({ ...r, Status: normalizeEnrollmentStatus(r['Status']) })));
+    res.json(filtered.map(normalizeEnrollmentRow));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -286,7 +293,7 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return newStatus;
+      if (h === 'Status')          return normalizeEnrollmentStatus(newStatus);
       if (h === 'Override Action') return enrollment['Override Action'] || '';
       return enrollment[h] || '';
     });
@@ -324,8 +331,9 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return action;
+      if (h === 'Status')          return normalizeEnrollmentStatus(action);
       if (h === 'Override Action') return action;
+      if (h === 'Status')          return normalizeEnrollmentStatus(enrollment['Status']);
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);
