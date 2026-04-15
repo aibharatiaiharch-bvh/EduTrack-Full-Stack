@@ -133,14 +133,14 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
 });
 
 // ─── GET /api/principals/pending-students ───────────────────────────────────
-// Students in Inactive status awaiting principal activation.
+// Students explicitly awaiting principal activation.
 router.get('/principals/pending-students', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
   try {
     const users = await readUsersTab(sheetId);
     const pending = users
-      .filter(u => u.role === 'student' && u.status === 'inactive')
+      .filter(u => u.role === 'student' && u.status === 'inactive' && (u.createdAt || u.updatedAt))
       .map(u => ({
         _row:     u._row,
         UserID:   u.userId,
