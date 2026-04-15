@@ -140,7 +140,7 @@ export default function AdminPortal() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <button
                 onClick={() => {
                   localStorage.setItem("edutrack_dev_role_override", "tutor");
@@ -154,7 +154,24 @@ export default function AdminPortal() {
                 </div>
                 <div>
                   <p className="font-medium text-sm text-foreground">Tutor</p>
-                  <p className="text-xs text-muted-foreground">Staff dashboard</p>
+                  <p className="text-xs text-muted-foreground">Today's classes</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  localStorage.setItem("edutrack_dev_role_override", "student");
+                  localStorage.setItem("edutrack_user_role", "student");
+                  setLocation("/student");
+                }}
+                className="flex items-center gap-3 p-3 rounded-lg border border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center shrink-0">
+                  <Users className="w-4 h-4 text-sky-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm text-foreground">Student</p>
+                  <p className="text-xs text-muted-foreground">Student schedule</p>
                 </div>
               </button>
 
@@ -184,7 +201,7 @@ export default function AdminPortal() {
                 className="flex items-center gap-3 p-3 rounded-lg border border-purple-200 bg-white hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
               >
                 <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <Users className="w-4 h-4 text-amber-600" />
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
                 </div>
                 <div>
                   <p className="font-medium text-sm text-foreground">Principal</p>
