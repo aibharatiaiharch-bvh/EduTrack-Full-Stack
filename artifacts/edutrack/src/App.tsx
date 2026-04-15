@@ -19,7 +19,6 @@ import HousekeepingPage from "@/pages/housekeeping";
 import AuthRedirect from "@/pages/auth-redirect";
 import EnrollPage from "@/pages/enroll";
 import AdminPortal from "@/pages/admin";
-import MySchedule from "@/pages/my-schedule";
 import BrowseClasses from "@/pages/browse-classes";
 import StudentPortal from "@/pages/student";
 import SignInPage from "@/pages/sign-in";
@@ -132,9 +131,6 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/dashboard">
             <ProtectedRoute component={TeacherDashboard} />
-          </Route>
-          <Route path="/schedule">
-            <ProtectedRoute component={MySchedule} />
           </Route>
           <Route path="/classes">
             <ProtectedRoute component={BrowseClasses} />

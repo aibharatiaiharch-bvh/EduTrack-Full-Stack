@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Calendar, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
+import { LayoutDashboard, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
@@ -103,7 +103,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       label: "Overview",
       items: [
         { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
-        ...(features.schedule ? [{ name: "Schedule", href: "/schedule", icon: Calendar }] : []),
       ],
     },
     {
