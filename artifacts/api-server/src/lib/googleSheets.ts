@@ -81,9 +81,9 @@ export const SHEET_HEADERS = {
   users: ['UserID', 'Email', 'Role', 'Name', 'Status', 'CreatedAt', 'UpdatedAt'],
 
   // EXTENSIONS — role-specific fields only, linked by UserID
-  students: ['StudentID', 'UserID', 'ParentID', 'Classes', 'Phone', 'Notes'],
-  teachers: ['TeacherID', 'UserID', 'Subjects', 'Zoom Link', 'Specialty', 'Notes'],
-  parents:  ['ParentID',  'UserID', 'Children', 'Phone', 'Notes'],
+  students: ['StudentID', 'UserID', 'Name', 'ParentID', 'Classes', 'Phone', 'Notes'],
+  teachers: ['TeacherID', 'UserID', 'Name', 'Subjects', 'Zoom Link', 'Specialty', 'Notes'],
+  parents:  ['ParentID',  'UserID', 'Name', 'Children', 'Phone', 'Notes'],
 
   // CLASSES — TeacherID FK links to Users; no Name/Email stored here
   subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Status', 'MaxCapacity'],

@@ -78,23 +78,23 @@ function buildSeedData() {
     ['STU-005', 'ava.w@student.com',       'student',   'Ava Wilson',         'Inactive', today, nowIso],
   ];
   const studentRows = [
-    ['STU-001', 'STU-001', 'PAR-001', 'SUB-001; SUB-005', '555-0101', ''],
-    ['STU-002', 'STU-002', 'PAR-002', 'SUB-001; SUB-004', '555-0102', ''],
-    ['STU-003', 'STU-003', 'PAR-003', 'SUB-005; SUB-007', '555-0103', ''],
-    ['STU-004', 'STU-004', 'PAR-004', 'SUB-004',          '555-0104', ''],
-    ['STU-005', 'STU-005', 'PAR-001', 'SUB-006',          '555-0105', ''],
+    ['STU-001', 'STU-001', 'Emma Johnson', 'PAR-001', 'SUB-001; SUB-005', '555-0101', ''],
+    ['STU-002', 'STU-002', 'Liam Smith',   'PAR-002', 'SUB-001; SUB-004', '555-0102', ''],
+    ['STU-003', 'STU-003', 'Olivia Brown', 'PAR-003', 'SUB-005; SUB-007', '555-0103', ''],
+    ['STU-004', 'STU-004', 'Noah Davis',   'PAR-004', 'SUB-004',          '555-0104', ''],
+    ['STU-005', 'STU-005', 'Ava Wilson',   'PAR-001', 'SUB-006',          '555-0105', ''],
   ];
   const teacherRows = [
-    ['TCH-001', 'TCH-001', 'Mathematics, Science',    'https://zoom.us/j/555001', 'STEM',          ''],
-    ['TCH-002', 'TCH-002', 'English',                 'https://zoom.us/j/555002', 'Literacy',      ''],
-    ['TCH-003', 'TCH-003', 'Art, Physical Education', '',                         'Creative Arts', ''],
+    ['TCH-001', 'TCH-001', 'Dr. Sarah Chen',     'Mathematics, Science',    'https://zoom.us/j/555001', 'STEM',          ''],
+    ['TCH-002', 'TCH-002', 'Mr. James Taylor',   'English',                 'https://zoom.us/j/555002', 'Literacy',      ''],
+    ['TCH-003', 'TCH-003', 'Ms. Rachel Kim',     'Art, Physical Education', '',                         'Creative Arts', ''],
   ];
   const parentRows = [
-    ['PAR-001', 'PAR-001', 'STU-001; STU-005', '555-0201', ''],
-    ['PAR-002', 'PAR-002', 'STU-002',          '555-0202', ''],
-    ['PAR-003', 'PAR-003', 'STU-003',          '555-0203', ''],
-    ['PAR-004', 'PAR-004', 'STU-004',          '555-0204', ''],
-    ['PAR-005', 'PAR-005', '',                 '555-0301', ''],
+    ['PAR-001', 'PAR-001', 'Sarah Johnson', 'STU-001; STU-005', '555-0201', ''],
+    ['PAR-002', 'PAR-002', 'Mike Smith',    'STU-002',          '555-0202', ''],
+    ['PAR-003', 'PAR-003', 'Lisa Brown',    'STU-003',          '555-0203', ''],
+    ['PAR-004', 'PAR-004', 'Karen Davis',   'STU-004',          '555-0204', ''],
+    ['PAR-005', 'PAR-005', 'James Martin',  '',                 '555-0301', ''],
   ];
   const subjectRows = [
     ['SUB-001', 'Mathematics',        'Individual', 'TCH-001', 'Room 101', 'Mon, Wed',      'Active', '1'],
