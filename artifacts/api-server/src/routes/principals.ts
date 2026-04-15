@@ -77,8 +77,9 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
 
   try {
     const users = await readUsersTab(sheetId);
+    const existingStudent = emailNorm ? users.find(u => u.email === emailNorm && u.role === 'student') : undefined;
 
-    // Generate student UserID and write to Users tab (master)
+    // Generate a fresh student UserID and write to Users tab (master)
     const studentId = await generateUserId('student', sheetId);
     await appendRow(sheetId, SHEET_TABS.users, [
       studentId, emailNorm, 'student', name.trim(), 'Active', today, now,
@@ -125,7 +126,7 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
       studentExtId, studentId, parentId, '', (phone || '').trim(), '',
     ]);
 
-    res.json({ ok: true, userId: studentId, parentId, status: 'Active' });
+    res.json({ ok: true, userId: studentId, parentId, status: 'Active', reusedExisting: !!existingStudent });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
