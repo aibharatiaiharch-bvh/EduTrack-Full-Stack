@@ -265,8 +265,8 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
     const subjectRows = await readTabRows(spreadsheetId, SHEET_TABS.subjects);
     const subject = subjectRows.find(r => r['Name'] === subjectName);
     if (!subject) { res.status(404).json({ error: 'Class not found' }); return; }
-    const isGroup = String(subject['Type'] || subjectType || '').toLowerCase() === 'group';
-    const maxCap = isGroup ? 8 : 999;
+    const classType = String(subject['Type'] || subjectType || '').toLowerCase();
+    const maxCap = classType === 'group' ? 8 : 1;
 
     const enrollmentRows = await readEnrollmentRows(spreadsheetId);
     const currentCount = enrollmentRows.filter(r => (r['ClassID'] || '') === (subject['SubjectID'] || subjectName) && (r['Status'] || '').toLowerCase() === 'active').length;
