@@ -348,8 +348,6 @@ const DROPDOWN_RULES: Array<{ tab: string; col: string; values: string[] }> = [
   { tab: SHEET_TABS.subjects,            col: 'Type',            values: ['Individual', 'Group', 'Both'] },
   // Transactions
   { tab: SHEET_TABS.enrollments,         col: 'Status',          values: ['Approved', 'Pending', 'Reject'] },
-  { tab: SHEET_TABS.enrollment_requests, col: 'Status',          values: ['Approve', 'Reject'] },
-  { tab: SHEET_TABS.enrollment_requests, col: 'RequestType',     values: ['student', 'tutor', 'new-class'] },
   // Announcements
   { tab: SHEET_TABS.announcements,       col: 'Priority',        values: ['Standard', 'Urgent'] },
   { tab: SHEET_TABS.announcements,       col: 'IsActive',        values: ['true', 'false'] },
