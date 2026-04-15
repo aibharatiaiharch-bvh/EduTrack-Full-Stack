@@ -31,7 +31,9 @@ export default function AdminPortal() {
   const [seedConfirm, setSeedConfirm] = useState(false);
   const isPrivileged = true;
 
-  if (!user) {
+  // Allow access via localStorage role (set by auth-redirect) even when Clerk isn't loaded
+  const storedRole = localStorage.getItem("edutrack_user_role") || "";
+  if (!user && !storedRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm text-center space-y-3">

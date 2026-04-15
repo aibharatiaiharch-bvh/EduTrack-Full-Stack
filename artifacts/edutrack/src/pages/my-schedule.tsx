@@ -37,7 +37,7 @@ function statusColor(status: string) {
 export default function MySchedule() {
   const { user } = useUser();
   const sheetId = localStorage.getItem(SHEET_KEY);
-  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
 
   const { data: classes, isLoading, error } = useQuery<EnrollmentRow[]>({
     queryKey: ["my-schedule", email, sheetId],

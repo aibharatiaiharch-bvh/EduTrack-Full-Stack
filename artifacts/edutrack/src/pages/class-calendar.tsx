@@ -69,17 +69,19 @@ export default function ClassCalendar() {
   const role = localStorage.getItem(ROLE_KEY) || "parent";
   const { toast } = useToast();
   const qc = useQueryClient();
+  // Fall back to localStorage email when Clerk isn't loaded (e.g. production with dev keys)
+  const resolvedEmail = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
 
   const [bookingSlot, setBookingSlot] = useState<{ slot: CalendarSlot; date: string } | null>(null);
   const [studentName, setStudentName] = useState("");
-  const [parentEmail, setParentEmail] = useState(user?.primaryEmailAddress?.emailAddress || "");
+  const [parentEmail, setParentEmail] = useState(resolvedEmail);
   const isPrincipal = role === "principal" || role === "admin" || role === "developer";
   const weekCount = isPrincipal ? 3 : 2;
   const [selectedWeek, setSelectedWeek] = useState<0 | 1 | 2>(0);
 
   // Request a new class
   const [showRequestDialog, setShowRequestDialog] = useState(false);
-  const [reqForm, setReqForm] = useState({ name: "", email: user?.primaryEmailAddress?.emailAddress || "", className: "", preferredDays: "", preferredTime: "", notes: "" });
+  const [reqForm, setReqForm] = useState({ name: "", email: resolvedEmail, className: "", preferredDays: "", preferredTime: "", notes: "" });
 
   const requestClassMutation = useMutation({
     mutationFn: async () => {
@@ -103,7 +105,7 @@ export default function ClassCalendar() {
     onSuccess: () => {
       toast({ title: "Request submitted!", description: "A principal will review your request and activate the class." });
       setShowRequestDialog(false);
-      setReqForm({ name: "", email: user?.primaryEmailAddress?.emailAddress || "", className: "", preferredDays: "", preferredTime: "", notes: "" });
+      setReqForm({ name: "", email: resolvedEmail, className: "", preferredDays: "", preferredTime: "", notes: "" });
     },
     onError: (err: any) => toast({ title: "Request failed", description: err.message, variant: "destructive" }),
   });
@@ -185,7 +187,7 @@ export default function ClassCalendar() {
             <Button
               className="gap-2 shrink-0 self-start"
               onClick={() => {
-                setReqForm(f => ({ ...f, email: user?.primaryEmailAddress?.emailAddress || f.email }));
+                setReqForm(f => ({ ...f, email: resolvedEmail || f.email }));
                 setShowRequestDialog(true);
               }}
             >
@@ -345,7 +347,7 @@ export default function ClassCalendar() {
                             onClick={() => {
                               setBookingSlot({ slot, date: day.date });
                               setStudentName("");
-                              setParentEmail(user?.primaryEmailAddress?.emailAddress || "");
+                              setParentEmail(resolvedEmail);
                             }}
                           >
                             {slot.isFull ? (

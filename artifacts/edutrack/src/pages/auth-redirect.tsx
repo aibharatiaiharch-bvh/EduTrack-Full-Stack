@@ -211,6 +211,7 @@ export default function AuthRedirect() {
         const role: string = data.role;
         localStorage.removeItem("edutrack_dev_role_override");
         localStorage.setItem("edutrack_user_role", role);
+        localStorage.setItem("edutrack_user_email", activeEmail);
         if (data.name) localStorage.setItem("edutrack_user_name", data.name);
         if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
         // Clear login email after successful auth

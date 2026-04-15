@@ -43,7 +43,7 @@ export default function BrowseClasses() {
   const { user } = useUser();
   const sheetId = localStorage.getItem(SHEET_KEY);
   const role = localStorage.getItem(ROLE_KEY) || "tutor";
-  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
 
   const isPrincipal = role === "principal" || role === "admin" || role === "developer";
   const isParent = role === "parent";

@@ -22,7 +22,8 @@ type DashboardData = {
 export default function TeacherDashboard() {
   const { user } = useUser();
   const sheetId = localStorage.getItem("edutrack_sheet_id") || "";
-  const email = user?.primaryEmailAddress?.emailAddress || "";
+  // Fall back to localStorage email when Clerk isn't loaded (e.g. production with dev keys)
+  const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

@@ -59,7 +59,7 @@ function isToday(dateStr: string): boolean {
 export default function StudentPortal() {
   const { user } = useUser();
   const sheetId = localStorage.getItem(SHEET_KEY);
-  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
   const name = localStorage.getItem("edutrack_user_name") || user?.fullName || "";
 
   const todayStr = new Date().toLocaleDateString("en-AU", {
