@@ -7,7 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Clock, Users, BookOpen, Video, AlertTriangle } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-function apiUrl(path: string) { return `${BASE}/api${path}`; }
+const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
+function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
 type DashboardData = {
   tutor: Record<string, string> | null;

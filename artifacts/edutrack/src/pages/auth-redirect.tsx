@@ -6,10 +6,8 @@ import { Button } from "@/components/ui/button";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-function apiUrl(path: string) {
-  return `${BASE}/api${path}`;
-}
+const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
+function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
 // Shown when the user's email is not registered
 function NotFoundScreen({ sheetId, onEnroll }: { sheetId: string; onEnroll: () => void }) {

@@ -12,7 +12,8 @@ import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck } fro
 const SHEET_KEY = "edutrack_sheet_id";
 const ROLE_KEY = "edutrack_user_role";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-function apiUrl(path: string) { return `${BASE}/api${path}`; }
+const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
+function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
 type SubjectWithCapacity = {
   _row: number;

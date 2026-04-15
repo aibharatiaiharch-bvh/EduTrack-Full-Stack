@@ -1,6 +1,6 @@
 [build]
-  command = "pnpm build"
-  publish = "."
+  command = "pnpm --filter @workspace/edutrack run build"
+  publish = "artifacts/edutrack/dist/public"
 
 [[redirects]]
   from = "/*"

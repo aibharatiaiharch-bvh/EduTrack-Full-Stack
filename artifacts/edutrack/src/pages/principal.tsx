@@ -26,7 +26,8 @@ import {
 } from "@/components/ui/table";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-function apiUrl(path: string) { return `${BASE}/api${path}`; }
+const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
+function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
 const SHEET_KEY = "edutrack_sheet_id";
 

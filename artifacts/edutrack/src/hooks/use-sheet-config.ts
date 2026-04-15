@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 
 const STORAGE_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-function apiUrl(path: string) { return `${BASE}/api${path}`; }
+const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
+function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
 export type DriveFile = {
   id: string;
