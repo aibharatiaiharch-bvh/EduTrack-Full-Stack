@@ -1324,7 +1324,6 @@ export default function PrincipalDashboard() {
                     {filteredUsers.map(u => {
                       const statusKey = u.status.toLowerCase();
                       const roleKey = u.role.toLowerCase();
-                      const canDeactivate = statusKey === "active";
                       return (
                         <TableRow key={u.userId}>
                           <TableCell>
@@ -1343,21 +1342,19 @@ export default function PrincipalDashboard() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant={canDeactivate ? "outline" : "default"}
-                              className={`h-8 px-2 text-xs ${canDeactivate ? "text-destructive hover:text-destructive hover:bg-destructive/10" : ""}`}
-                              onClick={() => {
-                                if (canDeactivate) {
-                                  deactivateUser(u.userId);
-                                } else {
-                                  reactivateUser(u.userId);
-                                }
-                              }}
-                              disabled={actioningUser === u.userId}
-                            >
-                              {u.status.toLowerCase() === "active" ? "Make Inactive" : "Reactivate"}
-                            </Button>
+                            {statusKey === "active" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => deactivateUser(u.userId)}
+                                disabled={actioningUser === u.userId}
+                              >
+                                Make Inactive
+                              </Button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">Inactive</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
