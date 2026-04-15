@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck, ChevronDown } from "lucide-react";
+import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const ROLE_KEY = "edutrack_user_role";
@@ -201,84 +201,44 @@ export default function BrowseClasses() {
                 <p className="text-sm">Add subjects in the Principal Dashboard to see them here.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {classes.map(cls => {
-                  const isJoining = joiningRow === cls._row;
-                  const canJoin = !cls.isFull || isPrincipal;
-                  const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
-                  const myStudents = studentsForClass(cls);
-                  const selectableStudents = myStudents.filter(student => !resolveStudentEnrollment(cls, student));
-                  const hasEligible = isPrincipal || selectableStudents.length > 0;
+              <div className="overflow-hidden rounded-xl border bg-card">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr className="text-left">
+                      <th className="px-4 py-3 font-medium">Class</th>
+                      <th className="px-4 py-3 font-medium">Details</th>
+                      <th className="px-4 py-3 font-medium">Capacity</th>
+                      <th className="px-4 py-3 font-medium">Join</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classes.map(cls => {
+                      const isJoining = joiningRow === cls._row;
+                      const canJoin = !cls.isFull || isPrincipal;
+                      const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
+                      const myStudents = studentsForClass(cls);
+                      const selectableStudents = myStudents.filter(student => !resolveStudentEnrollment(cls, student));
 
-                  return (
-                    <Card key={cls._row} className={`overflow-hidden transition-shadow hover:shadow-md ${cls.isFull && !isPrincipal ? "opacity-80" : ""}`}>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <CardTitle className="text-base">{cls.Name}</CardTitle>
-                            <CardDescription className="mt-0.5">
-                              {cls.Type === "Individual"
-                                ? <span className="flex items-center gap-1"><User className="h-3 w-3" /> Individual (1-on-1)</span>
-                                : cls.Type === "Group"
-                                  ? <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Group</span>
-                                  : <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Individual &amp; Group</span>
-                              }
-                            </CardDescription>
-                          </div>
-                          {cls.isFull
-                            ? <Badge variant="destructive">Full</Badge>
-                            : <Badge variant="secondary" className="text-emerald-700 bg-emerald-50">{spotsLeft} spot{spotsLeft !== 1 ? "s" : ""} left</Badge>
-                          }
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-3 pt-0">
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          {cls.Teachers && (
-                            <p className="flex items-center gap-1.5">
-                              <UserCheck className="h-3.5 w-3.5 shrink-0" />
-                              {cls.Teachers}
-                            </p>
-                          )}
-                          {cls.Days && (
-                            <p className="flex items-center gap-1.5">
-                              <Calendar className="h-3.5 w-3.5 shrink-0" />
-                              {cls.Days}
-                            </p>
-                          )}
-                          {cls.Room && (
-                            <p className="flex items-center gap-1.5">
-                              <MapPin className="h-3.5 w-3.5 shrink-0" />
-                              {cls.Room}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Enrolment</span>
-                            <span className={`font-semibold ${capacityColor(cls)}`}>
-                              {cls.currentEnrolled} / {cls.MaxCapacity}
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${
-                                cls.isFull ? "bg-destructive" :
-                                cls.currentEnrolled / cls.MaxCapacity >= 0.75 ? "bg-amber-500" :
-                                "bg-emerald-500"
-                              }`}
-                              style={{ width: `${Math.min(100, (cls.currentEnrolled / cls.MaxCapacity) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {isJoining ? (
-                          <div className="space-y-2 pt-1">
-                            {isPrincipal ? (
-                              <>
+                      return (
+                        <tr key={cls._row} className="border-t">
+                          <td className="px-4 py-4 align-top">
+                            <div className="font-medium">{cls.Name}</div>
+                            <div className="text-xs text-muted-foreground">{cls.Type}</div>
+                          </td>
+                          <td className="px-4 py-4 align-top text-muted-foreground">
+                            <div>{cls.Teachers || "—"}</div>
+                            <div>{cls.Days || "—"}</div>
+                            <div>{cls.Room || "—"}</div>
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <div className={`font-semibold ${capacityColor(cls)}`}>{cls.currentEnrolled} / {cls.MaxCapacity}</div>
+                            <div className="text-xs text-muted-foreground">{spotsLeft} left</div>
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            {isJoining ? (
+                              <div className="space-y-2">
                                 <select
-                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                   value={selectedStudent?.name || ""}
                                   onChange={e => {
                                     const s = selectableStudents.find(s => s.name === e.target.value) || null;
@@ -288,100 +248,39 @@ export default function BrowseClasses() {
                                   }}
                                   autoFocus
                                 >
-                                  <option value="">— Select student —</option>
-                                  {selectableStudents.map(s => (
-                                    <option key={s.userId || s.email || s.name} value={s.name}>
-                                      {s.name} (eligible)
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                  placeholder="Parent email"
-                                  value={manualEmail}
-                                  onChange={e => setManualEmail(e.target.value)}
-                                />
-                              </>
-                            ) : myStudents.length === 0 ? (
-                              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
-                                <AlertTriangle className="h-4 w-4 shrink-0" />
-                                No active students linked to your account. Contact the principal to activate your student.
-                              </div>
-                            ) : (
-                              <div className="relative">
-                                <select
-                                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm appearance-none focus:outline-none focus:ring-2 focus:ring-ring pr-8"
-                                  value={selectedStudent?.name || ""}
-                                  onChange={e => {
-                                    const s = selectableStudents.find(s => s.name === e.target.value) || null;
-                                    setSelectedStudent(s);
-                                    setManualName(s?.name || "");
-                                  }}
-                                  autoFocus
-                                >
-                                  <option value="">— Select student —</option>
+                                  <option value="">Select student</option>
                                   {selectableStudents.map(s => <option key={s.userId || s.name} value={s.name}>{s.name}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="flex-1"
+                                    disabled={joinMutation.isPending || (isPrincipal ? !manualName.trim() : !selectedStudent)}
+                                    onClick={() => joinMutation.mutate(cls)}
+                                  >
+                                    {joinMutation.isPending ? "Saving…" : "Enroll"}
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => { setJoiningRow(null); setSelectedStudent(null); setManualName(""); }}>
+                                    Cancel
+                                  </Button>
+                                </div>
                               </div>
-                            )}
-
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                className="flex-1"
-                                disabled={
-                                  joinMutation.isPending ||
-                                  (isPrincipal ? !manualName.trim() : (!selectedStudent && selectableStudents.length > 0))
-                                }
-                                onClick={() => joinMutation.mutate(cls)}
-                              >
-                                {joinMutation.isPending ? "Enrolling…" : "Confirm Enrol"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => { setJoiningRow(null); setSelectedStudent(null); setManualName(""); }}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2 pt-1">
-                            {!hasEligible && !isPrincipal ? (
-                              <Button size="sm" className="flex-1" disabled title="No active students linked to your account">
-                                Not Eligible
-                              </Button>
-                            ) : canJoin ? (
-                              <Button
-                                size="sm"
-                                className="flex-1"
-                                onClick={() => { setJoiningRow(cls._row); setSelectedStudent(null); setManualName(""); }}
-                              >
-                                Join Class
-                              </Button>
                             ) : (
-                              <Button size="sm" className="flex-1" disabled>
-                                Class Full
-                              </Button>
-                            )}
-                            {isPrincipal && cls.isFull && (
                               <Button
                                 size="sm"
-                                variant="outline"
-                                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                                className="w-full"
+                                disabled={!canJoin && !isPrincipal}
                                 onClick={() => { setJoiningRow(cls._row); setSelectedStudent(null); setManualName(""); }}
                               >
-                                Override
+                                {cls.isFull && !isPrincipal ? "Full" : "Join"}
                               </Button>
                             )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </>
