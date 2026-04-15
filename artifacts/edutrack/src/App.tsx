@@ -28,6 +28,22 @@ import SignInPage from "@/pages/sign-in";
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+async function loadDefaultSheetId() {
+  try {
+    const res = await fetch(`${BASE}/api/config`);
+    if (!res.ok) return;
+    const { sheetId } = await res.json();
+    if (sheetId && !localStorage.getItem("edutrack_sheet_id")) {
+      localStorage.setItem("edutrack_sheet_id", sheetId);
+    }
+  } catch {
+    // silently ignore — app still works if config fetch fails
+  }
+}
+
+loadDefaultSheetId();
 
 function stripBase(path: string): string {
   return basePath && path.startsWith(basePath)
