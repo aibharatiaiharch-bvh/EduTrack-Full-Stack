@@ -252,63 +252,6 @@ router.post('/enrollments', async (req, res): Promise<void> => {
   }
 });
 
-router.post('/enrollments/join', async (req, res): Promise<void> => {
-  const spreadsheetId = getSheetId(req);
-  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
-
-  const { studentName, parentEmail, subjectName, subjectType, teacherName, teacherEmail, zoomLink } = req.body || {};
-  if (!studentName || !subjectName) {
-    res.status(400).json({ error: 'studentName and subjectName are required' }); return;
-  }
-
-  try {
-    const subjectRows = await readTabRows(spreadsheetId, SHEET_TABS.subjects);
-    const subject = subjectRows.find(r => r['Name'] === subjectName);
-    if (!subject) { res.status(404).json({ error: 'Class not found' }); return; }
-    const classType = String(subject['Type'] || subjectType || '').toLowerCase();
-    const maxCap = classType === 'group' ? 8 : 1;
-
-    const enrollmentRows = await readEnrollmentRows(spreadsheetId);
-    const currentCount = enrollmentRows.filter(r => (r['ClassID'] || '') === (subject['SubjectID'] || subjectName) && (r['Status'] || '').toLowerCase() === 'active').length;
-    if (currentCount >= maxCap) {
-      res.status(400).json({ error: 'Class is full' }); return;
-    }
-
-    const enrollmentId = await generateTabId('ENR', spreadsheetId, TAB);
-    const userRows = await readTabRows(spreadsheetId, SHEET_TABS.users);
-    const user = userRows.find(r => (r['Name'] || '').toLowerCase() === String(studentName).toLowerCase());
-    const parent = parentEmail ? userRows.find(r => (r['Email'] || '').toLowerCase() === String(parentEmail).toLowerCase()) : null;
-
-    const sheets = await getUncachableGoogleSheetClient();
-    const rowValues = HEADERS.map(h => {
-      if (h === 'EnrollmentID') return enrollmentId;
-      if (h === 'UserID') return user?.['UserID'] || '';
-      if (h === 'ClassID') return subject['SubjectID'] || '';
-      if (h === 'ParentID') return parent?.['UserID'] || '';
-      if (h === 'Status') return 'Active';
-      if (h === 'EnrolledAt') return new Date().toISOString();
-      if (h === 'TeacherID') return subject['TeacherID'] || '';
-      if (h === 'TeacherEmail') return teacherEmail || '';
-      if (h === 'Zoom Link') return zoomLink || '';
-      if (h === 'Class Type') return subject['Type'] || subjectType || '';
-      if (h === 'ClassDate' || h === 'ClassTime') return '';
-      if (h === 'Override Action') return '';
-      return '';
-    });
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${TAB}!A1`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: { values: [rowValues] },
-    });
-
-    res.json({ ok: true, enrollmentId, currentCount: currentCount + 1, maxCap });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ─── POST /api/enrollments/:row/cancel ──────────────────────────────────────
 router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
