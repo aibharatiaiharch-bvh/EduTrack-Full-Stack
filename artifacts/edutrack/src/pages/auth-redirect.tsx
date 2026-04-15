@@ -3,7 +3,6 @@ import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
 import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -157,28 +156,30 @@ export default function AuthRedirect() {
   const [statusMsg, setStatusMsg] = useState("Checking your account…");
   const [userName, setUserName] = useState("");
   const [sheetId, setSheetId] = useState("");
-  const [email, setEmail] = useState("");
-  const [submittedEmail, setSubmittedEmail] = useState("");
-  const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+
+  // Read email from URL query param first, then localStorage fallback, then Clerk session
+  const urlParams = new URLSearchParams(window.location.search);
+  const emailFromUrl = urlParams.get("email")?.toLowerCase().trim() || "";
+  const emailFromStorage = localStorage.getItem("edutrack_login_email")?.toLowerCase().trim() || "";
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!isSignedIn || !user) {
-      setScreen("loading");
-      setStatusMsg("Enter the email you want to use to sign in.");
-      return;
-    }
-
     const sid = localStorage.getItem(SHEET_KEY) || "";
     setSheetId(sid);
 
-    if (!sid) {
-      setStatusMsg("No Google Sheet linked. Please sign in with your school email.");
+    const activeEmail =
+      emailFromUrl ||
+      emailFromStorage ||
+      (isSignedIn && user ? user.primaryEmailAddress?.emailAddress?.toLowerCase().trim() || "" : "");
+
+    if (!activeEmail) {
+      // No email available — send back to sign-in
+      setLocation("/sign-in");
+      return;
     }
 
     setStatusMsg("Looking up your account…");
-    const activeEmail = submittedEmail || user.primaryEmailAddress?.emailAddress || "";
     fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
       .then((r) => r.json())
       .then((data) => {
@@ -210,6 +211,8 @@ export default function AuthRedirect() {
         localStorage.setItem("edutrack_user_role", role);
         if (data.name) localStorage.setItem("edutrack_user_name", data.name);
         if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
+        // Clear login email after successful auth
+        localStorage.removeItem("edutrack_login_email");
 
         if (role === "developer" || role === "admin") {
           setStatusMsg("Welcome, Developer. Redirecting…");
@@ -233,7 +236,8 @@ export default function AuthRedirect() {
       .catch(() => {
         setScreen("setup-required");
       });
-  }, [isLoaded, isSignedIn, user, setLocation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, user]);
 
   if (screen === "pending")  return <PendingApprovalScreen name={userName} />;
   if (screen === "inactive") return <InactiveScreen name={userName} />;
@@ -245,43 +249,6 @@ export default function AuthRedirect() {
   );
 
   if (screen === "setup-required") return <SetupRequiredScreen />;
-
-  if (!isSignedIn || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="w-full max-w-md space-y-4 rounded-xl border bg-white p-6 shadow-sm">
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-bold">Sign in with email</h1>
-            <p className="text-sm text-muted-foreground">
-              Enter the email that exists in the Users tab.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-            />
-            <Button
-              className="w-full"
-              disabled={!email.trim() || isSubmittingEmail}
-              onClick={async () => {
-                const next = email.trim().toLowerCase();
-                if (!next) return;
-                setIsSubmittingEmail(true);
-                setSubmittedEmail(next);
-                localStorage.removeItem("edutrack_dev_role_override");
-                await signOut({ redirectUrl: `${BASE}/auth-redirect` });
-              }}
-            >
-              {isSubmittingEmail ? "Sending…" : "Continue"}
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">

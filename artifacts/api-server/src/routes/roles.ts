@@ -47,12 +47,13 @@ router.get('/roles/check', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const email = ((req.query.email as string) || '').toLowerCase().trim();
 
-  if (!sheetId || !email) {
-    res.status(400).json({ error: 'sheetId and email are required' });
+  if (!email) {
+    res.status(400).json({ error: 'email is required' });
     return;
   }
 
   try {
+    // Developer and principal bypass — no sheetId needed
     if (isDeveloperEmail(email)) {
       res.json({
         role: 'developer',
