@@ -16,9 +16,13 @@ function getSheetId(req: any): string {
 
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
-  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled') return 'Approved';
+  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled') return 'Active';
   if (v === 'pending') return 'Pending';
-  if (v === 'reject' || v === 'rejected') return 'Reject';
+  if (v === 'reject' || v === 'rejected') return 'Rejected';
+  if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
+  if (v === 'late cancellation') return 'Late Cancellation';
+  if (v === 'fee waived') return 'Fee Waived';
+  if (v === 'fee confirmed') return 'Fee Confirmed';
   return 'Pending';
 }
 
@@ -117,6 +121,22 @@ router.get('/enrollments', async (req, res): Promise<void> => {
       const statuses = (req.query.status as string).split(',').map(s => s.trim().toLowerCase());
       filtered = filtered.filter(r => statuses.includes((r['Status'] || '').toLowerCase()));
     }
+
+    // Period filter: upcoming (default) | past | all
+    const period = (req.query.period as string) || 'upcoming';
+    if (period !== 'all') {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      filtered = filtered.filter(r => {
+        const dateStr = (r['Class Date'] || r['ClassDate'] || '').trim();
+        // No date or TBD — include in upcoming, exclude from past
+        if (!dateStr || dateStr.toLowerCase() === 'tbd') return period === 'upcoming';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return period === 'upcoming';
+        return period === 'upcoming' ? d >= todayStart : d < todayStart;
+      });
+    }
+
     res.json(filtered.map(normalizeEnrollmentRow));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -265,11 +285,12 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
       enrollment['ClassDate'] || enrollment['Class Date'] || '',
       enrollment['ClassTime'] || enrollment['Class Time'] || '',
     );
-    const newStatus = 'Approved';
+    // Late cancellations (< 24h notice) get their own status for the principal to review
+    const newStatus = moreThan24h ? 'Cancelled' : 'Late Cancellation';
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return normalizeEnrollmentStatus(newStatus);
+      if (h === 'Status') return newStatus;
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);

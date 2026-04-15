@@ -42,8 +42,12 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   if (status === "Late Cancellation") return "destructive";
   if (status === "Fee Waived") return "secondary";
   if (status === "Fee Confirmed") return "destructive";
+  if (status === "Pending") return "outline";
+  if (status === "Rejected") return "destructive";
   return "outline";
 }
+
+type Period = "upcoming" | "past" | "all";
 
 export default function ParentView() {
   const sheetId = localStorage.getItem(SHEET_KEY);
@@ -55,6 +59,7 @@ export default function ParentView() {
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [studentFilter, setStudentFilter] = useState("all");
   const [cancelRow, setCancelRow] = useState<Enrollment | null>(null);
+  const [period, setPeriod] = useState<Period>("upcoming");
 
   // Load parent list from the sheet
   const { data: parents, isLoading: loadingParents } = useQuery<Parent[]>({
@@ -87,10 +92,10 @@ export default function ParentView() {
 
   // Load classes — all when no parent selected, filtered when a parent is selected
   const { data: enrollments, isLoading: loadingClasses } = useQuery<Enrollment[]>({
-    queryKey: ["classes", selectedParent?.["Email"] ?? "all", sheetId],
+    queryKey: ["classes", selectedParent?.["Email"] ?? "all", sheetId, period],
     enabled: !!sheetId,
     queryFn: async () => {
-      const params = new URLSearchParams({ sheetId: sheetId! });
+      const params = new URLSearchParams({ sheetId: sheetId!, period });
       if (selectedParent) params.set("parentEmail", selectedParent["Email"]);
       const res = await fetch(apiUrl(`/enrollments?${params}`));
       if (!res.ok) throw new Error(await res.text());
@@ -231,7 +236,7 @@ export default function ParentView() {
         {/* Results — always shown when sheet is linked */}
         {sheetId && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-foreground">
                 {selectedParent
                   ? studentFilter === "all"
@@ -239,11 +244,29 @@ export default function ParentView() {
                     : <>Classes for <span className="text-primary">{studentFilter}</span></>
                   : "All Students"}
               </h2>
-              {!loadingClasses && enrollments && (
-                <Badge variant="secondary" className="text-sm">
-                  {visibleClasses.length} {visibleClasses.length === 1 ? "class" : "classes"}
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Period toggle */}
+                <div className="flex rounded-lg border bg-muted p-0.5 text-xs font-medium">
+                  {(["upcoming", "past", "all"] as Period[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPeriod(p)}
+                      className={`px-3 py-1 rounded-md capitalize transition-colors ${
+                        period === p
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                {!loadingClasses && enrollments && (
+                  <Badge variant="secondary" className="text-sm shrink-0">
+                    {visibleClasses.length} {visibleClasses.length === 1 ? "class" : "classes"}
+                  </Badge>
+                )}
+              </div>
             </div>
 
             {loadingClasses ? (
