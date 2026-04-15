@@ -163,7 +163,9 @@ export default function AuthRedirect() {
   const emailFromStorage = localStorage.getItem("edutrack_login_email")?.toLowerCase().trim() || "";
 
   useEffect(() => {
-    if (!isLoaded) return;
+    // If we already have the email from URL or localStorage, don't wait for Clerk
+    const hasEmail = !!(emailFromUrl || emailFromStorage);
+    if (!hasEmail && !isLoaded) return;
 
     const sid = localStorage.getItem(SHEET_KEY) || "";
     setSheetId(sid);
