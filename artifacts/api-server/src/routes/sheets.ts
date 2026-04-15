@@ -418,7 +418,6 @@ async function applyMasterProtection(sheetsClient: any, spreadsheetId: string): 
     SHEET_TABS.parents,
     SHEET_TABS.subjects,
     SHEET_TABS.enrollments,
-    SHEET_TABS.archive,
     SHEET_TABS.announcements,
   ];
 
