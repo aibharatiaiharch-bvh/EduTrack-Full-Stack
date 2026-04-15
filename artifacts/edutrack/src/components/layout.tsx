@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, CheckSquare, Calendar, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Calendar, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getFeatures } from "@/config/features";
@@ -30,7 +30,6 @@ const PAGE_NAMES: Record<string, string> = {
   "/schedule":   "Schedule",
   "/classes":    "Browse Classes",
   "/calendar":   "Class Calendar",
-  "/checkin":    "Check-in",
   "/settings":   "Settings",
   "/parent":     "My Classes",
   "/principal":  "Principal Dashboard",
@@ -45,7 +44,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "My Portal",
         items: [
           { name: "Today's Classes", href: "/dashboard", icon: LayoutDashboard },
-          { name: "Check-in", href: "/checkin", icon: CheckSquare },
           ...(features.schedule ? [{ name: "Full Schedule", href: "/schedule", icon: Calendar }] : []),
         ],
       },
@@ -107,7 +105,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       label: "Overview",
       items: [
         { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
-        { name: "Check-in", href: "/checkin", icon: CheckSquare },
         ...(features.schedule ? [{ name: "Schedule", href: "/schedule", icon: Calendar }] : []),
       ],
     },
