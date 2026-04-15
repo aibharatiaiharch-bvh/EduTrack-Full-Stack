@@ -17,14 +17,7 @@ function getSheetId(req: any): string {
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
   if (v === 'active' || v === 'enrolled') return 'Active';
-  if (v === 'inactive') return 'Inactive';
-  if (v === 'pending') return 'Pending';
-  if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
-  if (v === 'late cancellation') return 'Late Cancellation';
-  if (v === 'fee waived') return 'Fee Waived';
-  if (v === 'fee confirmed') return 'Fee Confirmed';
-  if (v === 'rejected') return 'Rejected';
-  return 'Pending';
+  return 'Active';
 }
 
 function normalizeEnrollmentRow(row: any) {
@@ -205,7 +198,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
         extra: `Auto-review needed for ${subjectType || ''} class${teacherName ? ` (${teacherName})` : ''}`,
       });
       await appendRow(spreadsheetId, SHEET_TABS.enrollment_requests, [
-        reqId, resolvedStudentId, 'student', resolvedClassId, 'Pending', now, packed,
+        reqId, resolvedStudentId, 'student', resolvedClassId, 'Approve', now, packed,
       ]);
       res.json({ ok: true, queuedForReview: true }); return;
     }
@@ -289,7 +282,7 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
       enrollment['ClassDate'] || enrollment['Class Date'] || '',
       enrollment['ClassTime'] || enrollment['Class Time'] || '',
     );
-    const newStatus = moreThan24h ? 'Cancelled' : 'Late Cancellation';
+    const newStatus = 'Active';
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
@@ -331,9 +324,8 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return normalizeEnrollmentStatus(action);
+      if (h === 'Status')          return 'Active';
       if (h === 'Override Action') return action;
-      if (h === 'Status')          return normalizeEnrollmentStatus(enrollment['Status']);
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);
