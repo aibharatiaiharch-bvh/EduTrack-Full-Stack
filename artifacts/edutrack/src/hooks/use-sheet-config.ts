@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 
 const STORAGE_KEY = "edutrack_sheet_id";
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
 export type DriveFile = {
   id: string;
@@ -31,7 +33,7 @@ export function useSheetConfig() {
     setLoadingFiles(true);
     setFilesError(null);
     try {
-      const res = await fetch("/api/sheets/drive-files");
+      const res = await fetch(apiUrl("/sheets/drive-files"));
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setDriveFiles(data.files ?? []);
@@ -45,7 +47,7 @@ export function useSheetConfig() {
   const createNewSheet = useCallback(async (): Promise<string | null> => {
     setCreating(true);
     try {
-      const res = await fetch("/api/sheets/setup", { method: "POST" });
+      const res = await fetch(apiUrl("/sheets/setup"), { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       return data.spreadsheetId as string;
@@ -61,7 +63,7 @@ export function useSheetConfig() {
   const seedSheet = useCallback(async (id: string): Promise<void> => {
     setSeeding(true);
     try {
-      const res = await fetch("/api/sheets/seed", {
+      const res = await fetch(apiUrl("/sheets/seed"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ spreadsheetId: id }),
