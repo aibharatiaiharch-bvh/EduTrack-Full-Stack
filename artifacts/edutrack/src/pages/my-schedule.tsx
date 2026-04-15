@@ -178,40 +178,68 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <InfoCard icon={<ShieldCheck className="h-4 w-4" />} title="Full" value={String(active.filter(c => c["Class Type"] === "Group").length)} tone="red" />
-        <InfoCard icon={<GraduationCap className="h-4 w-4" />} title="Filling" value={String(active.filter(c => c["Class Type"] === "Both").length)} tone="yellow" />
-        <InfoCard icon={<Calendar className="h-4 w-4" />} title="Empty" value={String(subjects.length || teachers.length ? Math.max(subjects.length - active.length, 0) : 0)} tone="green" />
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Open</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Filling</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Full</span>
       </div>
-      <div className="grid gap-4">
-        {daySummary.map(({ day, classes }) => (
-          <Card key={day}>
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="font-semibold">{day}</h2>
-                <Badge variant="outline">{classes.length} classes</Badge>
-              </div>
-              <div className="space-y-2">
-                {classes.length === 0 ? (
-                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">No scheduled classes</div>
-                ) : classes.map(cls => (
-                  <div key={cls._row} className="flex items-center justify-between rounded-lg border p-3">
-                    <div>
-                      <p className="font-medium">{cls["Class Name"]}</p>
-                      <p className="text-xs text-muted-foreground">{cls["Teacher"]} • {cls["Class Time"]}</p>
+      <div className="grid gap-3 overflow-x-auto">
+        <div className="min-w-[900px] grid grid-cols-[120px_repeat(5,minmax(0,1fr))] gap-2">
+          <div />
+          {daySummary.map(({ day }) => (
+            <div key={day} className="rounded-lg border bg-muted/40 px-3 py-2 text-sm font-semibold text-center">
+              {day}
+            </div>
+          ))}
+
+          {subjects.map((subject, index) => {
+            const teacherNames = (subject["Teachers"] || "")
+              .split(",")
+              .map(v => v.trim())
+              .filter(Boolean);
+            const relevantClasses = active.filter(cls =>
+              cls["Class Name"]?.toLowerCase().includes(subject["Subject Name"]?.toLowerCase() || "")
+            );
+
+            return (
+              <>
+                <div key={`${subject._row}-label`} className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
+                  {subject["Subject Name"]}
+                </div>
+                {daySummary.map(({ day }) => {
+                  const dayClass = relevantClasses.find(cls =>
+                    (cls["Class Date"] || "").toLowerCase().includes(day.toLowerCase())
+                  );
+                  const tone = !dayClass ? "green" : dayClass["Class Type"] === "Group" ? "red" : dayClass["Class Type"] === "Both" ? "yellow" : "green";
+                  return (
+                    <div
+                      key={`${subject._row}-${day}`}
+                      className={
+                        `min-h-[88px] rounded-lg border px-3 py-2 text-xs ${tone === "red" ? "bg-red-50 border-red-200" : tone === "yellow" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`
+                      }
+                    >
+                      {dayClass ? (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-foreground leading-tight">{dayClass["Class Name"]}</p>
+                          <p className="text-muted-foreground leading-tight">{dayClass["Teacher"]}</p>
+                          <p className="text-[11px] uppercase tracking-wide">
+                            {tone === "red" ? "Full" : tone === "yellow" ? "Filling" : "Open"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-green-800 leading-tight">{subject["Subject Name"]}</p>
+                          <p className="text-green-700 leading-tight">{teacherNames.join(", ") || "No teacher"}</p>
+                          <p className="text-[11px] uppercase tracking-wide text-green-700">Open</p>
+                        </div>
+                      )}
                     </div>
-                    <Badge variant={cls["Class Type"] === "Group" ? "destructive" : cls["Class Type"] === "Both" ? "secondary" : "default"}>
-                      {cls["Class Type"] === "Group" ? "Full" : cls["Class Type"] === "Both" ? "Filling" : "Open"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      <div className="text-sm text-muted-foreground">
-        Teachers: {teachers.length || "—"} • Subjects: {subjects.length || "—"}
+                  );
+                })}
+              </>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
