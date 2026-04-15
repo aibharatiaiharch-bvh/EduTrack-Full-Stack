@@ -4,13 +4,8 @@ import { useLocation } from "wouter";
 import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const SHEET_KEY = "edutrack_sheet_id";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
-function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
-
 // Shown when the user's email is not registered
-function NotFoundScreen({ sheetId, onEnroll }: { sheetId: string; onEnroll: () => void }) {
+function NotFoundScreen({ onEnroll }: { sheetId: string; onEnroll: () => void }) {
   const { signOut } = useClerk();
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
@@ -60,7 +55,7 @@ function SetupRequiredScreen() {
           then sign in again.
         </p>
         <div className="grid grid-cols-1 gap-3">
-          <Button className="w-full" onClick={() => window.location.href = `${BASE}/admin`}>
+          <Button className="w-full" onClick={() => window.location.href = "/admin"}>
             Go to Developer Portal
           </Button>
           <Button
@@ -144,16 +139,13 @@ function InactiveScreen({ name }: { name: string }) {
   );
 }
 
-type Screen = "loading" | "pending" | "inactive" | "not-found" | "setup-required";
-
 export default function AuthRedirect() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const [, setLocation] = useLocation();
-  const [screen, setScreen] = useState<Screen>("loading");
+  const [screen, setScreen] = useState<"loading" | "pending" | "inactive" | "not-found" | "setup-required">("loading");
   const [statusMsg, setStatusMsg] = useState("Checking your account…");
   const [userName, setUserName] = useState("");
-  const [sheetId, setSheetId] = useState("");
 
   // Read email from URL query param first, then localStorage fallback, then Clerk session
   const urlParams = new URLSearchParams(window.location.search);
@@ -161,19 +153,6 @@ export default function AuthRedirect() {
   const emailFromStorage = localStorage.getItem("edutrack_login_email")?.toLowerCase().trim() || "";
 
   useEffect(() => {
-    const storedSheetId = localStorage.getItem(SHEET_KEY);
-    if (!storedSheetId) {
-      fetch(apiUrl("/config"))
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.sheetId) {
-            localStorage.setItem(SHEET_KEY, data.sheetId);
-            setSheetId(data.sheetId);
-          }
-        })
-        .catch(() => null);
-    }
-
     // If we already have the email from URL or localStorage, don't wait for Clerk
     const hasEmail = !!(emailFromUrl || emailFromStorage);
     if (!hasEmail && !isLoaded) return;
@@ -189,36 +168,10 @@ export default function AuthRedirect() {
       return;
     }
 
-    // Resolve sheet ID — use localStorage, or fetch from server config if missing
-    const resolveSheetId = async (): Promise<string> => {
-      const stored = localStorage.getItem(SHEET_KEY);
-      if (stored) return stored;
-      try {
-        const res = await fetch(apiUrl("/config"));
-        if (res.ok) {
-          const { sheetId: serverSheetId } = await res.json();
-          if (serverSheetId) {
-            localStorage.setItem(SHEET_KEY, serverSheetId);
-            return serverSheetId;
-          }
-        }
-      } catch {
-        // ignore — will proceed with empty sheetId
-      }
-      return "";
-    };
-
     setStatusMsg("Looking up your account…");
 
-    resolveSheetId().then((sid) => {
-      setSheetId(sid);
-      if (!sid) {
-        setScreen("setup-required");
-        return;
-      }
-      return fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
-        .then((r) => r.json());
-    })
+    fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/roles/check?email=${encodeURIComponent(activeEmail)}`)
+      .then((r) => r.json())
       .then((data) => {
         if (data.tabMissing) {
           setScreen("setup-required");
@@ -242,14 +195,12 @@ export default function AuthRedirect() {
           return;
         }
 
-        // Active user — store role for portal-aware UI, then route
         const role: string = data.role;
         localStorage.removeItem("edutrack_dev_role_override");
         localStorage.setItem("edutrack_user_role", role);
         localStorage.setItem("edutrack_user_email", activeEmail);
         if (data.name) localStorage.setItem("edutrack_user_name", data.name);
         if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
-        // Clear login email after successful auth
         localStorage.removeItem("edutrack_login_email");
 
         if (role === "developer" || role === "admin") {
@@ -281,8 +232,8 @@ export default function AuthRedirect() {
   if (screen === "inactive") return <InactiveScreen name={userName} />;
   if (screen === "not-found") return (
     <NotFoundScreen
-      sheetId={sheetId}
-      onEnroll={() => setLocation(`/enroll?sheetId=${encodeURIComponent(sheetId)}`)}
+      sheetId=""
+      onEnroll={() => setLocation(`/enroll`)}
     />
   );
 
