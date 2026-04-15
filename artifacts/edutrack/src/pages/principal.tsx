@@ -1127,7 +1127,7 @@ export default function PrincipalDashboard() {
                     <TableHead>Teacher</TableHead>
                     <TableHead>Class</TableHead>
                     <TableHead>Student</TableHead>
-                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead>Date / Time</TableHead>
                     <TableHead className="hidden sm:table-cell">Zoom</TableHead>
                     <TableHead />
                   </TableRow>
@@ -1145,7 +1145,7 @@ export default function PrincipalDashboard() {
                         </TableCell>
                         <TableCell className="text-sm">{enr["Class Name"] || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{enr["Student Name"]}</TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {[enr["Class Date"], enr["Class Time"]].filter(Boolean).join(" · ") || "—"}
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
