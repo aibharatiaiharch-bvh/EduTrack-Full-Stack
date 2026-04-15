@@ -38,6 +38,12 @@ if (!clerkPubKey) {
 }
 
 function SignInPage() {
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (isLoaded && isSignedIn) {
+    return <Redirect to="/auth-redirect" />;
+  }
+
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} forceRedirectUrl={`${basePath}/auth-redirect`} />
