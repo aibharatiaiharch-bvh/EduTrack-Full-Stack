@@ -25,14 +25,17 @@ export function useSheetConfig() {
     setSheetIdState(id);
     if (id) {
       localStorage.setItem(STORAGE_KEY, id);
+      localStorage.setItem("edutrack_sheet_linked", "true");
     } else {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("edutrack_sheet_linked");
     }
   }, []);
 
   const clearSheetId = useCallback(() => {
     setSheetIdState(null);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("edutrack_sheet_linked");
   }, []);
 
   const fetchDriveFiles = useCallback(async () => {
