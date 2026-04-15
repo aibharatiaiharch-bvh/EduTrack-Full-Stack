@@ -90,8 +90,8 @@ export const SHEET_HEADERS = {
 
   // TRANSACTIONS — UserIDs for all FKs; class date/time stored as session data
   enrollments: [
-    'EnrollmentID', 'UserID', 'ClassID', 'ParentID', 'Status', 'EnrolledAt',
-    'TeacherID', 'TeacherEmail', 'Zoom Link', 'Class Type',
+    'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'EnrolledAt',
+    'TeacherID', 'Teacher Name', 'TeacherEmail', 'Zoom Link', 'Class Type',
     'ClassDate', 'ClassTime',
   ],
 
