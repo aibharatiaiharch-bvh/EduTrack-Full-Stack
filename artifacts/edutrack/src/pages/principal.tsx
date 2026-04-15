@@ -422,9 +422,9 @@ export default function PrincipalDashboard() {
   async function deactivateUser(userId: string) {
     setActioningUser(userId);
     try {
-      const res = await fetch(apiUrl(`/users/deactivate?sheetId=${encodeURIComponent(sheetId!)}`), {
+      const res = await fetch(apiUrl(`/principals/sync-user-status?sheetId=${encodeURIComponent(sheetId!)}`), {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, sheetId }),
+        body: JSON.stringify({ userId, status: "Inactive", sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
       loadUsers();
@@ -437,9 +437,9 @@ export default function PrincipalDashboard() {
   async function reactivateUser(userId: string) {
     setActioningUser(userId);
     try {
-      const res = await fetch(apiUrl(`/users/reactivate?sheetId=${encodeURIComponent(sheetId!)}`), {
+      const res = await fetch(apiUrl(`/principals/sync-user-status?sheetId=${encodeURIComponent(sheetId!)}`), {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, sheetId }),
+        body: JSON.stringify({ userId, status: "Active", sheetId }),
       });
       if (!res.ok) throw new Error(await res.text());
       loadUsers();
