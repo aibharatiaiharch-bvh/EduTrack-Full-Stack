@@ -55,7 +55,7 @@ export default function BrowseClasses() {
   const [joiningRow, setJoiningRow] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<EligibleStudent | null>(null);
   const [manualName, setManualName] = useState("");
-  const [manualEmail, setManualEmail] = useState(email);
+  const [manualEmail, setManualEmail] = useState("");
   const [principalStudents, setPrincipalStudents] = useState<ClassStudents>({});
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
@@ -129,6 +129,7 @@ export default function BrowseClasses() {
     },
     onSuccess: (_, subject) => {
       qc.invalidateQueries({ queryKey: ["subjects-capacity", sheetId] });
+      qc.invalidateQueries({ queryKey: ["subjects-capacity"] });
       if (isPrincipal) {
         setPrincipalStudents(prev => ({
           ...prev,
@@ -142,6 +143,7 @@ export default function BrowseClasses() {
       setJoiningRow(null);
       setSelectedStudent(null);
       setManualName("");
+      setManualEmail("");
     },
     onError: (err: any) => {
       toast({ title: "Enrollment failed", description: err.message, variant: "destructive" });
@@ -251,14 +253,6 @@ export default function BrowseClasses() {
                                   <option value="">Select student</option>
                                   {selectableStudents.map(s => <option key={s.userId || s.name} value={s.name}>{s.name}</option>)}
                                 </select>
-                                {isPrincipal && (
-                                  <input
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                                    placeholder="Parent email"
-                                    value={manualEmail}
-                                    onChange={e => setManualEmail(e.target.value)}
-                                  />
-                                )}
                                 <div className="flex gap-2">
                                   <Button
                                     size="sm"
