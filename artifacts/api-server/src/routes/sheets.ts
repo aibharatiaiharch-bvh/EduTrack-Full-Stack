@@ -321,9 +321,7 @@ const TAB_KEY_MAP: Record<string, keyof typeof SHEET_HEADERS> = {
   [SHEET_TABS.subjects]:            'subjects',
   [SHEET_TABS.enrollments]:         'enrollments',
   [SHEET_TABS.users]:               'users',
-  [SHEET_TABS.enrollment_requests]: 'enrollment_requests',
   [SHEET_TABS.parents]:             'parents',
-  [SHEET_TABS.archive]:             'archive',
   [SHEET_TABS.announcements]:       'announcements',
 };
 
