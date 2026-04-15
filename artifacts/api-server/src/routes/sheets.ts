@@ -107,19 +107,19 @@ function buildSeedData() {
     ['SUB-008', 'Physical Education', 'Group',      'TCH-003', 'Gym',      'Mon, Fri',      'Active', '8'],
   ];
   const enrollmentRows = [
-    ['ENR-001', 'STU-001', 'SUB-001', 'PAR-001', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
-    ['ENR-002', 'STU-001', 'SUB-005', 'PAR-001', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
-    ['ENR-003', 'STU-002', 'SUB-001', 'PAR-002', 'Inactive',          nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
-    ['ENR-004', 'STU-002', 'SUB-004', 'PAR-002', 'Active',            nowIso, '',              'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
-    ['ENR-005', 'STU-003', 'SUB-005', 'PAR-003', 'Active',            nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
-    ['ENR-006', 'STU-003', 'SUB-007', 'PAR-003', 'Pending',           nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(10), '03:00 PM'],
-    ['ENR-007', 'STU-004', 'SUB-004', 'PAR-004', 'Active',            nowIso, '',              'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
-    ['ENR-008', 'STU-005', 'SUB-006', 'PAR-001', 'Inactive',          nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Individual', dateFromNow(11), '03:00 PM'],
-    ['ENR-009', 'STU-004', 'SUB-008', 'PAR-004', 'Active',            nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(3),  '09:00 AM'],
-    ['ENR-010', 'STU-002', 'SUB-008', 'PAR-002', 'Pending',           nowIso, '',              'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(1),  '10:00 AM'],
-    ['ENR-011', 'STU-003', 'SUB-001', 'PAR-003', 'Pending',           nowIso, '',              'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '11:00 AM'],
-    ['ENR-012', 'STU-001', 'SUB-008', 'PAR-001', 'Active',            nowIso, 'Fee Waived',    'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
-    ['ENR-013', 'STU-005', 'SUB-004', 'PAR-001', 'Inactive',          nowIso, 'Fee Confirmed', 'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
+    ['ENR-001', 'STU-001', 'SUB-001', 'PAR-001', 'Active',   nowIso, '',           'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
+    ['ENR-002', 'STU-001', 'SUB-005', 'PAR-001', 'Active',   nowIso, '',           'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
+    ['ENR-003', 'STU-002', 'SUB-001', 'PAR-002', 'Inactive', nowIso, '',           'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
+    ['ENR-004', 'STU-002', 'SUB-004', 'PAR-002', 'Active',   nowIso, '',           'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
+    ['ENR-005', 'STU-003', 'SUB-005', 'PAR-003', 'Active',   nowIso, '',           'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
+    ['ENR-006', 'STU-003', 'SUB-007', 'PAR-003', 'Pending',  nowIso, '',           'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(10), '03:00 PM'],
+    ['ENR-007', 'STU-004', 'SUB-004', 'PAR-004', 'Active',   nowIso, '',           'TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
+    ['ENR-008', 'STU-005', 'SUB-006', 'PAR-001', 'Inactive', nowIso, '',           'TCH-003', 'r.kim@edutrack.edu',    '',                         'Individual', dateFromNow(11), '03:00 PM'],
+    ['ENR-009', 'STU-004', 'SUB-008', 'PAR-004', 'Active',   nowIso, '',           'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(3),  '09:00 AM'],
+    ['ENR-010', 'STU-002', 'SUB-008', 'PAR-002', 'Pending',  nowIso, '',           'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(1),  '10:00 AM'],
+    ['ENR-011', 'STU-003', 'SUB-001', 'PAR-003', 'Pending',  nowIso, '',           'TCH-001', 's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '11:00 AM'],
+    ['ENR-012', 'STU-001', 'SUB-008', 'PAR-001', 'Active',   nowIso, 'Fee Waived', 'TCH-003', 'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
+    ['ENR-013', 'STU-005', 'SUB-004', 'PAR-001', 'Inactive', nowIso, 'Fee Confirmed','TCH-002', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
   ];
   const enrollmentRequestRows = [
     ['REQ-001', 'PAR-005', 'student', 'SUB-001', 'Pending', nowIso, JSON.stringify({
