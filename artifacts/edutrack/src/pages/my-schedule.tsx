@@ -186,13 +186,13 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
       <div className="grid gap-3 overflow-x-auto">
         <div className="min-w-[900px] grid grid-cols-[120px_repeat(5,minmax(0,1fr))] gap-2">
           <div />
-          {daySummary.map(({ day }) => (
-            <div key={day} className="rounded-lg border bg-muted/40 px-3 py-2 text-sm font-semibold text-center">
+                {daySummary.map(({ day }) => (
+            <div key={day} className="rounded-lg border bg-muted/40 px-3 py-2 text-[11px] font-semibold text-center">
               {day}
             </div>
           ))}
 
-          {subjects.map((subject, index) => {
+          {subjects.map((subject) => {
             const teacherNames = (subject["Teachers"] || "")
               .split(",")
               .map(v => v.trim())
@@ -202,8 +202,8 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
             );
 
             return (
-              <>
-                <div key={`${subject._row}-label`} className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
+                <React.Fragment key={subject._row}>
+                <div className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
                   {subject["Subject Name"]}
                 </div>
                 {daySummary.map(({ day }) => {
@@ -215,28 +215,30 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                     <div
                       key={`${subject._row}-${day}`}
                       className={
-                        `min-h-[88px] rounded-lg border px-3 py-2 text-xs ${tone === "red" ? "bg-red-50 border-red-200" : tone === "yellow" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`
+                        `min-h-[72px] rounded-lg border px-2 py-1.5 text-[9px] leading-tight ${tone === "red" ? "bg-red-50 border-red-200" : tone === "yellow" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`
                       }
                     >
                       {dayClass ? (
-                        <div className="space-y-1">
-                          <p className="font-semibold text-foreground leading-tight">{dayClass["Class Name"]}</p>
-                          <p className="text-muted-foreground leading-tight">{dayClass["Teacher"]}</p>
-                          <p className="text-[11px] uppercase tracking-wide">
-                            {tone === "red" ? "Full" : tone === "yellow" ? "Filling" : "Open"}
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-foreground truncate">{dayClass["Class Date"] || day}</p>
+                          <p className="text-muted-foreground truncate">{dayClass["Class Name"]}</p>
+                          <p className="text-muted-foreground truncate">{dayClass["Teacher"]}</p>
+                          <p className="uppercase tracking-wide">
+                            Count: {active.filter(cls => cls["Class Name"] === dayClass["Class Name"]).length} • {tone === "red" ? "Full" : tone === "yellow" ? "Filling" : "Open"}
                           </p>
                         </div>
                       ) : (
-                        <div className="space-y-1">
-                          <p className="font-semibold text-green-800 leading-tight">{subject["Subject Name"]}</p>
-                          <p className="text-green-700 leading-tight">{teacherNames.join(", ") || "No teacher"}</p>
-                          <p className="text-[11px] uppercase tracking-wide text-green-700">Open</p>
+                        <div className="space-y-0.5">
+                          <p className="font-semibold text-green-800 truncate">{day}</p>
+                          <p className="text-green-700 truncate">{subject["Subject Name"]}</p>
+                          <p className="text-green-700 truncate">{teacherNames.join(", ") || "No teacher"}</p>
+                          <p className="uppercase tracking-wide text-green-700">Count: 0 • Open</p>
                         </div>
                       )}
                     </div>
                   );
                 })}
-              </>
+                </React.Fragment>
             );
           })}
         </div>
