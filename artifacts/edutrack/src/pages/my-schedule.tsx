@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, BookOpen, Users, User, AlertTriangle, Video } from "lucide-react";
+import { Calendar, Clock, BookOpen, Users, User, AlertTriangle, Video, ShieldCheck, GraduationCap } from "lucide-react";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -26,6 +26,25 @@ type EnrollmentRow = {
   "Class Type": string;
 };
 
+type TeacherRow = {
+  _row: number;
+  "UserID": string;
+  "Name": string;
+  "Email": string;
+  "Subjects": string;
+  "Status": string;
+  "Zoom Link": string;
+};
+
+type SubjectRow = {
+  _row: number;
+  "Subject Name": string;
+  "Type": string;
+  "Teachers": string;
+  "Room": string;
+  "Days": string;
+};
+
 function statusColor(status: string) {
   if (status === "Active") return "default";
   if (status === "Cancelled") return "secondary";
@@ -39,13 +58,36 @@ export default function MySchedule() {
   const { user } = useUser();
   const sheetId = localStorage.getItem(SHEET_KEY);
   const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
+  const role = localStorage.getItem("edutrack_user_role") || "tutor";
+  const isSummaryView = role === "principal" || role === "developer" || role === "admin";
 
   const { data: classes, isLoading, error } = useQuery<EnrollmentRow[]>({
     queryKey: ["my-schedule", email, sheetId],
-    enabled: !!email && !!sheetId,
+    enabled: !!sheetId,
     queryFn: async () => {
-      const params = new URLSearchParams({ teacherEmail: email, sheetId: sheetId! });
+      const params = new URLSearchParams({ sheetId: sheetId! });
+      if (!isSummaryView && email) params.set("teacherEmail", email);
       const res = await fetch(apiUrl(`/enrollments?${params}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const { data: teachers } = useQuery<TeacherRow[]>({
+    queryKey: ["schedule-teachers", sheetId],
+    enabled: isSummaryView && !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/principals/teachers?sheetId=${encodeURIComponent(sheetId!)}`));
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  });
+
+  const { data: subjects } = useQuery<SubjectRow[]>({
+    queryKey: ["schedule-subjects", sheetId],
+    enabled: isSummaryView && !!sheetId,
+    queryFn: async () => {
+      const res = await fetch(apiUrl(`/subjects?sheetId=${encodeURIComponent(sheetId!)}`));
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -58,9 +100,13 @@ export default function MySchedule() {
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 max-w-4xl">
         <header>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Schedule</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            {isSummaryView ? "Weekly Schedule Summary" : "My Schedule"}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Classes assigned to <span className="font-medium text-foreground">{email}</span>
+            {isSummaryView
+              ? "Color-coded weekly overview of teachers, subjects, and class capacity."
+              : <>Classes assigned to <span className="font-medium text-foreground">{email}</span></>}
           </p>
         </header>
 
@@ -88,7 +134,9 @@ export default function MySchedule() {
 
         {!isLoading && !error && classes && (
           <>
-            {active.length === 0 && other.length === 0 ? (
+            {isSummaryView ? (
+              <SummaryView classes={classes} teachers={teachers ?? []} subjects={subjects ?? []} />
+            ) : active.length === 0 && other.length === 0 ? (
               <div className="text-center py-16 border border-dashed rounded-xl flex flex-col items-center gap-3 text-muted-foreground">
                 <Calendar className="h-10 w-10 opacity-30" />
                 <p className="font-medium">No classes assigned to your account yet</p>
@@ -118,6 +166,69 @@ export default function MySchedule() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]; teachers: TeacherRow[]; subjects: SubjectRow[]; }) {
+  const active = classes.filter(c => c["Status"] === "Active");
+  const daySummary = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(day => {
+    const dayClasses = active.filter(cls => (cls["Class Date"] || "").toLowerCase().includes(day.toLowerCase()));
+    return { day, classes: dayClasses };
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-3">
+        <InfoCard icon={<ShieldCheck className="h-4 w-4" />} title="Full" value={String(active.filter(c => c["Class Type"] === "Group").length)} tone="red" />
+        <InfoCard icon={<GraduationCap className="h-4 w-4" />} title="Filling" value={String(active.filter(c => c["Class Type"] === "Both").length)} tone="yellow" />
+        <InfoCard icon={<Calendar className="h-4 w-4" />} title="Empty" value={String(subjects.length || teachers.length ? Math.max(subjects.length - active.length, 0) : 0)} tone="green" />
+      </div>
+      <div className="grid gap-4">
+        {daySummary.map(({ day, classes }) => (
+          <Card key={day}>
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">{day}</h2>
+                <Badge variant="outline">{classes.length} classes</Badge>
+              </div>
+              <div className="space-y-2">
+                {classes.length === 0 ? (
+                  <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">No scheduled classes</div>
+                ) : classes.map(cls => (
+                  <div key={cls._row} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <p className="font-medium">{cls["Class Name"]}</p>
+                      <p className="text-xs text-muted-foreground">{cls["Teacher"]} • {cls["Class Time"]}</p>
+                    </div>
+                    <Badge variant={cls["Class Type"] === "Group" ? "destructive" : cls["Class Type"] === "Both" ? "secondary" : "default"}>
+                      {cls["Class Type"] === "Group" ? "Full" : cls["Class Type"] === "Both" ? "Filling" : "Open"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="text-sm text-muted-foreground">
+        Teachers: {teachers.length || "—"} • Subjects: {subjects.length || "—"}
+      </div>
+    </div>
+  );
+}
+
+function InfoCard({ icon, title, value, tone }: { icon: React.ReactNode; title: string; value: string; tone: "red" | "yellow" | "green"; }) {
+  const toneClass = tone === "red" ? "border-red-200 bg-red-50 text-red-700" : tone === "yellow" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-green-200 bg-green-50 text-green-700";
+  return (
+    <Card className={toneClass}>
+      <CardContent className="p-4 flex items-center justify-between">
+        <div>
+          <p className="text-sm opacity-80">{title}</p>
+          <p className="text-2xl font-bold">{value}</p>
+        </div>
+        {icon}
+      </CardContent>
+    </Card>
   );
 }
 

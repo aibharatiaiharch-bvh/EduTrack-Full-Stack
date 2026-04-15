@@ -27,7 +27,6 @@ const ROLE_HOME: Record<string, string> = {
 const PAGE_NAMES: Record<string, string> = {
   "/dashboard":  "Today's Classes",
   "/student":    "My Schedule",
-  "/schedule":   "Schedule",
   "/classes":    "Browse Classes",
   "/calendar":   "Class Calendar",
   "/settings":   "Settings",
@@ -44,7 +43,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "My Portal",
         items: [
           { name: "Today's Classes", href: "/dashboard", icon: LayoutDashboard },
-          ...(features.schedule ? [{ name: "Full Schedule", href: "/schedule", icon: Calendar }] : []),
         ],
       },
       {
