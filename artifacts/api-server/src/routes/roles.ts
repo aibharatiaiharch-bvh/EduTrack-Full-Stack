@@ -12,18 +12,19 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
-function getDeveloperEmails(): string[] {
-  return (process.env.DEVELOPER_EMAIL || '')
+function parseEmailList(value: string | undefined): string[] {
+  return (value || '')
     .split(',')
     .map((e) => e.toLowerCase().trim())
     .filter(Boolean);
 }
 
+function getDeveloperEmails(): string[] {
+  return parseEmailList(process.env.DEVELOPER_EMAIL);
+}
+
 function getPrincipalEmails(): string[] {
-  return (process.env.PRINCIPAL_EMAIL || '')
-    .split(',')
-    .map((e) => e.toLowerCase().trim())
-    .filter(Boolean);
+  return parseEmailList(process.env.PRINCIPAL_EMAIL);
 }
 
 function isDeveloperEmail(email: string): boolean {
@@ -54,11 +55,11 @@ router.get('/roles/check', async (req, res): Promise<void> => {
   try {
     if (isDeveloperEmail(email)) {
       res.json({
-        role:       'developer',
-        name:       process.env.DEVELOPER_NAME || 'Developer',
-        status:     'active',
-        userId:     'ADM-DEV',
-        found:      true,
+        role: 'developer',
+        name: process.env.DEVELOPER_NAME || 'Developer',
+        status: 'active',
+        userId: 'ADM-DEV',
+        found: true,
         tabMissing: false,
       });
       return;
@@ -66,11 +67,11 @@ router.get('/roles/check', async (req, res): Promise<void> => {
 
     if (isPrincipalEmail(email)) {
       res.json({
-        role:       'principal',
-        name:       process.env.PRINCIPAL_NAME || 'Principal',
-        status:     'active',
-        userId:     'PRN-DEV',
-        found:      true,
+        role: 'principal',
+        name: process.env.PRINCIPAL_NAME || 'Principal',
+        status: 'active',
+        userId: 'PRN-DEV',
+        found: true,
         tabMissing: false,
       });
       return;
@@ -81,11 +82,11 @@ router.get('/roles/check', async (req, res): Promise<void> => {
 
     if (user) {
       res.json({
-        role:       user.role,
-        name:       user.name,
-        status:     user.status,
-        userId:     user.userId,
-        found:      true,
+        role: user.role,
+        name: user.name,
+        status: user.status,
+        userId: user.userId,
+        found: true,
         tabMissing: false,
       });
       return;
@@ -108,27 +109,27 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     reference, promoCode, notes, userEmail, userName, parentName,
   } = req.body;
 
-  const now       = new Date().toISOString();
-  const today     = new Date().toLocaleDateString('en-AU');
+  const now = new Date().toISOString();
+  const today = new Date().toLocaleDateString('en-AU');
 
   try {
     if (requestType === 'new-class') {
-      const submitterName  = (studentName || userName || '').trim();
+      const submitterName = (studentName || userName || '').trim();
       const submitterEmail = (parentEmail || userEmail || '').toLowerCase().trim();
       if (!submitterName || !submitterEmail) {
         res.status(400).json({ error: 'Name and email are required for class requests' }); return;
       }
-      const users   = await readUsersTab(sheetId);
-      const user    = users.find(u => u.email === submitterEmail);
-      const userId  = user?.userId || '';
-      const reqId   = `REQ-${Date.now()}`;
+      const users = await readUsersTab(sheetId);
+      const user = users.find(u => u.email === submitterEmail);
+      const userId = user?.userId || '';
+      const reqId = `REQ-${Date.now()}`;
       const packedNotes = packNotes({
-        requesterName:  submitterName,
+        requesterName: submitterName,
         requesterEmail: submitterEmail,
-        classWanted:    classesInterested || '',
-        preferredDays:  parentPhone || '',
-        preferredTime:  currentGrade || '',
-        extra:          notes || '',
+        classWanted: classesInterested || '',
+        preferredDays: parentPhone || '',
+        preferredTime: currentGrade || '',
+        extra: notes || '',
       });
       await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
         reqId, userId, 'new-class', classesInterested || '', 'Pending', now, packedNotes,
@@ -137,14 +138,14 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
     }
 
     if (requestType === 'tutor') {
-      const applicantName  = (studentName || userName || '').trim();
+      const applicantName = (studentName || userName || '').trim();
       const applicantEmail = (parentEmail || userEmail || '').toLowerCase().trim();
       if (!applicantName || !applicantEmail) {
         res.status(400).json({ error: 'Name and email are required for tutor applications' }); return;
       }
-      const users   = await readUsersTab(sheetId);
-      let existing  = users.find(u => u.email === applicantEmail);
-      let userId    = existing?.userId || '';
+      const users = await readUsersTab(sheetId);
+      let existing = users.find(u => u.email === applicantEmail);
+      let userId = existing?.userId || '';
       if (!existing) {
         userId = await generateUserId('tutor', sheetId);
         await appendRow(sheetId, SHEET_TABS.users, [
@@ -155,9 +156,9 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       const packedNotes = packNotes({
         applicantName,
         applicantEmail,
-        subjects:  classesInterested || '',
-        phone:     parentPhone || '',
-        extra:     notes || '',
+        subjects: classesInterested || '',
+        phone: parentPhone || '',
+        extra: notes || '',
       });
       await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
         reqId, userId, 'tutor', '', 'Pending', now, packedNotes,
