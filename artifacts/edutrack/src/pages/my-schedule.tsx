@@ -172,10 +172,16 @@ export default function MySchedule() {
 
 function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]; teachers: TeacherRow[]; subjects: SubjectRow[]; }) {
   const active = classes.filter(c => c["Status"] === "Active");
-  const daySummary = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(day => {
-    const dayClasses = active.filter(cls => (cls["Class Date"] || "").toLowerCase().includes(day.toLowerCase()));
-    return { day, classes: dayClasses };
-  });
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  const daySummary = days.map(day => ({
+    day,
+    classes: active.filter(cls => {
+      const date = (cls["Class Date"] || "").toLowerCase();
+      return date.includes(day.toLowerCase()) || date === "tbd" || !date;
+    }),
+  }));
+  const rows = Array.from(new Set(subjects.map(s => s["Subject Name"]).filter(Boolean)));
+  const countForClass = (name: string) => active.filter(cls => cls["Class Name"] === name).length;
 
   return (
     <div className="space-y-6">
@@ -185,33 +191,31 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
         <span className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /> Full</span>
       </div>
       <div className="grid gap-3 overflow-x-auto">
-        <div className="min-w-[900px] grid grid-cols-[120px_repeat(5,minmax(0,1fr))] gap-2">
-          <div />
+        <div className="min-w-[900px] grid grid-cols-[160px_repeat(5,minmax(0,1fr))] gap-2">
+          <div className="rounded-lg border bg-muted/40 px-3 py-2 text-[11px] font-semibold text-center">Class / Subject</div>
                 {daySummary.map(({ day }) => (
             <div key={day} className="rounded-lg border bg-muted/40 px-3 py-2 text-[11px] font-semibold text-center">
               {day}
             </div>
           ))}
 
-          {subjects.map((subject) => {
-            const teacherNames = (subject["Teachers"] || "")
-              .split(",")
-              .map(v => v.trim())
-              .filter(Boolean);
-            const relevantClasses = active.filter(cls =>
-              cls["Class Name"]?.toLowerCase().includes(subject["Subject Name"]?.toLowerCase() || "")
+          {rows.map((rowName) => {
+            const relatedClasses = active.filter(cls =>
+              (cls["Class Name"] || "").toLowerCase().includes(rowName.toLowerCase())
             );
-
+            const teacherNames = Array.from(new Set(relatedClasses.map(c => c["Teacher"]).filter(Boolean)));
+            const rowCount = relatedClasses.length;
             return (
-                <Fragment key={subject._row}>
+                <Fragment key={rowName}>
                 <div className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
-                  {subject["Subject Name"]}
+                  <div className="truncate text-[11px]">{rowName}</div>
+                  <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{teacherNames.join(", ") || "No teacher"}</div>
                 </div>
                 {daySummary.map(({ day }) => {
-                  const dayClass = relevantClasses.find(cls =>
+                  const dayClass = relatedClasses.find(cls =>
                     (cls["Class Date"] || "").toLowerCase().includes(day.toLowerCase())
                   );
-                  const tone = !dayClass ? "green" : dayClass["Class Type"] === "Group" ? "red" : dayClass["Class Type"] === "Both" ? "yellow" : "green";
+                  const tone = dayClass ? (dayClass["Class Type"] === "Group" ? "red" : dayClass["Class Type"] === "Both" ? "yellow" : "green") : "green";
                   return (
                     <div
                       key={`${subject._row}-${day}`}
@@ -225,15 +229,14 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                           <p className="text-muted-foreground truncate">{dayClass["Class Name"]}</p>
                           <p className="text-muted-foreground truncate">{dayClass["Teacher"]}</p>
                           <p className="uppercase tracking-wide">
-                            Count: {active.filter(cls => cls["Class Name"] === dayClass["Class Name"]).length} • {tone === "red" ? "Full" : tone === "yellow" ? "Filling" : "Open"}
+                            Count: {countForClass(dayClass["Class Name"])} • {tone === "red" ? "Full" : tone === "yellow" ? "Filling" : "Open"}
                           </p>
                         </div>
                       ) : (
-                        <div className="space-y-0.5">
-                          <p className="font-semibold text-green-800 truncate">{day}</p>
-                          <p className="text-green-700 truncate">{subject["Subject Name"]}</p>
-                          <p className="text-green-700 truncate">{teacherNames.join(", ") || "No teacher"}</p>
-                          <p className="uppercase tracking-wide text-green-700">Count: 0 • Open</p>
+                        <div className="space-y-0.5 text-green-800">
+                          <p className="font-semibold truncate">{rowName}</p>
+                          <p className="truncate">{teacherNames.join(", ") || "No teacher"}</p>
+                          <p className="uppercase tracking-wide">Count: {rowCount} • Open</p>
                         </div>
                       )}
                     </div>
