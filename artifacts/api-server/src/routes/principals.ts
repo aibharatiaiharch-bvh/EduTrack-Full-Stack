@@ -158,7 +158,7 @@ router.get('/principals/pending-students', async (req, res): Promise<void> => {
   try {
     const users = await readUsersTab(sheetId);
     const pending = users
-      .filter(u => u.role === 'student' && u.status === 'inactive' && (u.createdAt || u.updatedAt))
+      .filter(u => u.role === 'student' && u.status === 'inactive' && !!u.createdAt && u.createdAt === u.updatedAt)
       .map(u => ({
         _row:     u._row,
         UserID:   u.userId,
