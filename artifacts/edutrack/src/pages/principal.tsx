@@ -422,7 +422,7 @@ export default function PrincipalDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("all");
-  const [userStatusFilter, setUserStatusFilter] = useState("all");
+  const [userStatusFilter, setUserStatusFilter] = useState("active");
   const [actioningUser, setActioningUser] = useState<string | null>(null);
 
   function loadUsers() {
@@ -1289,7 +1289,6 @@ export default function PrincipalDashboard() {
                     value={userStatusFilter}
                     onChange={e => setUserStatusFilter(e.target.value)}
                   >
-                    <option value="all">All Statuses</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="pending">Pending</option>
