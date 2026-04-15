@@ -63,6 +63,12 @@ function HomeRedirect() {
   return <Home />;
 }
 
+function StartRedirect() {
+  const path = window.location.pathname;
+  if (path === basePath || path === `${basePath}/`) return <Home />;
+  return <Home />;
+}
+
 function ProtectedRoute({ component: Component }: { component: any }) {
   const { isLoaded, isSignedIn } = useUser();
   if (!isLoaded) return null;
@@ -105,7 +111,7 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <Switch>
-          <Route path="/" component={HomeRedirect} />
+          <Route path="/" component={StartRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           <Route path="/auth-redirect" component={AuthRedirect} />
