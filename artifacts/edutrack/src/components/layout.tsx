@@ -7,6 +7,8 @@ import { getFeatures } from "@/config/features";
 import { DevModeBanner } from "@/components/dev-mode-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 function getStoredRole(): string {
   const override = localStorage.getItem("edutrack_dev_role_override");
   if (override) return override;
@@ -243,7 +245,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <Breadcrumb />
               </div>
               <button
-                onClick={() => signOut({ redirectUrl: "/sign-in" })}
+                onClick={() => signOut({ redirectUrl: `${BASE}/sign-in` })}
                 className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] text-right hover:text-foreground transition-colors"
                 title="Switch email / sign out"
               >
