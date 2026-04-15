@@ -21,6 +21,7 @@ import EnrollPage from "@/pages/enroll";
 import AdminPortal from "@/pages/admin";
 import MySchedule from "@/pages/my-schedule";
 import BrowseClasses from "@/pages/browse-classes";
+import StudentPortal from "@/pages/student";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -132,6 +133,9 @@ function ClerkProviderWithRoutes() {
           </Route>
           <Route path="/settings">
             <ProtectedRoute component={Settings} />
+          </Route>
+          <Route path="/student">
+            <ProtectedRoute component={StudentPortal} />
           </Route>
           <Route path="/parent" component={ParentView} />
           <Route path="/calendar" component={ClassCalendar} />

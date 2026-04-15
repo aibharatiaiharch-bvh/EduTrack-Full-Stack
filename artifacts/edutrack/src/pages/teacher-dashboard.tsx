@@ -51,8 +51,11 @@ export default function TeacherDashboard() {
     <AppLayout>
       <div className="p-4 md:p-8 space-y-6 max-w-5xl">
         <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Teacher Dashboard</h1>
-          <p className="text-muted-foreground">Welcome, {name}{subjects ? ` · ${subjects}` : ""}</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Today's Classes</h1>
+          <p className="text-muted-foreground">
+            Welcome, {name}{subjects ? ` · ${subjects}` : ""}
+            {" · "}{new Date().toLocaleDateString("en-AU", { weekday: "long", month: "long", day: "numeric" })}
+          </p>
         </header>
 
         {!sheetId && (

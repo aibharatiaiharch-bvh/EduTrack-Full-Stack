@@ -224,8 +224,8 @@ export default function AuthRedirect() {
           setStatusMsg("Welcome. Redirecting to the Parent Portal…");
           setTimeout(() => setLocation("/parent"), 500);
         } else if (role === "student") {
-          setStatusMsg("Welcome. Redirecting to your portal…");
-          setTimeout(() => setLocation("/parent"), 500);
+          setStatusMsg("Welcome. Redirecting to your schedule…");
+          setTimeout(() => setLocation("/student"), 500);
         } else {
           setLocation("/");
         }
