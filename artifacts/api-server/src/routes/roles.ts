@@ -19,25 +19,29 @@ function getDeveloperEmails(): string[] {
     .filter(Boolean);
 }
 
-function isDeveloperEmail(email: string): boolean {
-  const devEmails = getDeveloperEmails();
-  return devEmails.includes(email.toLowerCase().trim());
+function getPrincipalEmails(): string[] {
+  return (process.env.PRINCIPAL_EMAIL || '')
+    .split(',')
+    .map((e) => e.toLowerCase().trim())
+    .filter(Boolean);
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+function isDeveloperEmail(email: string): boolean {
+  return getDeveloperEmails().includes(email.toLowerCase().trim());
+}
 
-/** Pack enrollment form's extra fields into a Notes JSON string. */
+function isPrincipalEmail(email: string): boolean {
+  return getPrincipalEmails().includes(email.toLowerCase().trim());
+}
+
 function packNotes(obj: Record<string, string>): string {
   return JSON.stringify(obj);
 }
 
-/** Unpack Notes JSON. Returns {} on failure. */
 function unpackNotes(notes: string): Record<string, string> {
   try { return JSON.parse(notes); } catch { return {}; }
 }
 
-// ─── GET /api/roles/check ───────────────────────────────────────────────────
-// Users tab is the SINGLE SOURCE OF TRUTH for all roles.
 router.get('/roles/check', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const email = ((req.query.email as string) || '').toLowerCase().trim();
@@ -48,33 +52,6 @@ router.get('/roles/check', async (req, res): Promise<void> => {
   }
 
   try {
-    const users = await readUsersTab(sheetId);
-    const user = users.find((u) => u.email === email);
-
-    if (user) {
-      if (isDeveloperEmail(email) && !['developer', 'admin'].includes(user.role)) {
-        res.json({
-          role:       'developer',
-          name:       user.name || process.env.DEVELOPER_NAME || 'Developer',
-          status:     'active',
-          userId:     user.userId || 'ADM-DEV',
-          found:      true,
-          tabMissing: false,
-        });
-        return;
-      }
-
-      res.json({
-        role:       user.role,
-        name:       user.name,
-        status:     user.status,
-        userId:     user.userId,
-        found:      true,
-        tabMissing: false,
-      });
-      return;
-    }
-
     if (isDeveloperEmail(email)) {
       res.json({
         role:       'developer',
@@ -87,14 +64,39 @@ router.get('/roles/check', async (req, res): Promise<void> => {
       return;
     }
 
+    if (isPrincipalEmail(email)) {
+      res.json({
+        role:       'principal',
+        name:       process.env.PRINCIPAL_NAME || 'Principal',
+        status:     'active',
+        userId:     'PRN-DEV',
+        found:      true,
+        tabMissing: false,
+      });
+      return;
+    }
+
+    const users = await readUsersTab(sheetId);
+    const user = users.find((u) => u.email === email);
+
+    if (user) {
+      res.json({
+        role:       user.role,
+        name:       user.name,
+        status:     user.status,
+        userId:     user.userId,
+        found:      true,
+        tabMissing: false,
+      });
+      return;
+    }
+
     res.json({ role: null, status: null, found: false, tabMissing: false });
   } catch {
     res.json({ role: null, status: null, found: false, tabMissing: true });
   }
 });
 
-// ─── POST /api/roles/enroll ─────────────────────────────────────────────────
-// Submit an enrollment / application / class request.
 router.post('/roles/enroll', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
