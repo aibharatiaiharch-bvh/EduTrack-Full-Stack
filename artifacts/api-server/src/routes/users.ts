@@ -73,6 +73,12 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
     await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${user._row}`, 'Inactive');
     await touchUser(sheetId, user._row);
 
+    const enrollments = await readTabRows(sheetId, SHEET_TABS.enrollments);
+    const userEnrollments = enrollments.filter(r => (r['UserID'] || '') === userId).sort((a, b) => b._row - a._row);
+    for (const enrollment of userEnrollments) {
+      await deleteSheetRow(sheetId, SHEET_TABS.enrollments, enrollment._row);
+    }
+
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
