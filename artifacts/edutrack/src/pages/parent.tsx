@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -51,22 +52,9 @@ export default function ParentView() {
 
   // Parent search state
   const [search, setSearch] = useState("");
-  const [showList, setShowList] = useState(false);
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [studentFilter, setStudentFilter] = useState("all");
   const [cancelRow, setCancelRow] = useState<Enrollment | null>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  // Close list when clicking outside
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setShowList(false);
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   // Load parent list from the sheet
   const { data: parents, isLoading: loadingParents } = useQuery<Parent[]>({
@@ -82,7 +70,7 @@ export default function ParentView() {
 
   useEffect(() => {
     if (!selectedParent && parents && parents.length > 0) {
-      selectParent(parents[0]);
+      setSelectedParent(null);
     }
   }, [parents, selectedParent]);
 
@@ -155,7 +143,6 @@ export default function ParentView() {
     setSelectedParent(parent);
     setSearch(parent["Parent Name"] || parent["Email"]);
     setStudentFilter("all");
-    setShowList(false);
   }
 
   function clearSelection() {
@@ -188,84 +175,40 @@ export default function ParentView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Searchable parent selector */}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Select Parent</label>
-              <div className="relative" ref={searchRef}>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    className="pl-9 pr-9"
-                    placeholder={loadingParents ? "Loading parents…" : "Search by name or email…"}
-                    value={search}
-                    disabled={!sheetId || loadingParents}
-                    onChange={(e) => {
-                      setSearch(e.target.value);
-                      setShowList(true);
-                      if (selectedParent && e.target.value !== (selectedParent["Parent Name"] || selectedParent["Email"])) {
-                        setSelectedParent(null);
-                        setStudentFilter("all");
-                      }
-                    }}
-                    onFocus={() => setShowList(true)}
-                  />
-                  {search && (
-                    <button
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={clearSelection}
-                      tabIndex={-1}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Dropdown list */}
-                {showList && !selectedParent && (
-                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md overflow-hidden max-h-60 overflow-y-auto">
-                    {filteredParents.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-muted-foreground">No parents found.</div>
-                    ) : (
-                      filteredParents.map((parent) => (
-                        <button
-                          key={parent["Email"]}
-                          className="w-full text-left px-4 py-3 hover:bg-muted transition-colors flex flex-col gap-0.5 border-b last:border-b-0"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            selectParent(parent);
-                          }}
-                        >
-                          <span className="font-medium text-sm text-foreground">
-                            {parent["Parent Name"] || "Unnamed"}
-                          </span>
-                          <span className="text-xs text-muted-foreground">{parent["Email"]}</span>
-                          {parent["Children"] && (
-                            <span className="text-xs text-muted-foreground">Children: {parent["Children"]}</span>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
+              <Select
+                value={selectedParent?.["Email"] || "all"}
+                onValueChange={(email) => {
+                  if (email === "all") {
+                    clearSelection();
+                    return;
+                  }
+                  const parent = parents?.find((p) => p["Email"] === email);
+                  if (parent) selectParent(parent);
+                }}
+                disabled={!sheetId || loadingParents}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingParents ? "Loading parents…" : "All Parents"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Parents</SelectItem>
+                  {filteredParents.map((parent) => (
+                    <SelectItem key={parent["Email"]} value={parent["Email"]}>
+                      {parent["Parent Name"] || parent["Email"]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {selectedParent && (
-                <div className="flex items-center justify-between gap-2 pl-1">
-                  <p className="text-xs text-muted-foreground">
-                    Showing classes for <span className="font-medium text-foreground">{selectedParent["Email"]}</span>
-                  </p>
-                  <button
-                    className="text-xs text-primary hover:underline"
-                    onClick={() => setShowList((v) => !v)}
-                    type="button"
-                  >
-                    Change parent
-                  </button>
-                </div>
+                <p className="text-xs text-muted-foreground pl-1">
+                  Showing classes for <span className="font-medium text-foreground">{selectedParent["Parent Name"] || selectedParent["Email"]}</span>
+                </p>
               )}
             </div>
 
-            {/* Student filter — shown once classes are loaded and multiple students */}
-            {selectedParent && studentNames.length > 1 && (
+            {selectedParent && studentNames.length > 0 && (
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Filter by Student</label>
                 <Select value={studentFilter} onValueChange={setStudentFilter}>
@@ -303,7 +246,7 @@ export default function ParentView() {
 
             {loadingClasses ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                <Skeleton key={i} className="h-12 w-full rounded" />
               ))
             ) : !visibleClasses || visibleClasses.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg flex flex-col items-center gap-2">
@@ -316,65 +259,46 @@ export default function ParentView() {
                 </p>
               </div>
             ) : (
-              visibleClasses.map((enrollment) => (
-                <Card key={enrollment._row} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-6 gap-4">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <BookOpen className="w-5 h-5" />
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="font-semibold text-base">{enrollment["Student Name"]}</h3>
-                          <p className="font-medium text-foreground">{enrollment["Class Name"]}</p>
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                            {enrollment["Class Date"] && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {enrollment["Class Date"]}
-                              </span>
-                            )}
-                            {enrollment["Class Time"] && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {enrollment["Class Time"]}
-                              </span>
-                            )}
-                          </div>
-                          {enrollment["Status"] === "Late Cancellation" && (
-                            <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 mt-1">
-                              <AlertTriangle className="h-3.5 w-3.5" />
-                              Pending principal review — late cancellation fee may apply
-                            </div>
-                          )}
-                          {enrollment["Override Action"] && (
-                            <p className="text-xs text-muted-foreground">
-                              Override: <span className="font-medium">{enrollment["Override Action"]}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-3 shrink-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleClasses.map((enrollment) => (
+                    <TableRow key={enrollment._row}>
+                      <TableCell className="font-medium">{enrollment["Student Name"]}</TableCell>
+                      <TableCell>{enrollment["Class Name"]}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                        {[enrollment["Class Date"], enrollment["Class Time"]].filter(Boolean).join(" · ") || "—"}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={statusVariant(enrollment["Status"])} className="capitalize">
                           {enrollment["Status"]}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
                         {enrollment["Status"] === "Active" && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5 h-8 px-2 text-xs"
                             onClick={() => setCancelRow(enrollment)}
                           >
                             <XCircle className="h-4 w-4" />
-                            Cancel Class
+                            Cancel
                           </Button>
                         )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </div>
         )}
