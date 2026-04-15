@@ -31,6 +31,20 @@ export default function AdminPortal() {
   const [seedConfirm, setSeedConfirm] = useState(false);
   const isPrivileged = true;
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm text-center space-y-3">
+          <h1 className="text-2xl font-bold">Developer Portal</h1>
+          <p className="text-sm text-muted-foreground">Please sign in again.</p>
+          <Button className="w-full" onClick={() => setLocation("/sign-in")}>
+            Go to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Feature toggles (localStorage only — no client sheet access) ─────
   const [features, setFeatures] = useState(getFeatures());
 
