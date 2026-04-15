@@ -174,7 +174,19 @@ export default function Settings() {
                   No spreadsheet is linked yet. Paste the spreadsheet ID below or create a new EduTrack spreadsheet.
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    Linked by ID: <span className="font-mono break-all">{sheetId}</span>
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleClearLink}>
+                  Unlink
+                </Button>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Paste spreadsheet ID manually</label>
@@ -191,26 +203,6 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">
                 Use the long ID between <code>/d/</code> and <code>/edit</code> in the Google Sheets URL.
               </p>
-            </div>
-
-            {sheetId && (
-              <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-green-800 dark:text-green-200">
-                    Linked by ID: <span className="font-mono break-all">{sheetId}</span>
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleClearLink}>
-                  Unlink
-                </Button>
-              </div>
-            )}
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 border-t" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="flex-1 border-t" />
             </div>
 
             <div className="space-y-2">
