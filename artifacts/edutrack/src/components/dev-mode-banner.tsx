@@ -43,10 +43,10 @@ export function DevModeBanner() {
       <span>Dev preview: <strong>{ROLE_LABELS[override] || override}</strong></span>
       <button
         onClick={dismissBanner}
-        className="ml-1 rounded p-0.5 hover:bg-purple-700 transition-colors"
+        className="ml-1 rounded p-0.5 text-white hover:bg-purple-700 transition-colors"
         title="Dismiss banner"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-3.5 h-3.5 text-white" />
       </button>
       <button
         onClick={exitTestMode}
