@@ -128,7 +128,7 @@ export default function BrowseClasses() {
       return res.json();
     },
     onSuccess: (_, subject) => {
-      qc.invalidateQueries({ queryKey: ["subjects-capacity"] });
+      qc.invalidateQueries({ queryKey: ["subjects-capacity", sheetId] });
       if (isPrincipal) {
         setPrincipalStudents(prev => ({
           ...prev,
@@ -251,6 +251,14 @@ export default function BrowseClasses() {
                                   <option value="">Select student</option>
                                   {selectableStudents.map(s => <option key={s.userId || s.name} value={s.name}>{s.name}</option>)}
                                 </select>
+                                {isPrincipal && (
+                                  <input
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                    placeholder="Parent email"
+                                    value={manualEmail}
+                                    onChange={e => setManualEmail(e.target.value)}
+                                  />
+                                )}
                                 <div className="flex gap-2">
                                   <Button
                                     size="sm"
