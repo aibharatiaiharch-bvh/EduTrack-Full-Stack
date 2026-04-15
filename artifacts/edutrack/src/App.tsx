@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, useClerk, useUser } from "@clerk/react";
+import { ClerkProvider, SignUp, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -38,15 +38,19 @@ if (!clerkPubKey) {
 }
 
 function SignInPage() {
-  const { isLoaded, isSignedIn } = useUser();
-
-  if (isLoaded && isSignedIn) {
-    return <Redirect to="/auth-redirect" />;
-  }
-
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} forceRedirectUrl={`${basePath}/auth-redirect`} />
+    <div className="flex justify-center items-center min-h-screen bg-background p-6">
+      <div className="w-full max-w-md space-y-4 rounded-xl border bg-white p-6 shadow-sm">
+        <div className="space-y-2 text-center">
+          <h1 className="text-2xl font-bold">Sign in</h1>
+          <p className="text-sm text-muted-foreground">Enter your email to continue.</p>
+        </div>
+        <div className="space-y-3">
+          <Button className="w-full" onClick={() => window.location.assign(`${basePath}/auth-redirect`)}>
+            Continue
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
