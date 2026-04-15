@@ -273,29 +273,6 @@ export default function BrowseClasses() {
                           </div>
                         </div>
 
-                        {isPrincipal && (
-                          <div className="space-y-2">
-                            <div className="text-xs font-medium text-muted-foreground">Active students</div>
-                            <div className="flex flex-wrap gap-2">
-                              {myStudents.map(student => {
-                                const enrolled = resolveStudentEnrollment(cls, student);
-                                return (
-                                  <span
-                                    key={student.userId || student.email || student.name}
-                                    className={`rounded-full px-2.5 py-1 text-xs border ${
-                                      enrolled
-                                        ? "bg-muted text-muted-foreground border-border"
-                                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    }`}
-                                  >
-                                    {student.name}{enrolled ? " · enrolled" : " · eligible"}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-
                         {isJoining ? (
                           <div className="space-y-2 pt-1">
                             {isPrincipal ? (
@@ -343,11 +320,7 @@ export default function BrowseClasses() {
                                   autoFocus
                                 >
                                   <option value="">— Select student —</option>
-                                  {selectableStudents.map(s => (
-                                    <option key={s.userId || s.name} value={s.name}>
-                                      {s.name}{cls.Type === "Individual" ? " (1-on-1)" : ""}
-                                    </option>
-                                  ))}
+                                  {selectableStudents.map(s => <option key={s.userId || s.name} value={s.name}>{s.name}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                               </div>
