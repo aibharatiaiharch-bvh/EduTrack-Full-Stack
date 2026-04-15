@@ -16,6 +16,7 @@ import Settings from "@/pages/settings";
 import Checkin from "@/pages/checkin";
 import ParentView from "@/pages/parent";
 import PrincipalDashboard from "@/pages/principal";
+import HousekeepingPage from "@/pages/housekeeping";
 import AuthRedirect from "@/pages/auth-redirect";
 import EnrollPage from "@/pages/enroll";
 import AdminPortal from "@/pages/admin";
@@ -141,6 +142,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/calendar" component={ClassCalendar} />
           <Route path="/principal">
             <ProtectedRoute component={PrincipalDashboard} />
+          </Route>
+          <Route path="/housekeeping">
+            <ProtectedRoute component={HousekeepingPage} />
           </Route>
           <Route path="/admin">
             <ProtectedRoute component={AdminPortal} />

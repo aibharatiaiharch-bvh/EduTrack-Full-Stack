@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Link } from "wouter";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -587,6 +588,11 @@ export default function PrincipalDashboard() {
               <BookOpen className="w-4 h-4" />
               Add Subject
             </Button>
+            <Link href="/housekeeping">
+              <Button variant="outline" className="gap-2">
+                Housekeeping
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
