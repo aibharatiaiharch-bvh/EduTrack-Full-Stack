@@ -11,6 +11,24 @@ function getSheetId(req: any): string {
   return req.query.sheetId || req.body?.sheetId || '';
 }
 
+async function deleteSheetRow(spreadsheetId: string, tabTitle: string, rowNum: number): Promise<void> {
+  const sheets = await getUncachableGoogleSheetClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheetMeta = meta.data.sheets?.find((s: any) => s.properties?.title === tabTitle);
+  const sheetId = sheetMeta?.properties?.sheetId;
+  if (sheetId === undefined) throw new Error(`Tab "${tabTitle}" not found`);
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: { sheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum },
+        },
+      }],
+    },
+  });
+}
+
 // ─── POST /api/principals/add-teacher ───────────────────────────────────────
 // Users tab is written FIRST (master ID registry), then Teachers extension tab.
 router.post('/principals/add-teacher', async (req, res): Promise<void> => {
@@ -213,6 +231,30 @@ router.post('/principals/sync-user-status', async (req, res): Promise<void> => {
     await touchUser(sheetId, user._row);
 
     res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/principals/clear-pending-students ────────────────────────────
+// Remove old pending activation rows from the Students extension tab.
+router.post('/principals/clear-pending-students', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const [users, studentRows] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+    ]);
+    const activeStudentIds = new Set(users.filter(u => u.role === 'student' && u.status === 'active').map(u => u.userId));
+    const pendingRows = studentRows.filter(r => {
+      const uid = r['UserID'] || '';
+      return uid && !activeStudentIds.has(uid);
+    });
+    for (const row of pendingRows) {
+      await deleteSheetRow(sheetId, SHEET_TABS.students, row._row);
+    }
+    res.json({ ok: true, removed: pendingRows.length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
