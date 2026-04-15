@@ -1036,7 +1036,7 @@ export default function PrincipalDashboard() {
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Class</TableHead>
-                    <TableHead className="hidden md:table-cell">Date / Time</TableHead>
+                    <TableHead>Date / Time</TableHead>
                     <TableHead>Teacher</TableHead>
                     <TableHead />
                   </TableRow>
@@ -1048,7 +1048,7 @@ export default function PrincipalDashboard() {
                       <TableRow key={enrollment._row}>
                         <TableCell className="font-medium text-sm">{enrollment["Student Name"]}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{enrollment["Class Name"]}</TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {[enrollment["Class Date"], enrollment["Class Time"]].filter(Boolean).join(" · ") || "—"}
                         </TableCell>
                         <TableCell>
