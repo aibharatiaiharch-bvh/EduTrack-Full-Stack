@@ -18,6 +18,7 @@ export default function Settings() {
   const {
     sheetId,
     setSheetId,
+    clearSheetId,
     manualSheetId,
     setManualSheetId,
     driveFiles,
@@ -42,6 +43,12 @@ export default function Settings() {
     setSheetId(value);
     setManualSheetId("");
     toast({ title: "Google Sheet linked", description: "The spreadsheet ID has been saved." });
+  };
+
+  const handleClearLink = () => {
+    clearSheetId();
+    setManualSheetId("");
+    toast({ title: "Link cleared", description: "You can now link a different Google Sheet." });
   };
 
   const handleSyncHeaders = async () => {
@@ -275,9 +282,14 @@ export default function Settings() {
             {sheetId && !selectedFile && !loadingFiles && (
               <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
                 <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  Linked by ID: <span className="font-mono break-all">{sheetId}</span>
-                </p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-green-800 dark:text-green-200">
+                    Linked by ID: <span className="font-mono break-all">{sheetId}</span>
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleClearLink}>
+                  Unlink
+                </Button>
               </div>
             )}
 

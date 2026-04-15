@@ -30,6 +30,11 @@ export function useSheetConfig() {
     }
   }, []);
 
+  const clearSheetId = useCallback(() => {
+    setSheetIdState(null);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
+
   const fetchDriveFiles = useCallback(async () => {
     setLoadingFiles(true);
     setFilesError(null);
@@ -87,6 +92,7 @@ export function useSheetConfig() {
   return {
     sheetId,
     setSheetId,
+    clearSheetId,
     manualSheetId,
     setManualSheetId,
     driveFiles,
