@@ -4,13 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Link2, Copy, ListChecks } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { format } from "date-fns";
-
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-function apiUrl(path: string) { return `${BASE}/api${path}`; }
 
 export default function Settings() {
   const {
@@ -147,24 +143,6 @@ export default function Settings() {
               </Button>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                If you already have a spreadsheet, paste its ID and link it here.
-              </p>
-              <Button
-                variant="outline"
-                onClick={handleCreate}
-                disabled={creating}
-                className="gap-2"
-              >
-                {creating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                {creating ? "Creating spreadsheet…" : "Create new EduTrack spreadsheet"}
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
