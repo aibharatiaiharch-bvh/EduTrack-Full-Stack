@@ -168,16 +168,6 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <div className="border-t pt-4">
-          <Button
-            variant="ghost"
-            className="gap-2 text-muted-foreground hover:text-purple-700"
-            onClick={() => setLocation("/admin")}
-          >
-            <Shield className="w-4 h-4" />
-            Developer Portal
-          </Button>
-        </div>
       </div>
     </AppLayout>
   );
