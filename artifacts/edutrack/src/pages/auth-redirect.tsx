@@ -161,6 +161,19 @@ export default function AuthRedirect() {
   const emailFromStorage = localStorage.getItem("edutrack_login_email")?.toLowerCase().trim() || "";
 
   useEffect(() => {
+    const storedSheetId = localStorage.getItem(SHEET_KEY);
+    if (!storedSheetId) {
+      fetch(apiUrl("/config"))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.sheetId) {
+            localStorage.setItem(SHEET_KEY, data.sheetId);
+            setSheetId(data.sheetId);
+          }
+        })
+        .catch(() => null);
+    }
+
     // If we already have the email from URL or localStorage, don't wait for Clerk
     const hasEmail = !!(emailFromUrl || emailFromStorage);
     if (!hasEmail && !isLoaded) return;
@@ -199,6 +212,10 @@ export default function AuthRedirect() {
 
     resolveSheetId().then((sid) => {
       setSheetId(sid);
+      if (!sid) {
+        setScreen("setup-required");
+        return;
+      }
       return fetch(apiUrl(`/roles/check?email=${encodeURIComponent(activeEmail)}&sheetId=${encodeURIComponent(sid)}`))
         .then((r) => r.json());
     })
