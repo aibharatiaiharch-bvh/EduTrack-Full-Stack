@@ -428,7 +428,7 @@ export default function PrincipalDashboard() {
       });
       if (!res.ok) throw new Error(await res.text());
       loadUsers();
-      toast({ title: "User deactivated", description: "Access revoked. Record saved to Archive tab." });
+      toast({ title: "User deactivated", description: "Revoked access. Student should also be removed from all enrolled classes." });
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally { setActioningUser(null); }
