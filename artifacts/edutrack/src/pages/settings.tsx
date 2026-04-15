@@ -40,6 +40,7 @@ export default function Settings() {
     const value = manualSheetId.trim();
     if (!value) return;
     setSheetId(value);
+    setManualSheetId("");
     toast({ title: "Google Sheet linked", description: "The spreadsheet ID has been saved." });
   };
 
@@ -267,6 +268,15 @@ export default function Settings() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Use the long ID between <code>/d/</code> and <code>/edit</code> in the Google Sheets URL.
+                </p>
+              </div>
+            )}
+
+            {sheetId && !selectedFile && !loadingFiles && (
+              <div className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                <p className="text-sm text-green-800 dark:text-green-200">
+                  Linked by ID: <span className="font-mono break-all">{sheetId}</span>
                 </p>
               </div>
             )}
