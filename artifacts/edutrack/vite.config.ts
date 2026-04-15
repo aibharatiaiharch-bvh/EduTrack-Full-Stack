@@ -8,7 +8,7 @@ const rawPort = process.env.PORT;
 const port = rawPort && !Number.isNaN(Number(rawPort)) && Number(rawPort) > 0 ? Number(rawPort) : 5173;
 
 export default defineConfig({
-  base: "/",
+  base: process.env.REPL_SLUG ? `/${process.env.REPL_SLUG}/` : "/",
   plugins: [
     react(),
     tailwindcss(),
