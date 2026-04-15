@@ -179,8 +179,9 @@ router.post('/sheets/setup', async (req, res): Promise<void> => {
       requestBody: { valueInputOption: 'RAW', data: batchData },
     });
 
-    // 3. Apply dropdown validation (non-fatal)
+    // 3. Apply dropdown validation + master protection (non-fatal)
     try { await applyDropdownValidation(sheets, spreadsheetId); } catch {}
+    try { await applyMasterProtection(sheets, spreadsheetId); } catch {}
 
     res.json({ spreadsheetId, spreadsheetUrl, tabs: tabData.map(t => t.tab), seeded: true });
   } catch (err: any) {
@@ -220,8 +221,9 @@ router.post('/sheets/seed', async (req, res): Promise<void> => {
       });
     }
 
-    // Apply dropdown validation (non-fatal — seed data is already written)
+    // Apply dropdown validation + master protection (non-fatal — seed data is already written)
     try { await applyDropdownValidation(sheets, spreadsheetId); } catch {}
+    try { await applyMasterProtection(sheets, spreadsheetId); } catch {}
 
     res.json({ ok: true, tabs: tabData.map(t => t.tab) });
   } catch (err: any) {
@@ -403,6 +405,51 @@ async function applyDropdownValidation(sheetsClient: any, spreadsheetId: string)
   return requests.length;
 }
 
+async function applyMasterProtection(sheetsClient: any, spreadsheetId: string): Promise<number> {
+  const meta = await sheetsClient.spreadsheets.get({ spreadsheetId });
+  const sheetIdMap: Record<string, number> = {};
+  (meta.data.sheets || []).forEach((s: any) => {
+    const title = s.properties?.title;
+    const id = s.properties?.sheetId;
+    if (title !== undefined && id !== undefined) sheetIdMap[title] = id;
+  });
+
+  const masterTabs = [
+    SHEET_TABS.users,
+    SHEET_TABS.students,
+    SHEET_TABS.teachers,
+    SHEET_TABS.parents,
+    SHEET_TABS.subjects,
+    SHEET_TABS.enrollments,
+    SHEET_TABS.archive,
+    SHEET_TABS.announcements,
+  ];
+
+  const requests: any[] = masterTabs.flatMap((tab) => {
+    const numericId = sheetIdMap[tab];
+    if (numericId === undefined) return [];
+    return [{
+      addProtectedRange: {
+        protectedRange: {
+          range: { sheetId: numericId },
+          description: `Protect ${tab} master data`,
+          warningOnly: false,
+          editors: { users: [] },
+        },
+      },
+    }];
+  });
+
+  if (requests.length > 0) {
+    await sheetsClient.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests },
+    });
+  }
+
+  return requests.length;
+}
+
 // POST /api/sheets/apply-validation — applies dropdown rules to all status columns
 // Must be BEFORE /api/sheets/:tab to avoid Express matching "apply-validation" as :tab
 router.post('/sheets/apply-validation', async (req, res): Promise<void> => {
@@ -411,7 +458,8 @@ router.post('/sheets/apply-validation', async (req, res): Promise<void> => {
   try {
     const sheetsClient = await getUncachableGoogleSheetClient();
     const count = await applyDropdownValidation(sheetsClient, spreadsheetId);
-    res.json({ ok: true, rulesApplied: count });
+    const protectedCount = await applyMasterProtection(sheetsClient, spreadsheetId);
+    res.json({ ok: true, rulesApplied: count, protectedCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
