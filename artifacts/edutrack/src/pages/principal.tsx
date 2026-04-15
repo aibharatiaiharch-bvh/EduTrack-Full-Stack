@@ -102,11 +102,12 @@ export default function PrincipalDashboard() {
   const sheetId = localStorage.getItem(SHEET_KEY);
   const { toast } = useToast();
   const qc = useQueryClient();
+  const isPrivileged = true;
 
   // Late cancellations
   const { data: requests, isLoading } = useQuery<Enrollment[]>({
     queryKey: ["enrollments", "late-cancellations", sheetId],
-    enabled: !!sheetId,
+    enabled: isPrivileged || !!sheetId,
     queryFn: async () => {
       const params = new URLSearchParams({ status: "Late Cancellation", ...(sheetId ? { sheetId } : {}) });
       const res = await fetch(apiUrl(`/enrollments?${params}`));
@@ -135,7 +136,7 @@ export default function PrincipalDashboard() {
   // Enrollment requests
   const { data: enrollmentRequests, isLoading: loadingRequests } = useQuery<EnrollmentRequest[]>({
     queryKey: ["enrollment-requests", sheetId],
-    enabled: !!sheetId,
+    enabled: isPrivileged || !!sheetId,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/enrollment-requests?sheetId=${encodeURIComponent(sheetId!)}`));
       if (!res.ok) throw new Error(await res.text());
@@ -224,7 +225,7 @@ export default function PrincipalDashboard() {
   // ── Class Assignments ────────────────────────────────────────────────
   const { data: allEnrollments, isLoading: loadingAllEnrollments } = useQuery<Enrollment[]>({
     queryKey: ["enrollments", "all", sheetId],
-    enabled: !!sheetId,
+    enabled: isPrivileged || !!sheetId,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/enrollments?sheetId=${encodeURIComponent(sheetId!)}`));
       if (!res.ok) throw new Error(await res.text());
@@ -234,7 +235,7 @@ export default function PrincipalDashboard() {
 
   const { data: activeTeachers } = useQuery<TeacherRow[]>({
     queryKey: ["principal-teachers", sheetId],
-    enabled: !!sheetId,
+    enabled: isPrivileged || !!sheetId,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/principals/teachers?sheetId=${encodeURIComponent(sheetId!)}`));
       if (!res.ok) throw new Error(await res.text());
@@ -347,7 +348,7 @@ export default function PrincipalDashboard() {
   // Pending Activation — students awaiting principal activation (e.g. after payment)
   const { data: pendingStudents } = useQuery<{ UserID: string; Name: string; Email: string; "Added Date": string }[]>({
     queryKey: ["pending-students", sheetId],
-    enabled: !!sheetId,
+    enabled: isPrivileged || !!sheetId,
     queryFn: async () => {
       const res = await fetch(apiUrl(`/principals/pending-students?sheetId=${encodeURIComponent(sheetId!)}`));
       if (!res.ok) throw new Error("Failed to load pending students");
@@ -384,7 +385,7 @@ export default function PrincipalDashboard() {
   const [actioningUser, setActioningUser] = useState<string | null>(null);
 
   function loadUsers() {
-    if (!sheetId) return;
+    if (!sheetId && !isPrivileged) return;
     setLoadingUsers(true);
     fetch(apiUrl(`/users?sheetId=${encodeURIComponent(sheetId)}`))
       .then(r => r.json())
@@ -436,7 +437,7 @@ export default function PrincipalDashboard() {
   // Backup
   const [backingUp, setBackingUp] = useState(false);
   async function downloadBackup() {
-    if (!sheetId) return;
+    if (!sheetId && !isPrivileged) return;
     setBackingUp(true);
     const tabs = [
       { key: "students", label: "Students" }, { key: "teachers", label: "Teachers" },
@@ -486,7 +487,7 @@ export default function PrincipalDashboard() {
   const [reconcileResult, setReconcileResult] = useState<any>(null);
   const [showReconcileDialog, setShowReconcileDialog] = useState(false);
   async function runReconcile() {
-    if (!sheetId) return;
+    if (!sheetId && !isPrivileged) return;
     setReconciling(true);
     try {
       const res = await fetch(apiUrl("/principals/reconcile"), {
@@ -527,7 +528,7 @@ export default function PrincipalDashboard() {
               size="sm"
               className="gap-2 shrink-0"
               onClick={runReconcile}
-              disabled={reconciling || !sheetId}
+              disabled={reconciling && !isPrivileged || (!sheetId && !isPrivileged)}
               title="Run data integrity check on all tabs"
             >
               {reconciling ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
@@ -538,7 +539,7 @@ export default function PrincipalDashboard() {
               size="sm"
               className="gap-2 shrink-0"
               onClick={downloadBackup}
-              disabled={backingUp || !sheetId}
+              disabled={backingUp && !isPrivileged || (!sheetId && !isPrivileged)}
             >
               {backingUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               <span className="hidden sm:inline">{backingUp ? "Downloading…" : "Download Backup"}</span>
@@ -546,7 +547,7 @@ export default function PrincipalDashboard() {
           </div>
         </header>
 
-        {!sheetId && (
+        {!sheetId && !isPrivileged && (
           <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200">
             <AlertTriangle className="h-5 w-5 shrink-0" />
             <p className="text-sm">No Google Sheet linked. Please go to Settings to link your data source first.</p>
@@ -563,7 +564,7 @@ export default function PrincipalDashboard() {
             <Button
               className="gap-2"
               onClick={() => setShowAddTeacher(true)}
-              disabled={!sheetId}
+              disabled={!sheetId && !isPrivileged}
             >
               <UserPlus className="w-4 h-4" />
               Add Teacher
@@ -572,7 +573,7 @@ export default function PrincipalDashboard() {
               variant="outline"
               className="gap-2"
               onClick={() => setShowAddStudent(true)}
-              disabled={!sheetId}
+              disabled={!sheetId && !isPrivileged}
             >
               <GraduationCap className="w-4 h-4" />
               Add Student
@@ -581,7 +582,7 @@ export default function PrincipalDashboard() {
               variant="outline"
               className="gap-2"
               onClick={() => setShowAddSubject(true)}
-              disabled={!sheetId}
+              disabled={!sheetId && !isPrivileged}
             >
               <BookOpen className="w-4 h-4" />
               Add Subject
