@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSheetConfig } from "@/hooks/use-sheet-config";
-import { ExternalLink, RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Shield, Database, Link2, Copy, ListChecks } from "lucide-react";
+import { RefreshCw, Plus, CheckCircle2, AlertCircle, Loader2, Link2, Copy, ListChecks } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
@@ -26,10 +25,6 @@ export default function Settings() {
 
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [syncingHeaders, setSyncingHeaders] = useState(false);
-  const [seedingData, setSeedingData] = useState(false);
-  const [applyingDropdowns, setApplyingDropdowns] = useState(false);
-
   const handleManualLink = () => {
     const value = manualSheetId.trim();
     if (!value) return;
@@ -44,86 +39,14 @@ export default function Settings() {
     toast({ title: "Link cleared", description: "You can now link a different Google Sheet." });
   };
 
-  const handleSyncHeaders = async () => {
-    if (!sheetId) {
-      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
-      return;
-    }
-    setSyncingHeaders(true);
-    try {
-      const res = await fetch(apiUrl("/sheets/ensure-headers"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to sync headers");
-      toast({ title: "Headers synced", description: "All sheet tabs have been checked and updated." });
-    } catch (err: any) {
-      toast({ title: "Sync failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSyncingHeaders(false);
-    }
-  };
-
-  const handleSeedData = async () => {
-    if (!sheetId) {
-      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
-      return;
-    }
-    setSeedingData(true);
-    try {
-      const res = await fetch(apiUrl("/sheets/seed"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Seed failed");
-      toast({ title: "Demo data loaded", description: "All tabs have been cleared and filled with sample data." });
-    } catch (err: any) {
-      toast({ title: "Seed failed", description: err.message, variant: "destructive" });
-    } finally {
-      setSeedingData(false);
-    }
-  };
-
-  const handleApplyDropdowns = async () => {
-    if (!sheetId) {
-      toast({ title: "No sheet linked", description: "Please link a Google Sheet first.", variant: "destructive" });
-      return;
-    }
-    setApplyingDropdowns(true);
-    try {
-      const res = await fetch(apiUrl("/sheets/apply-validation"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to apply dropdowns");
-      toast({ title: "Dropdowns applied", description: `${data.rulesApplied} dropdown rules set on all status columns.` });
-    } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setApplyingDropdowns(false);
-    }
-  };
-
-  const handleSelect = (value: string) => {
-    setSheetId(value);
-    toast({ title: "Google Sheet linked", description: "Your spreadsheet has been saved." });
-  };
-
   const handleCreate = async () => {
     try {
       const newId = await createNewSheet();
       if (newId) {
         setSheetId(newId);
-        await refreshFiles();
         toast({
           title: "Spreadsheet created and ready",
-          description: "All 7 tabs have been created, sample data loaded, and dropdowns applied. You're all set!",
+          description: "Your spreadsheet has been linked.",
         });
       }
     } catch (err: any) {
@@ -224,118 +147,24 @@ export default function Settings() {
               </Button>
             </div>
 
-            {sheetId && (
-              <div className="border-t pt-4 space-y-2">
-                <p className="text-sm font-medium flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  Enrollment Link
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Share this link with new families. They can fill in their details and submit an enrollment
-                  request without needing any code — the school's sheet is embedded in the link.
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-muted rounded-md px-3 py-2 text-xs text-muted-foreground font-mono truncate border">
-                    {`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/enroll?sheetId=${sheetId}`}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 shrink-0"
-                    onClick={() => {
-                      const link = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/enroll?sheetId=${sheetId}`;
-                      navigator.clipboard.writeText(link).then(() => {
-                        toast({ title: "Link copied!", description: "Share it with families to start enrollment." });
-                      });
-                    }}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    Copy
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="border-t pt-4 space-y-3">
-              <p className="text-sm font-medium">Sheet tools</p>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Sync sheet structure — adds missing tabs and columns without touching existing data.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleSyncHeaders}
-                  disabled={syncingHeaders || !sheetId}
-                  className="gap-2"
-                >
-                  {syncingHeaders ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Database className="h-4 w-4" />
-                  )}
-                  Sync Sheet Headers
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Load demo data — <strong className="text-destructive">clears all existing data</strong> and fills every tab with sample students, teachers, subjects, and enrollments so you can test the platform. Dropdowns are applied automatically.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleSeedData}
-                  disabled={seedingData || !sheetId}
-                  className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
-                >
-                  {seedingData ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                  Load Demo Data
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Set up dropdown lists on all Status, Priority, and controlled columns across every tab — prevents typing errors when editing the sheet directly.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleApplyDropdowns}
-                  disabled={applyingDropdowns || !sheetId}
-                  className="gap-2"
-                >
-                  {applyingDropdowns ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ListChecks className="h-4 w-4" />
-                  )}
-                  Setup Dropdowns
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Preferences</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Timezone</label>
-              <Select defaultValue="america-new_york">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select timezone" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="america-new_york">Eastern Time (US & Canada)</SelectItem>
-                  <SelectItem value="america-chicago">Central Time (US & Canada)</SelectItem>
-                  <SelectItem value="america-denver">Mountain Time (US & Canada)</SelectItem>
-                  <SelectItem value="america-los_angeles">Pacific Time (US & Canada)</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-sm text-muted-foreground">
+                If you already have a spreadsheet, paste its ID and link it here.
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleCreate}
+                disabled={creating}
+                className="gap-2"
+              >
+                {creating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {creating ? "Creating spreadsheet…" : "Create new EduTrack spreadsheet"}
+              </Button>
             </div>
-            <Button>Update Preferences</Button>
           </CardContent>
         </Card>
 
@@ -348,9 +177,6 @@ export default function Settings() {
             <Shield className="w-4 h-4" />
             Developer Portal
           </Button>
-          <p className="text-xs text-muted-foreground mt-1 ml-1">
-            Developer access only — manage contact details and set up sheet data.
-          </p>
         </div>
       </div>
     </AppLayout>
