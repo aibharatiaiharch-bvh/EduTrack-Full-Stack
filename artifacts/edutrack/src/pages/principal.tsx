@@ -376,6 +376,23 @@ export default function PrincipalDashboard() {
     },
     onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
   });
+  const clearPendingStudentsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(apiUrl(`/principals/clear-pending-students?sheetId=${encodeURIComponent(sheetId!)}`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
+      loadUsers();
+      toast({ title: "Pending rows cleared", description: `${data.removed || 0} old row(s) removed.` });
+    },
+    onError: (err: any) => toast({ title: "Cleanup failed", description: err.message, variant: "destructive" }),
+  });
   // Teacher drilldown dialog
   const [teacherDrilldown, setTeacherDrilldown] = useState<TeacherRow | null>(null);
 
@@ -707,6 +724,14 @@ export default function PrincipalDashboard() {
                     {pendingStudents!.length}
                   </Badge>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => clearPendingStudentsMutation.mutate()}
+                  disabled={clearPendingStudentsMutation.isPending}
+                >
+                  Clear old rows
+                </Button>
               </div>
               <CardDescription className="text-amber-700 dark:text-amber-300">
                 These students are waiting for you to confirm payment and activate their account.
