@@ -356,6 +356,23 @@ export default function PrincipalDashboard() {
       return res.json();
     },
   });
+  const activateStudentMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(apiUrl(`/principals/sync-user-status?sheetId=${encodeURIComponent(sheetId!)}`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, status: "Active" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pending-students", sheetId] });
+      loadUsers();
+      toast({ title: "Student activated" });
+    },
+    onError: (err: any) => toast({ title: "Activation failed", description: err.message, variant: "destructive" }),
+  });
   // Add Subject dialog
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [subjectForm, setSubjectForm] = useState({ name: "", type: "Individual", teachers: "", room: "", days: "" });
@@ -627,6 +644,14 @@ export default function PrincipalDashboard() {
                       <p className="text-xs text-muted-foreground truncate">{s.Email || "No email"} · Added {s["Added Date"] || "—"}</p>
                     </div>
                   </div>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => activateStudentMutation.mutate(s.UserID)}
+                    disabled={activateStudentMutation.isPending}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </Button>
                 </div>
               ))}
             </CardContent>
