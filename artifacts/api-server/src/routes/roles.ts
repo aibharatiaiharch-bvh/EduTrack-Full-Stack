@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express';
 import {
-  SHEET_TABS, colLetter, generateUserId,
+  SHEET_TABS, colLetter, generateUserId, generateTabId,
   readTabRows, readUsersTab, appendRow, updateCell, touchUser,
 } from '../lib/googleSheets.js';
 
@@ -247,9 +247,11 @@ router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
 
     try {
       const users = await readUsersTab(sheetId);
+
+      // ── 1. Student user ──────────────────────────────────────────────────
       let studentUser = users.find(u =>
         (studentEmailClean && u.email === studentEmailClean) ||
-        u.email === parentEmailClean
+        (!studentEmailClean && u.email === parentEmailClean && u.role === 'student')
       );
       const userId = studentUser?.userId || await generateUserId('student', sheetId);
       if (!studentUser) {
@@ -257,30 +259,58 @@ router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
           userId, studentEmailClean || parentEmailClean, 'student', studentNameClean, 'Active', today, now,
         ]);
       } else {
-        // existing user — ensure they are active
         const rowIdx = (studentUser as any)._row;
         if (rowIdx) await updateCell(sheetId, `${SHEET_TABS.users}!E${rowIdx}`, 'Active');
       }
-      const reqId = `REQ-${Date.now()}-${i}`;
-      const packedNotes = packNotes({
-        studentName: studentNameClean,
-        studentEmail: studentEmailClean,
-        previouslyEnrolled: s.previouslyEnrolled || '',
-        currentSchool: s.currentSchool || '',
-        currentGrade: s.currentGrade || '',
-        age: s.age || '',
-        classesInterested: s.classesInterested || '',
-        parentEmail: parentEmailClean,
-        parentPhone: s.parentPhone || '',
-        reference: s.reference || '',
-        promoCode: s.promoCode || '',
-        extra: s.notes || '',
-        submissionDate: now,
-      });
-      await appendRow(sheetId, SHEET_TABS.enrollments, [
-        reqId, userId, 'student', '', 'Active', now, packedNotes,
+
+      // ── 2. Parent user + Parents extension tab ───────────────────────────
+      let parentId = '';
+      if (parentEmailClean) {
+        const freshUsers = await readUsersTab(sheetId);
+        const existingParent = freshUsers.find(u => u.email === parentEmailClean && u.role === 'parent');
+        if (existingParent) {
+          parentId = existingParent.userId;
+          const parentRows = await readTabRows(sheetId, SHEET_TABS.parents);
+          const parentExt = parentRows.find(r => r['UserID'] === parentId || r['ParentID'] === parentId);
+          if (parentExt) {
+            const children = (parentExt['Children'] || '').split(';').map((c: string) => c.trim()).filter(Boolean);
+            if (!children.includes(studentNameClean)) {
+              children.push(studentNameClean);
+              await updateCell(sheetId, `${SHEET_TABS.parents}!D${parentExt._row}`, children.join('; '));
+            }
+          } else {
+            await appendRow(sheetId, SHEET_TABS.parents, [
+              parentId, parentId, existingParent.name, studentNameClean, (s.parentPhone || '').trim(), '',
+            ]);
+          }
+        } else {
+          parentId = await generateUserId('parent', sheetId);
+          await appendRow(sheetId, SHEET_TABS.users, [
+            parentId, parentEmailClean, 'parent', 'Parent', 'Active', today, now,
+          ]);
+          await appendRow(sheetId, SHEET_TABS.parents, [
+            parentId, parentId, 'Parent', studentNameClean, (s.parentPhone || '').trim(), '',
+          ]);
+        }
+      }
+
+      // ── 3. Students extension tab ─────────────────────────────────────────
+      const studentExtId = await generateTabId('STU', sheetId, SHEET_TABS.students);
+      const isPrev = (s.previouslyEnrolled || '').toLowerCase() === 'yes';
+      await appendRow(sheetId, SHEET_TABS.students, [
+        studentExtId,
+        userId,
+        studentNameClean,
+        parentId,
+        (s.classesInterested || '').trim(),
+        (s.parentPhone || '').trim(),
+        (s.notes || '').trim(),
+        (s.currentSchool || '').trim(),
+        (s.currentGrade || '').trim(),
+        isPrev ? 'Yes' : 'No',
       ]);
-      results.push({ row: i + 1, name: studentNameClean, ok: true, reqId });
+
+      results.push({ row: i + 1, name: studentNameClean, ok: true, reqId: userId });
     } catch (err: any) {
       results.push({ row: i + 1, name: studentNameClean, ok: false, error: err.message });
     }
