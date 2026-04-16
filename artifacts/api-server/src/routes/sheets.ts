@@ -77,18 +77,23 @@ function buildSeedData() {
     ['STU-004', 'noah.d@student.com',      'student',   'Noah Davis',         'Active',   today, nowIso],
     ['STU-005', 'ava.w@student.com',       'student',   'Ava Wilson',         'Inactive', today, nowIso],
   ];
+  // Students: StudentID, UserID, Name, ParentID, Classes, Phone, Notes, CurrentSchool, CurrentGrade, PreviousStudent
   const studentRows = [
-    ['STU-001', 'STU-001', 'Emma Johnson', 'PAR-001', 'SUB-001; SUB-005', '555-0101', ''],
-    ['STU-002', 'STU-002', 'Liam Smith',   'PAR-002', 'SUB-001; SUB-004', '555-0102', ''],
-    ['STU-003', 'STU-003', 'Olivia Brown', 'PAR-003', 'SUB-005; SUB-007', '555-0103', ''],
-    ['STU-004', 'STU-004', 'Noah Davis',   'PAR-004', 'SUB-004',          '555-0104', ''],
-    ['STU-005', 'STU-005', 'Ava Wilson',   'PAR-001', 'SUB-006',          '555-0105', ''],
+    ['STU-001', 'STU-001', 'Emma Johnson', 'PAR-001', 'SUB-001; SUB-005', '555-0101', '', 'Riverside High',    'Year 10', 'No'],
+    ['STU-002', 'STU-002', 'Liam Smith',   'PAR-002', 'SUB-001; SUB-004', '555-0102', '', 'Northside College', 'Year 9',  'Yes'],
+    ['STU-003', 'STU-003', 'Olivia Brown', 'PAR-003', 'SUB-005; SUB-007', '555-0103', '', 'Westview Academy',  'Year 11', 'No'],
+    ['STU-004', 'STU-004', 'Noah Davis',   'PAR-004', 'SUB-004; SUB-008', '555-0104', '', 'Eastside Grammar',  'Year 8',  'No'],
+    ['STU-005', 'STU-005', 'Ava Wilson',   'PAR-001', 'SUB-006',          '555-0105', '', 'Riverside High',    'Year 10', 'Yes'],
   ];
+
+  // Teachers: TeacherID, UserID, Name, Subjects, Zoom Link, Specialty, Notes
   const teacherRows = [
     ['TCH-001', 'TCH-001', 'Dr. Sarah Chen',     'Mathematics, Science',    'https://zoom.us/j/555001', 'STEM',          ''],
     ['TCH-002', 'TCH-002', 'Mr. James Taylor',   'English',                 'https://zoom.us/j/555002', 'Literacy',      ''],
-    ['TCH-003', 'TCH-003', 'Ms. Rachel Kim',     'Art, Physical Education', '',                         'Creative Arts', ''],
+    ['TCH-003', 'TCH-003', 'Ms. Rachel Kim',     'Art, Physical Education', 'https://zoom.us/j/555003', 'Creative Arts', ''],
   ];
+
+  // Parents: ParentID, UserID, Name, Children, Phone, Notes
   const parentRows = [
     ['PAR-001', 'PAR-001', 'Sarah Johnson', 'STU-001; STU-005', '555-0201', ''],
     ['PAR-002', 'PAR-002', 'Mike Smith',    'STU-002',          '555-0202', ''],
@@ -96,44 +101,71 @@ function buildSeedData() {
     ['PAR-004', 'PAR-004', 'Karen Davis',   'STU-004',          '555-0204', ''],
     ['PAR-005', 'PAR-005', 'James Martin',  '',                 '555-0301', ''],
   ];
+
+  // Subjects: SubjectID, Name, Type, TeacherID, Room, Days, Time, Status, MaxCapacity
   const subjectRows = [
-    ['SUB-001', 'Mathematics',        'Individual', 'TCH-001', 'Room 101', 'Mon, Wed',      'Active', '1'],
-    ['SUB-002', 'Mathematics',        'Group',      'TCH-001', 'Room 101', 'Tue, Thu',      'Active', '8'],
-    ['SUB-003', 'English',            'Individual', 'TCH-002', 'Room 201', 'Mon, Wed',      'Active', '1'],
-    ['SUB-004', 'English',            'Group',      'TCH-002', 'Room 201', 'Tue, Thu, Fri', 'Active', '8'],
-    ['SUB-005', 'Science',            'Group',      'TCH-001', 'Lab 1',    'Fri',           'Active', '8'],
-    ['SUB-006', 'Art',                'Individual', 'TCH-003', 'Studio',   'Wed',           'Active', '1'],
-    ['SUB-007', 'Art',                'Group',      'TCH-003', 'Studio',   'Thu',           'Active', '8'],
-    ['SUB-008', 'Physical Education', 'Group',      'TCH-003', 'Gym',      'Mon, Fri',      'Active', '8'],
+    ['SUB-001', 'Mathematics',        'Individual', 'TCH-001', 'Room 101', 'Mon, Wed',      '10:00 AM', 'Active', '1'],
+    ['SUB-002', 'Mathematics',        'Group',      'TCH-001', 'Room 101', 'Tue, Thu',      '09:00 AM', 'Active', '8'],
+    ['SUB-003', 'English',            'Individual', 'TCH-002', 'Room 201', 'Mon, Wed',      '11:00 AM', 'Active', '1'],
+    ['SUB-004', 'English',            'Group',      'TCH-002', 'Room 201', 'Tue, Thu, Fri', '11:00 AM', 'Active', '8'],
+    ['SUB-005', 'Science',            'Group',      'TCH-001', 'Lab 1',    'Fri',           '02:00 PM', 'Active', '8'],
+    ['SUB-006', 'Art',                'Individual', 'TCH-003', 'Studio',   'Wed',           '03:00 PM', 'Active', '1'],
+    ['SUB-007', 'Art',                'Group',      'TCH-003', 'Studio',   'Thu',           '03:00 PM', 'Active', '8'],
+    ['SUB-008', 'Physical Education', 'Group',      'TCH-003', 'Gym',      'Mon, Fri',      '09:00 AM', 'Active', '8'],
   ];
+
+  // Enrollments: EnrollmentID, UserID, Student Name, ClassID, ParentID, Status, EnrolledAt,
+  //              TeacherID, Teacher Name, TeacherEmail, Zoom Link, Class Type, ClassDate, ClassTime
   const enrollmentRows = [
-    ['ENR-001', 'STU-001', 'Emma Johnson', 'SUB-001', 'PAR-001', 'Active',   nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
-    ['ENR-002', 'STU-001', 'Emma Johnson', 'SUB-005', 'PAR-001', 'Active',   nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
-    ['ENR-003', 'STU-002', 'Liam Smith',   'SUB-001', 'PAR-002', 'Inactive', nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
-    ['ENR-004', 'STU-002', 'Liam Smith',   'SUB-004', 'PAR-002', 'Active',   nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
-    ['ENR-005', 'STU-003', 'Olivia Brown', 'SUB-005', 'PAR-003', 'Active',   nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
-    ['ENR-006', 'STU-003', 'Olivia Brown', 'SUB-007', 'PAR-003', 'Pending',  nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(10), '03:00 PM'],
-    ['ENR-007', 'STU-004', 'Noah Davis',   'SUB-004', 'PAR-004', 'Active',   nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
-    ['ENR-008', 'STU-005', 'Ava Wilson',   'SUB-006', 'PAR-001', 'Inactive', nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Individual', dateFromNow(11), '03:00 PM'],
-    ['ENR-009', 'STU-004', 'Noah Davis',   'SUB-008', 'PAR-004', 'Active',   nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(3),  '09:00 AM'],
-    ['ENR-010', 'STU-002', 'Liam Smith',   'SUB-008', 'PAR-002', 'Pending',  nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(1),  '10:00 AM'],
-    ['ENR-011', 'STU-003', 'Olivia Brown', 'SUB-001', 'PAR-003', 'Pending',  nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '11:00 AM'],
-    ['ENR-012', 'STU-001', 'Emma Johnson', 'SUB-008', 'PAR-001', 'Active',   nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    '',                         'Group',      dateFromNow(2),  '09:00 AM'],
-    ['ENR-013', 'STU-005', 'Ava Wilson',   'SUB-004', 'PAR-001', 'Inactive', nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
+    ['ENR-001', 'STU-001', 'Emma Johnson', 'SUB-001', 'PAR-001', 'Active',            nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(7),  '10:00 AM'],
+    ['ENR-002', 'STU-001', 'Emma Johnson', 'SUB-005', 'PAR-001', 'Active',            nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(8),  '02:00 PM'],
+    ['ENR-003', 'STU-002', 'Liam Smith',   'SUB-001', 'PAR-002', 'Inactive',          nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(5),  '10:00 AM'],
+    ['ENR-004', 'STU-002', 'Liam Smith',   'SUB-004', 'PAR-002', 'Active',            nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(6),  '11:00 AM'],
+    ['ENR-005', 'STU-003', 'Olivia Brown', 'SUB-005', 'PAR-003', 'Active',            nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(9),  '02:00 PM'],
+    ['ENR-006', 'STU-003', 'Olivia Brown', 'SUB-007', 'PAR-003', 'Pending',           nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Group',      dateFromNow(10), '03:00 PM'],
+    ['ENR-007', 'STU-004', 'Noah Davis',   'SUB-004', 'PAR-004', 'Active',            nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Group',      dateFromNow(4),  '11:00 AM'],
+    ['ENR-008', 'STU-005', 'Ava Wilson',   'SUB-006', 'PAR-001', 'Inactive',          nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Individual', dateFromNow(11), '03:00 PM'],
+    ['ENR-009', 'STU-004', 'Noah Davis',   'SUB-008', 'PAR-004', 'Active',            nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Group',      dateFromNow(3),  '09:00 AM'],
+    ['ENR-010', 'STU-002', 'Liam Smith',   'SUB-008', 'PAR-002', 'Pending',           nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Group',      dateFromNow(1),  '09:00 AM'],
+    ['ENR-011', 'STU-003', 'Olivia Brown', 'SUB-001', 'PAR-003', 'Pending',           nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Individual', dateFromNow(1),  '10:00 AM'],
+    ['ENR-012', 'STU-001', 'Emma Johnson', 'SUB-008', 'PAR-001', 'Active',            nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Group',      dateFromNow(2),  '09:00 AM'],
+    ['ENR-013', 'STU-005', 'Ava Wilson',   'SUB-004', 'PAR-001', 'Inactive',          nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(2),  '11:00 AM'],
+    // Late cancellations — for principal's Late Cancellation tab demo
+    ['ENR-014', 'STU-001', 'Emma Johnson', 'SUB-002', 'PAR-001', 'Late Cancellation', nowIso, 'TCH-001', 'Dr. Sarah Chen',   's.chen@edutrack.edu',   'https://zoom.us/j/555001', 'Group',      dateFromNow(-1), '09:00 AM'],
+    ['ENR-015', 'STU-004', 'Noah Davis',   'SUB-003', 'PAR-004', 'Late Cancellation', nowIso, 'TCH-002', 'Mr. James Taylor', 'j.taylor@edutrack.edu', 'https://zoom.us/j/555002', 'Individual', dateFromNow(-2), '11:00 AM'],
+    ['ENR-016', 'STU-002', 'Liam Smith',   'SUB-007', 'PAR-002', 'Late Cancellation', nowIso, 'TCH-003', 'Ms. Rachel Kim',   'r.kim@edutrack.edu',    'https://zoom.us/j/555003', 'Group',      dateFromNow(-1), '03:00 PM'],
   ];
+
+  // Attendance: AttendanceID, ClassID, UserID, SessionDate, Status, Notes, MarkedBy, MarkedAt
+  const yesterday = dateFromNow(-1);
+  const twoDaysAgo = dateFromNow(-2);
+  const attendanceRows = [
+    ['ATT-001', 'SUB-001', 'STU-001', yesterday,   'Present', '',                    'TCH-001', nowIso],
+    ['ATT-002', 'SUB-001', 'STU-002', yesterday,   'Absent',  'Sick - parent called', 'TCH-001', nowIso],
+    ['ATT-003', 'SUB-004', 'STU-002', yesterday,   'Present', '',                    'TCH-002', nowIso],
+    ['ATT-004', 'SUB-004', 'STU-004', yesterday,   'Late',    'Arrived 10 min late',  'TCH-002', nowIso],
+    ['ATT-005', 'SUB-008', 'STU-001', yesterday,   'Present', '',                    'TCH-003', nowIso],
+    ['ATT-006', 'SUB-008', 'STU-004', yesterday,   'Present', '',                    'TCH-003', nowIso],
+    ['ATT-007', 'SUB-001', 'STU-001', twoDaysAgo,  'Present', '',                    'TCH-001', nowIso],
+    ['ATT-008', 'SUB-001', 'STU-003', twoDaysAgo,  'Late',    'Transport delay',      'TCH-001', nowIso],
+    ['ATT-009', 'SUB-005', 'STU-003', twoDaysAgo,  'Present', '',                    'TCH-001', nowIso],
+    ['ATT-010', 'SUB-005', 'STU-001', twoDaysAgo,  'Present', '',                    'TCH-001', nowIso],
+  ];
+
   const announcementRows = [
     ['ANN-001', 'Term 2 Enrolments Open', 'Term 2 enrolments are now open. Contact us to secure your spot before places fill up!', 'Standard', 'true', today],
     ['ANN-002', 'Public Holiday Closure',  'EduTrack will be closed on Monday 22 April for the public holiday. All classes are cancelled.', 'Urgent', 'true', today],
   ];
 
   return [
-    { tab: SHEET_TABS.users,               headers: SHEET_HEADERS.users,               rows: userRows },
-    { tab: SHEET_TABS.students,            headers: SHEET_HEADERS.students,            rows: studentRows },
-    { tab: SHEET_TABS.teachers,            headers: SHEET_HEADERS.teachers,            rows: teacherRows },
-    { tab: SHEET_TABS.parents,             headers: SHEET_HEADERS.parents,             rows: parentRows },
-    { tab: SHEET_TABS.subjects,            headers: SHEET_HEADERS.subjects,            rows: subjectRows },
-    { tab: SHEET_TABS.enrollments,         headers: SHEET_HEADERS.enrollments,         rows: enrollmentRows },
-    { tab: SHEET_TABS.announcements,       headers: SHEET_HEADERS.announcements,       rows: announcementRows },
+    { tab: SHEET_TABS.users,         headers: SHEET_HEADERS.users,         rows: userRows },
+    { tab: SHEET_TABS.students,      headers: SHEET_HEADERS.students,      rows: studentRows },
+    { tab: SHEET_TABS.teachers,      headers: SHEET_HEADERS.teachers,      rows: teacherRows },
+    { tab: SHEET_TABS.parents,       headers: SHEET_HEADERS.parents,       rows: parentRows },
+    { tab: SHEET_TABS.subjects,      headers: SHEET_HEADERS.subjects,      rows: subjectRows },
+    { tab: SHEET_TABS.enrollments,   headers: SHEET_HEADERS.enrollments,   rows: enrollmentRows },
+    { tab: SHEET_TABS.attendance,    headers: SHEET_HEADERS.attendance,    rows: attendanceRows },
+    { tab: SHEET_TABS.announcements, headers: SHEET_HEADERS.announcements, rows: announcementRows },
   ];
 }
 
