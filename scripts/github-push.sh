@@ -16,7 +16,14 @@ write_sync_status() {
   local branch="$1"
   local ts
   ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-  printf '{"lastSyncedAt":"%s","branch":"%s"}\n' "$ts" "$branch" > "$SYNC_STATUS_FILE"
+  local commit_hash commit_msg
+  commit_hash=$(git log -1 --format='%h' 2>/dev/null || echo "")
+  commit_msg=$(git log -1 --format='%s' 2>/dev/null || echo "")
+  local hash_json msg_json
+  hash_json="$(echo "$commit_hash" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  msg_json="$(echo "$commit_msg" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  printf '{"lastSyncedAt":"%s","branch":"%s","commitHash":"%s","commitMessage":"%s"}\n' \
+    "$ts" "$branch" "$hash_json" "$msg_json" > "$SYNC_STATUS_FILE"
 }
 
 write_status() {

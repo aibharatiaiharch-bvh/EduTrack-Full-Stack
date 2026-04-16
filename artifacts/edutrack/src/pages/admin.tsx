@@ -50,7 +50,7 @@ const SHEET_TABS = [
 
 // ─── Overview Tab ────────────────────────────────────────────────────────────
 
-type SyncStatus = { lastSyncedAt: string | null; branch: string | null };
+type SyncStatus = { lastSyncedAt: string | null; branch: string | null; commitHash: string | null; commitMessage: string | null };
 
 function timeAgo(isoString: string): string {
   const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
@@ -90,7 +90,7 @@ function OverviewTab() {
       const res = await fetch(apiUrl("/admin/github-sync"));
       const data = await res.json();
       setSync(data);
-    } catch { setSync({ lastSyncedAt: null, branch: null }); }
+    } catch { setSync({ lastSyncedAt: null, branch: null, commitHash: null, commitMessage: null }); }
     setSyncLoading(false);
   }
 
@@ -196,6 +196,12 @@ function OverviewTab() {
                 </div>
                 {sync.branch && (
                   <p className="text-xs text-muted-foreground mt-1 font-mono truncate">branch: {sync.branch}</p>
+                )}
+                {sync.commitHash && (
+                  <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate" title={sync.commitMessage ?? undefined}>
+                    <span className="text-foreground/70">{sync.commitHash}</span>
+                    {sync.commitMessage && <span className="text-muted-foreground"> {sync.commitMessage}</span>}
+                  </p>
                 )}
               </>
             ) : (

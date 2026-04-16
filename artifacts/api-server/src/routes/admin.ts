@@ -38,10 +38,12 @@ router.get('/admin/github-sync', (_req, res): void => {
       res.json({ lastSyncedAt: null, branch: null });
       return;
     }
-    const { lastSyncedAt, branch } = data as Record<string, unknown>;
+    const { lastSyncedAt, branch, commitHash, commitMessage } = data as Record<string, unknown>;
     const syncedAt = typeof lastSyncedAt === 'string' && !isNaN(Date.parse(lastSyncedAt)) ? lastSyncedAt : null;
     const branchName = typeof branch === 'string' && branch.length > 0 ? branch : null;
-    res.json({ lastSyncedAt: syncedAt, branch: branchName });
+    const hash = typeof commitHash === 'string' && commitHash.length > 0 ? commitHash : null;
+    const message = typeof commitMessage === 'string' && commitMessage.length > 0 ? commitMessage : null;
+    res.json({ lastSyncedAt: syncedAt, branch: branchName, commitHash: hash, commitMessage: message });
   } catch {
     res.json({ lastSyncedAt: null, branch: null });
   }
