@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
@@ -1024,6 +1024,10 @@ export default function PrincipalDashboard() {
   const signOut = useSignOut();
   const name = localStorage.getItem("edutrack_user_name") || "Principal";
   const [tab, setTab] = useState<Tab>("requests");
+
+  useEffect(() => {
+    localStorage.setItem("edutrack_user_role", "principal");
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

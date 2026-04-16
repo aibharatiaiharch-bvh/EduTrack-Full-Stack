@@ -1057,6 +1057,10 @@ export default function AdminPortal() {
   const name = localStorage.getItem("edutrack_user_name") || "Developer";
   const [tab, setTab] = useState<Tab>("overview");
 
+  useEffect(() => {
+    localStorage.setItem("edutrack_user_role", "developer");
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-card px-6 py-3 flex items-center justify-between shadow-sm">
