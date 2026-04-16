@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
+import { BulkUploadCard } from "@/components/BulkUploadCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1039,6 +1040,11 @@ function ToolsTab() {
         desc="Clears and re-fills every tab with sample data. Use this to reset the sheet to a clean demo state."
         action={() => runTool("/sheets/seed", "Demo data seeded ✓")}
       />
+
+      <div className="pt-2">
+        <h3 className="text-sm font-semibold mb-3">Mass Student Upload</h3>
+        <BulkUploadCard />
+      </div>
     </div>
   );
 }

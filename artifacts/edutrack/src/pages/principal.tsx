@@ -3,6 +3,7 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { BulkUploadCard } from "@/components/BulkUploadCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -475,6 +476,7 @@ function StudentsTab() {
   const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
   const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
+  const [showBulk,        setShowBulk]        = useState(false);
 
   async function toggleStatus(s: any) {
     setActing(s.userId);
@@ -556,9 +558,20 @@ function StudentsTab() {
       <SectionHeader title={`Students (${students.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-      <Button size="sm" className="mb-4 gap-1" onClick={openForm}>
-        <UserPlus className="w-4 h-4" /> Add Student
-      </Button>
+      <div className="flex items-center gap-2 mb-4">
+        <Button size="sm" className="gap-1" onClick={openForm}>
+          <UserPlus className="w-4 h-4" /> Add Student
+        </Button>
+        <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBulk(b => !b)}>
+          {showBulk ? "Hide Upload" : "Mass Upload"}
+        </Button>
+      </div>
+
+      {showBulk && (
+        <div className="mb-6">
+          <BulkUploadCard />
+        </div>
+      )}
 
       {showForm && (
         <Card className="mb-6">
