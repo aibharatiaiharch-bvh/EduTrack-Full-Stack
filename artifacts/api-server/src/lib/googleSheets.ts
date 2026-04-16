@@ -10,8 +10,16 @@ function hasServiceAccountConfig() {
 
 function getServiceAccountAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
   if (!email || !privateKey) return null;
+
+  // Normalise key: literal \n → real newline, strip Windows CR, trim whitespace
+  privateKey = privateKey
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+
   return new google.auth.JWT({
     email,
     key: privateKey,
