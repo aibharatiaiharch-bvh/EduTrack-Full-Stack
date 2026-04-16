@@ -41,9 +41,11 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 ### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
 ### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity`
 - **SubjectID**: sequential `SUB-001`, `SUB-002`, …
-- **Type**: `Individual` | `Group` | `Both` — controls what students see when enrolling
+- **Type**: `Individual` | `Group` | `Both` — same subject can run as both group and individual classes
+- **Group class**: max 8 students per session
+- **Individual class**: max 1 student (1-on-1 tuition)
 - **Teachers**: comma-separated teacher names (multi-teacher support)
-- **MaxCapacity**: integer, defaults to `8` when omitted. Used by `/subjects/with-capacity`.
+- **MaxCapacity**: integer — defaults to `8` for Group, `1` for Individual. Used by `/subjects/with-capacity`.
 ### Enrollments Tab: `Student Name, Class Name, Class Date, Class Time, Parent Email, Status, Override Action, Teacher, Teacher Email, Zoom Link, Class Type`
 - **Class Type**: `Individual` or `Group` — set at enrollment time
 - **Status**: `Active`, `Cancelled`, `Late Cancellation`, `Fee Waived`, `Fee Confirmed`
