@@ -27,6 +27,17 @@ push_if_needed() {
   # Fetch to update remote tracking refs (transient auth, no config mutation)
   git -c "http.extraHeader=${AUTH_HEADER}" fetch origin --quiet 2>/dev/null || true
 
+  # Check whether the remote tracking branch exists yet
+  if ! git rev-parse --verify "origin/${BRANCH}" >/dev/null 2>&1; then
+    echo "[github-push] $(date -u '+%Y-%m-%d %H:%M:%S UTC') — Branch '$BRANCH' not on remote. Pushing and setting upstream…"
+    if git -c "http.extraHeader=${AUTH_HEADER}" push -u origin "$BRANCH" --quiet 2>&1; then
+      echo "[github-push] Push succeeded (new branch created on remote)."
+    else
+      echo "[github-push] Push FAILED — will retry next cycle."
+    fi
+    return
+  fi
+
   AHEAD=$(git rev-list --count "origin/${BRANCH}..HEAD" 2>/dev/null || echo "0")
 
   if [ "$AHEAD" -gt 0 ]; then
