@@ -55,19 +55,21 @@ edutrack_sheet_id       — Google Sheet ID (from login response)
 ## Portals
 
 ### Developer Portal (`/admin`)
-Four tabs:
+Five tabs:
 1. **Overview** — API health, sheet link, GitHub sync status card (last synced, branch, commit hash/message), failure alerts
 2. **View as Role** — navigate to any portal as developer (bypasses role checks)
 3. **Data Browser** — read any sheet tab as a live table
-4. **Dev Tools** — create sheet, seed data, apply dropdown validation, ensure headers
+4. **Dev Tools** — create sheet, seed data, apply dropdown validation, ensure headers, add subjects
+5. **Mass Upload** — bulk CSV student upload (auto-approved, Active on creation)
 
-### Principal Dashboard (`/principal`) — 6 tabs
+### Principal Dashboard (`/principal`) — 7 tabs
 1. **Requests** — incoming enrolment requests (approve/reject)
-2. **Students** — student list, enrol/unenrol, view schedule
+2. **Students** — student list, enrol/unenrol, view schedule; Add Student form
 3. **Tutors** — tutor list, manage subjects/assignments
 4. **Users** — all system users, activate/deactivate/delete
-5. **Classes** — subject/class management
+5. **Classes** — subject/class management; Add New Class form
 6. **Late Cancellations** — override fee waiver or confirm fee
+7. **Mass Upload** — bulk CSV student upload (auto-approved, Active on creation)
 
 All tabs auto-refresh every 30 seconds — no manual refresh needed.
 
@@ -115,7 +117,8 @@ Schema source of truth: `artifacts/api-server/src/lib/googleSheets.ts`
 
 ```
 GET  /api/roles/check              — role lookup by email
-POST /api/roles/enroll             — submit enrolment application
+POST /api/roles/enroll             — submit enrolment application (public, creates Pending row)
+POST /api/roles/enroll-bulk        — bulk CSV upload (principal/developer only; auto-Active)
 
 GET  /api/enrollment-requests      — all enrolment rows (principal)
 POST /api/enrollment-requests/:row/approve
@@ -322,6 +325,22 @@ The new class appears immediately in the enrol form dropdown for new students.
 1. Sign in as principal (or developer navigating to `/principal`)
 2. Go to the **Requests** tab — all pending submissions appear here
 3. Click **Approve** to enrol the student or **Reject** to decline
+
+---
+
+### How do I bulk-upload students from a CSV?
+1. Sign in as **principal** or **developer**
+2. Go to the **Mass Upload** tab (top nav in both portals)
+3. Download the CSV template — columns are: Student Name, Student Email, Age, Current School, Current Grade, Previously Enrolled (Yes/No), Classes Interested, Parent Email, Parent Phone, Reference, Promo Code, Notes
+4. Fill in the spreadsheet and upload the file
+5. A preview table appears — review it, then click **Upload All**
+
+**What gets written for each row:**
+- **Users tab** — student created (or updated) as `Active`
+- **Students extension tab** — full profile: name, parent link, classes, phone, school, grade, previously enrolled flag
+- **Parents tab** — parent user created (or linked) with the student listed as a child
+
+All students are immediately **Active** — no approval step needed.
 
 ---
 
