@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle,
+  BookOpen, AlertTriangle, Clock, DollarSign,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -187,7 +187,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "latecancels";
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
@@ -786,12 +786,135 @@ function UsersTab() {
   );
 }
 
+function LateCancellationsTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [acting, setActing] = useState<number | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/enrollments?status=Late%20Cancellation");
+      if (Array.isArray(data)) setRows(data);
+      else setError("Could not load late cancellations.");
+    } catch { setError("Connection error."); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function override(row: any, action: "Fee Waived" | "Fee Confirmed") {
+    setActing(row._row);
+    try {
+      await apiFetch(`/enrollments/${row._row}/override`, {
+        method: "POST",
+        body: JSON.stringify({ action }),
+      });
+      await load();
+    } catch {}
+    setActing(null);
+  }
+
+  const lateCancels = rows.filter(r => (r["Status"] || "").toLowerCase() === "late cancellation");
+  const resolved = rows.filter(r => ["fee waived", "fee confirmed"].includes((r["Status"] || "").toLowerCase()));
+
+  return (
+    <div>
+      <SectionHeader title={`Late Cancellations (${lateCancels.length} pending review)`} onRefresh={load} loading={loading} />
+      {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
+
+      {lateCancels.length === 0 && !loading && (
+        <div className="py-10 text-center text-muted-foreground text-sm">
+          <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          No late cancellations pending review.
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {lateCancels.map(r => {
+          const notes = (() => { try { return JSON.parse(r["ClassID"] || "{}"); } catch { return {}; } })();
+          return (
+            <Card key={r._row} className="border-amber-200 bg-amber-50/40">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-sm">{r["Student Name"] || r["UserID"] || "Unknown student"}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium border border-amber-200">
+                        Late Cancellation
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-medium">Class:</span> {r["Class Name"] || r["ClassID"] || "—"}
+                    </p>
+                    {r["Student Email"] && (
+                      <p className="text-xs text-muted-foreground">{r["Student Email"]}</p>
+                    )}
+                    {r["EnrolledAt"] && (
+                      <p className="text-xs text-muted-foreground">
+                        Cancelled: {new Date(r["EnrolledAt"]).toLocaleDateString("en-AU")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                      disabled={acting === r._row}
+                      onClick={() => override(r, "Fee Waived")}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      Fee Waived
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-300 text-red-700 hover:bg-red-50"
+                      disabled={acting === r._row}
+                      onClick={() => override(r, "Fee Confirmed")}
+                    >
+                      <DollarSign className="h-3.5 w-3.5 mr-1" />
+                      Fee Confirmed
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {resolved.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Resolved ({resolved.length})</h3>
+          <div className="space-y-2">
+            {resolved.map(r => (
+              <div key={r._row} className="flex items-center justify-between p-3 rounded-lg border bg-card text-sm">
+                <div>
+                  <span className="font-medium">{r["Student Name"] || r["UserID"] || "—"}</span>
+                  <span className="text-muted-foreground mx-2">·</span>
+                  <span className="text-muted-foreground">{r["Class Name"] || r["ClassID"] || "—"}</span>
+                </div>
+                <StatusBadge status={r["Status"]} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "requests", label: "Requests",  icon: <ClipboardList className="w-4 h-4" /> },
-  { id: "students", label: "Students",  icon: <Users className="w-4 h-4" /> },
-  { id: "tutors",   label: "Tutors",    icon: <UserCheck className="w-4 h-4" /> },
-  { id: "classes",  label: "Classes",   icon: <BookOpen className="w-4 h-4" /> },
-  { id: "users",    label: "All Users", icon: <Users className="w-4 h-4" /> },
+  { id: "requests",    label: "Requests",          icon: <ClipboardList className="w-4 h-4" /> },
+  { id: "latecancels", label: "Late Cancellations", icon: <Clock className="w-4 h-4" /> },
+  { id: "students",    label: "Students",           icon: <Users className="w-4 h-4" /> },
+  { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
+  { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
+  { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
 ];
 
 export default function PrincipalDashboard() {
@@ -838,11 +961,12 @@ export default function PrincipalDashboard() {
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         <NotificationPrompt />
-        {tab === "requests" && <EnrollmentRequestsTab />}
-        {tab === "students" && <StudentsTab />}
-        {tab === "tutors"   && <TutorsTab />}
-        {tab === "classes"  && <ClassesTab />}
-        {tab === "users"    && <UsersTab />}
+        {tab === "requests"    && <EnrollmentRequestsTab />}
+        {tab === "latecancels" && <LateCancellationsTab />}
+        {tab === "students"    && <StudentsTab />}
+        {tab === "tutors"      && <TutorsTab />}
+        {tab === "classes"     && <ClassesTab />}
+        {tab === "users"       && <UsersTab />}
       </main>
     </div>
   );

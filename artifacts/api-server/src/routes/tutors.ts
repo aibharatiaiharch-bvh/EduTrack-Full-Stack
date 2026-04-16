@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient, SHEET_TABS } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_TABS, readTabRows, readUsersTab } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -20,8 +20,10 @@ async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: num
   });
 }
 
+const ACTIVE_STATUSES = new Set(['active', 'approved', 'enrolled']);
+
 // GET /api/tutors/me?email=X&sheetId=Y
-// Returns the logged-in tutor's profile, today's enrollments, and summary counts
+// Returns tutor profile, grouped classes with students, stats, and today's schedule
 router.get('/tutors/me', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   const email = ((req.query.email as string) || '').toLowerCase().trim();
@@ -32,52 +34,126 @@ router.get('/tutors/me', async (req, res): Promise<void> => {
   }
 
   try {
-    // Find tutor profile in Teachers tab
-    const teachers = await readRows(sheetId, SHEET_TABS.teachers);
-    const tutor = teachers.find(t => (t['Email'] || '').toLowerCase().trim() === email) || null;
+    const [users, subjects, allEnrollments, attendance] = await Promise.all([
+      readUsersTab(sheetId),
+      readRows(sheetId, SHEET_TABS.subjects),
+      readRows(sheetId, SHEET_TABS.enrollments),
+      readRows(sheetId, SHEET_TABS.attendance).catch(() => []),
+    ]);
 
-    // All enrollments — filter to this tutor's classes if Teacher Email column is populated
-    const enrollments = await readRows(sheetId, SHEET_TABS.enrollments);
-    const activeEnrollments = enrollments.filter(e => {
-      if ((e['Status'] || '').toLowerCase() !== 'enrolled') return false;
-      // If the enrollment has a Teacher Email value, only show it to the matching tutor.
-      // If the column is blank (pre-assignment or legacy), show it to all tutors so
-      // classes are not accidentally hidden during the transition period.
-      const teacherEmail = (e['Teacher Email'] || '').toLowerCase().trim();
-      if (teacherEmail && teacherEmail !== email) return false;
-      return true;
-    });
-    const assignedEnrollments = enrollments.filter(e => {
-      const teacherEmail = (e['Teacher Email'] || '').toLowerCase().trim();
-      return teacherEmail === email;
-    });
+    // Find tutor in Users tab
+    const tutorUser = users.find(u => u.email === email) || null;
+    const tutorId = tutorUser?.userId || '';
 
-    // Today's classes
-    const today = new Date().toLocaleDateString('en-AU');
-    const todayEnrollments = assignedEnrollments.filter(e => e['Class Date'] === today);
-
-    // Unique students for this tutor
-    const studentNames = new Set(assignedEnrollments.map(e => e['Student Name']).filter(Boolean));
-    const upcomingEnrollments = assignedEnrollments
-      .filter(e => e['Status'] === 'Active' || (e['Status'] || '').toLowerCase() === 'enrolled')
-      .slice()
-      .sort((a, b) => `${a['Class Date']} ${a['Class Time']}`.localeCompare(`${b['Class Date']} ${b['Class Time']}`));
-
-    // All students tab for count
-    let activeStudentCount = 0;
+    // Also check Teachers extension tab for extra fields (Zoom Link, etc.)
+    let teacherExt: any = null;
     try {
-      const students = await readRows(sheetId, SHEET_TABS.students);
-      activeStudentCount = students.filter(s => (s['Status'] || '').toLowerCase() === 'active').length;
+      const teachers = await readRows(sheetId, SHEET_TABS.teachers);
+      teacherExt = teachers.find(t =>
+        (t['Email'] || '').toLowerCase().trim() === email ||
+        t['UserID'] === tutorId ||
+        t['TeacherID'] === tutorId
+      ) || null;
     } catch {}
+
+    const tutor = tutorUser ? {
+      Name: tutorUser.name,
+      Email: tutorUser.email,
+      UserID: tutorUser.userId,
+      'Zoom Link': teacherExt?.['Zoom Link'] || '',
+      Subjects: teacherExt?.['Subjects'] || teacherExt?.['Subject'] || '',
+    } : null;
+
+    // Find all enrollments assigned to this tutor
+    const tutorEnrollments = allEnrollments.filter(e => {
+      const teacherEmail = (e['TeacherEmail'] || '').toLowerCase().trim();
+      const teacherId = e['TeacherID'] || '';
+      return teacherEmail === email || (tutorId && teacherId === tutorId);
+    });
+
+    // Active enrollments for this tutor
+    const activeEnrollments = tutorEnrollments.filter(e =>
+      ACTIVE_STATUSES.has((e['Status'] || '').toLowerCase().trim())
+    );
+
+    // Build user map for student name lookup
+    const userMap = new Map(users.map(u => [u.userId, u]));
+
+    // Build subject map
+    const subjectMap = new Map(subjects.map(s => [s['SubjectID'] || '', s]));
+
+    // Group active enrollments by ClassID
+    const classGroups = new Map<string, { subject: any; students: any[]; enrollments: any[] }>();
+    for (const e of activeEnrollments) {
+      const classId = e['ClassID'] || '';
+      if (!classGroups.has(classId)) {
+        const subject = subjectMap.get(classId) || null;
+        classGroups.set(classId, { subject, students: [], enrollments: [] });
+      }
+      const group = classGroups.get(classId)!;
+      const student = userMap.get(e['UserID'] || '');
+      group.students.push({
+        userId: e['UserID'] || '',
+        name: student?.name || e['UserID'] || 'Unknown',
+        email: student?.email || '',
+        enrollmentRow: e._row,
+        enrollmentId: e['EnrollmentID'] || '',
+      });
+      group.enrollments.push(e);
+    }
+
+    // Today's day name for schedule matching
+    const todayISO = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const todayDayName = new Date().toLocaleDateString('en-AU', { weekday: 'long' }).toLowerCase();
+
+    // Build classes array
+    const classes = Array.from(classGroups.entries()).map(([classId, group]) => {
+      const subject = group.subject;
+      const days = subject?.['Days'] || '';
+      const time = subject?.['Time'] || '';
+      const isToday = days.toLowerCase().split(/[,;\/\s]+/).map((d: string) => d.trim()).includes(todayDayName);
+
+      // Get today's attendance for this class
+      const todayAttendance = attendance.filter(a =>
+        a['ClassID'] === classId && a['SessionDate'] === todayISO
+      );
+      const attendanceMap = new Map(todayAttendance.map(a => [a['UserID'], a['Status']]));
+
+      return {
+        classId,
+        name: subject?.['Name'] || classId,
+        type: subject?.['Type'] || '',
+        days,
+        time,
+        room: subject?.['Room'] || '',
+        zoomLink: subject?.['Zoom Link'] || teacherExt?.['Zoom Link'] || '',
+        isToday,
+        studentCount: group.students.length,
+        students: group.students.map(s => ({
+          ...s,
+          attendanceToday: attendanceMap.get(s.userId) || null,
+        })),
+      };
+    });
+
+    // Sort: today's classes first
+    classes.sort((a, b) => {
+      if (a.isToday && !b.isToday) return -1;
+      if (!a.isToday && b.isToday) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Today's classes for stats
+    const todayClasses = classes.filter(c => c.isToday);
 
     res.json({
       tutor,
-      todayEnrollments,
-      upcomingEnrollments,
-      todayCount: todayEnrollments.length,
+      classes,
+      todayClasses,
+      todayCount: todayClasses.length,
+      totalClasses: classes.length,
       activeEnrollmentCount: activeEnrollments.length,
-      uniqueStudentCount: studentNames.size,
-      activeStudentCount,
+      uniqueStudentCount: new Set(activeEnrollments.map(e => e['UserID']).filter(Boolean)).size,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -375,7 +375,7 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
 
     const sheets = await getUncachableGoogleSheetClient();
     const updatedValues = HEADERS.map(h => {
-      if (h === 'Status')          return 'Approved';
+      if (h === 'Status') return action; // "Fee Waived" or "Fee Confirmed"
       return enrollment[h] || '';
     });
     const colEnd = String.fromCharCode(64 + HEADERS.length);

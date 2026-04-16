@@ -17,11 +17,12 @@ Full-stack tutoring and coaching platform management app. Multi-role portal app 
 ## Portals & Role Routing
 
 Sign in → `/auth-redirect` → `/roles/check` → portal based on Users tab Role:
-- `developer` (or legacy `admin`) → `/admin` (Developer Portal — no client data access)
-- `principal` → `/principal` (Principal Dashboard — full client data)
-- `tutor` → `/dashboard` (Tutor/Staff Portal)
-- `parent` → `/parent` (Parent Portal)
-- `student` → `/parent` (currently shares Parent Portal)
+- `developer` → portal selector (Admin + Principal)
+- `admin` → `/admin` (Developer/Admin Portal — no client data access)
+- `principal` → `/principal` (Principal Dashboard — full client data, 6 tabs)
+- `tutor` / `teacher` → `/tutor` (Tutor Portal — classes, students, attendance)
+- `student` → `/student` (Student Portal — enrolled classes, cancellation)
+- `/enroll` — **public, no login** — student/tutor application form
 
 **Developer email bypass**: If email NOT in Users tab AND matches `DEVELOPER_EMAIL` env var → `developer` role, no Users tab entry required. If developer IS in the Users tab, Users tab role takes precedence.
 
@@ -42,6 +43,11 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 - **CurrentGrade**: year/grade level (e.g. "Year 10")
 - **PreviousStudent**: `Yes` | `No` — whether this is a re-enrolment
 ### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
+### Attendance Tab: `AttendanceID, ClassID, UserID, SessionDate, Status, Notes, MarkedBy, MarkedAt`
+- **Status**: `Present` | `Absent` | `Late`
+- **SessionDate**: YYYY-MM-DD of the actual class session
+- Upsert logic — one record per ClassID+UserID+SessionDate; updating re-marks
+
 ### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity`
 - **SubjectID**: sequential `SUB-001`, `SUB-002`, …
 - **Type**: `Individual` | `Group` | `Both` — same subject can run as both group and individual classes

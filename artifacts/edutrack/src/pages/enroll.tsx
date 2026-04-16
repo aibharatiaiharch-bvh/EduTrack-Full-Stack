@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useUser } from "@clerk/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +29,6 @@ const SHEET_KEY = "edutrack_sheet_id";
 
 export default function EnrollPage() {
   const [, setLocation] = useLocation();
-  const { user } = useUser();
 
   const urlSheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
   const sheetId = urlSheetId || localStorage.getItem(SHEET_KEY) || "";
@@ -121,8 +119,8 @@ export default function EnrollPage() {
 
     setSubmitting(true);
     try {
-      const userEmail = user?.primaryEmailAddress?.emailAddress || "";
-      const userName = user?.fullName || "";
+      const userEmail = localStorage.getItem("edutrack_user_email") || "";
+      const userName = localStorage.getItem("edutrack_user_name") || "";
       const resolvedSheetId = sheetId || localStorage.getItem(SHEET_KEY) || "";
       let body: Record<string, string>;
 
@@ -393,7 +391,7 @@ export default function EnrollPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="applicantEmail">Email Address <span className="text-destructive">*</span></Label>
-                      <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail || user?.primaryEmailAddress?.emailAddress || ""} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
+                      <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail || localStorage.getItem("edutrack_user_email") || ""} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
                     </div>
                   </div>
                   <div className="space-y-2">

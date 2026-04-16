@@ -13,6 +13,7 @@ import announcementsRouter from "./announcements";
 import scheduleCalendarRouter from "./scheduleCalendar";
 import enrollmentRequestsRouter from "./enrollmentRequests";
 import pushRouter from "./push";
+import attendanceRouter from "./attendance";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(announcementsRouter);
 router.use(scheduleCalendarRouter);
 router.use(enrollmentRequestsRouter);
 router.use(pushRouter);
+router.use(attendanceRouter);
 
 export default router;

@@ -461,7 +461,7 @@ router.post('/principals/reconcile', async (req, res): Promise<void> => {
       readTabRows(sheetId, SHEET_TABS.teachers),
       readTabRows(sheetId, SHEET_TABS.parents),
       readTabRows(sheetId, SHEET_TABS.enrollments),
-      readTabRows(sheetId, SHEET_TABS.enrollment_requests),
+      readTabRows(sheetId, SHEET_TABS.enrollments),
     ]);
 
     const userIdSet  = new Set(users.map(u => u.userId));

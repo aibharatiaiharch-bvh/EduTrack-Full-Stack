@@ -132,7 +132,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         preferredTime: currentGrade || '',
         extra: notes || '',
       });
-      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+      await appendRow(sheetId, SHEET_TABS.enrollments, [
         reqId, userId, 'new-class', classesInterested || '', 'Pending', now, packedNotes,
       ]);
       res.json({ success: true }); return;
@@ -161,7 +161,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         phone: parentPhone || '',
         extra: notes || '',
       });
-      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+      await appendRow(sheetId, SHEET_TABS.enrollments, [
         reqId, userId, 'tutor', '', 'Pending', now, packedNotes,
       ]);
       res.json({ success: true }); return;
@@ -204,7 +204,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         extra: notes || '',
         submissionDate: now,
       });
-      await appendRow(sheetId, SHEET_TABS.enrollment_requests, [
+      await appendRow(sheetId, SHEET_TABS.enrollments, [
         reqId, userId, 'student', '', 'Pending', now, packedNotes,
       ]);
       res.json({ success: true }); return;

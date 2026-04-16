@@ -103,6 +103,7 @@ export const SHEET_TABS = {
   parents: 'Parents',
   announcements: 'Announcements',
   pushSubscriptions: 'PushSubscriptions',
+  attendance: 'Attendance',
 };
 
 // ─── SCHEMA (Users = master, all others use IDs) ────────────────────────────
@@ -131,6 +132,9 @@ export const SHEET_HEADERS = {
 
   // Announcements — standalone, no user FK needed
   announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive', 'CreatedAt'],
+
+  // Attendance — per-session records (SessionDate = YYYY-MM-DD of the actual class day)
+  attendance: ['AttendanceID', 'ClassID', 'UserID', 'SessionDate', 'Status', 'Notes', 'MarkedBy', 'MarkedAt'],
 };
 
 /** Return the A1 column letter for a named field within a tab's header row. */

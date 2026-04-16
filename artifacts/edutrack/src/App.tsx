@@ -11,6 +11,8 @@ import AuthRedirect from "@/pages/auth-redirect";
 import AdminPortal from "@/pages/admin";
 import PrincipalDashboard from "@/pages/principal";
 import StudentDashboard from "@/pages/student";
+import TutorDashboard from "@/pages/teacher-dashboard";
+import EnrollPage from "@/pages/enroll";
 import NotFound from "@/pages/not-found";
 
 async function ensureSheetId() {
@@ -62,6 +64,10 @@ function AppRoutes() {
           <Route path="/student">
             <ProtectedRoute component={StudentDashboard} requiredRole="student" />
           </Route>
+          <Route path="/tutor">
+            <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
+          </Route>
+          <Route path="/enroll" component={EnrollPage} />
           <Route component={NotFound} />
         </Switch>
       </QueryClientProvider>
