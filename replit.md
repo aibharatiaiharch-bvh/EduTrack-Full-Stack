@@ -84,8 +84,9 @@ All tabs auto-refresh every 30 seconds — no manual refresh needed.
 
 ### Public Enrolment Form (`/enroll`)
 - No login required
-- Students and tutors can apply
+- Two options: **Student / Family** and **Tutor / Staff**
 - Submission creates a row in the Enrollments tab with `Pending` status
+- Mass Upload is **not** available here — it lives only in the Principal and Developer portals
 
 ---
 
