@@ -28,12 +28,26 @@ const CSV_FIELD_MAP: Record<string, string> = {
   "notes":                        "notes",
 };
 
-function downloadTemplate() {
+function downloadTemplate(subjects: SubjectRow[]) {
+  const sampleClassName = subjects.length > 0 ? subjects[0].Name : "Maths Year 6";
   const sampleRow = [
     "Emma Johnson", "emma@email.com", "12", "Greenwood Primary", "Year 6",
-    "No", "Maths Year 6", "parent@email.com", "0412 345 678", "Friend", "", "",
+    "No", sampleClassName, "parent@email.com", "0412 345 678", "Friend", "", "",
   ];
-  const csv = [CSV_HEADERS.join(","), sampleRow.map(v => `"${v}"`).join(",")].join("\n");
+  const rows: string[] = [
+    CSV_HEADERS.join(","),
+    sampleRow.map(v => `"${v}"`).join(","),
+  ];
+  if (subjects.length > 0) {
+    rows.push("");
+    rows.push(`"# ── AVAILABLE CLASS NAMES (rows below are reference only — do not upload)",,,,,,,,,,,,`);
+    rows.push(`"# Copy a class name exactly into the Classes Interested column. Separate multiple classes with a semicolon.",,,,,,,,,,,,`);
+    subjects.forEach(s => {
+      const label = `${s.Name}${s.Type ? ` (${s.Type})` : ""}${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+      rows.push(`"# ${label}",,,,,,"${s.Name}",,,,,,`);
+    });
+  }
+  const csv = rows.join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -45,7 +59,7 @@ function parseCSV(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
   const headers = lines[0].split(",").map(h => h.replace(/^"|"$/g, "").trim().toLowerCase());
-  return lines.slice(1).filter(l => l.trim()).map(line => {
+  return lines.slice(1).filter(l => l.trim() && !l.trimStart().startsWith('"#') && !l.trimStart().startsWith('#')).map(line => {
     const values: string[] = [];
     let cur = "", inQuote = false;
     for (let i = 0; i <= line.length; i++) {
@@ -135,7 +149,7 @@ export function BulkUploadCard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={downloadTemplate} className="gap-2">
+          <Button variant="outline" onClick={() => downloadTemplate(subjects)} className="gap-2">
             <FileText className="w-4 h-4" /> Download CSV Template
           </Button>
           <div className="mt-3 text-xs text-muted-foreground space-y-1">
