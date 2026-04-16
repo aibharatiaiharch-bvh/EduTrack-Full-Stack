@@ -37,7 +37,10 @@ All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.t
 - Users tab is the **single source of truth** for portal access. Role here = which portal.
 - Being in the Students/Teachers tabs does NOT grant login access unless also in Users tab.
 
-### Students Tab: `UserID, Name, Email, Classes, Status, Phone, Parent Email`
+### Students Tab (extension): `StudentID, UserID, ParentID, Classes, Phone, Notes, CurrentSchool, CurrentGrade, PreviousStudent`
+- **CurrentSchool**: school name at time of enrolment
+- **CurrentGrade**: year/grade level (e.g. "Year 10")
+- **PreviousStudent**: `Yes` | `No` — whether this is a re-enrolment
 ### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
 ### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity`
 - **SubjectID**: sequential `SUB-001`, `SUB-002`, …

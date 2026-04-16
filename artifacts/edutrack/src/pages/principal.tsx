@@ -161,7 +161,7 @@ function StudentsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "", currentSchool: "", currentGrade: "", previousStudent: false });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -186,7 +186,7 @@ function StudentsTab() {
     try {
       const data = await apiFetch("/principals/add-student", { method: "POST", body: JSON.stringify(form) });
       if (data.ok) {
-        setForm({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "" });
+        setForm({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "", currentSchool: "", currentGrade: "", previousStudent: false });
         setShowForm(false);
         await load();
       } else {
@@ -217,6 +217,20 @@ function StudentsTab() {
                   <Input type="email" placeholder="student@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
                 <div><label className="text-xs font-medium mb-1 block">Student Phone</label>
                   <Input placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+                <div><label className="text-xs font-medium mb-1 block">Current School</label>
+                  <Input placeholder="e.g. Sydney Grammar School" value={form.currentSchool} onChange={e => setForm({ ...form, currentSchool: e.target.value })} /></div>
+                <div><label className="text-xs font-medium mb-1 block">Current Grade / Year</label>
+                  <Input placeholder="e.g. Year 10" value={form.currentGrade} onChange={e => setForm({ ...form, currentGrade: e.target.value })} /></div>
+                <div className="sm:col-span-2 flex items-center gap-3 pt-1">
+                  <input
+                    type="checkbox"
+                    id="previousStudent"
+                    checked={form.previousStudent}
+                    onChange={e => setForm({ ...form, previousStudent: e.target.checked })}
+                    className="w-4 h-4 rounded border-gray-300 accent-primary"
+                  />
+                  <label htmlFor="previousStudent" className="text-sm font-medium cursor-pointer">Previously enrolled / re-enrolment</label>
+                </div>
                 <div><label className="text-xs font-medium mb-1 block">Parent Email</label>
                   <Input type="email" placeholder="parent@email.com" value={form.parentEmail} onChange={e => setForm({ ...form, parentEmail: e.target.value })} /></div>
                 <div><label className="text-xs font-medium mb-1 block">Parent Name</label>
@@ -238,12 +252,12 @@ function StudentsTab() {
       {!loading && students.length === 0 && <p className="text-sm text-muted-foreground">No students yet.</p>}
       <div className="space-y-2">
         {students.map((s) => (
-          <div key={s.userId} className="flex items-center justify-between p-3 rounded-lg border text-sm">
-            <div>
+          <div key={s.userId} className="p-3 rounded-lg border text-sm space-y-0.5">
+            <div className="flex items-center justify-between">
               <p className="font-medium">{s.name}</p>
-              <p className="text-muted-foreground">{s.email}</p>
+              <StatusBadge status={s.status} />
             </div>
-            <StatusBadge status={s.status} />
+            {s.email && <p className="text-muted-foreground">{s.email}</p>}
           </div>
         ))}
       </div>
