@@ -361,6 +361,17 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [acting, setActing] = useState<string | null>(null);
+
+  async function toggleStatus(s: any) {
+    setActing(s.userId);
+    const endpoint = s.status?.toLowerCase() === "active" ? "/users/deactivate" : "/users/reactivate";
+    try {
+      await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: s.userId }) });
+      await load();
+    } catch { /* ignore */ }
+    setActing(null);
+  }
 
   async function load() {
     setLoading(true);
@@ -482,11 +493,24 @@ function StudentsTab() {
       <div className="space-y-2">
         {students.map((s) => (
           <div key={s.userId} className="p-3 rounded-lg border text-sm space-y-0.5">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{s.name}</p>
-              <StatusBadge status={s.status} />
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="font-medium">{s.name}</p>
+                {s.email && <p className="text-muted-foreground">{s.email}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <StatusBadge status={s.status} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={acting === s.userId}
+                  onClick={() => toggleStatus(s)}
+                  className="text-xs"
+                >
+                  {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                </Button>
+              </div>
             </div>
-            {s.email && <p className="text-muted-foreground">{s.email}</p>}
           </div>
         ))}
       </div>
@@ -502,6 +526,17 @@ function TutorsTab() {
   const [form, setForm] = useState({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [acting, setActing] = useState<string | null>(null);
+
+  async function toggleStatus(t: any) {
+    setActing(t.UserID);
+    const endpoint = t.Status?.toLowerCase() === "active" ? "/users/deactivate" : "/users/reactivate";
+    try {
+      await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: t.UserID }) });
+      await load();
+    } catch { /* ignore */ }
+    setActing(null);
+  }
 
   async function load() {
     setLoading(true);
@@ -575,13 +610,26 @@ function TutorsTab() {
       <div className="space-y-2">
         {tutors.map((t) => (
           <div key={t.UserID} className="p-3 rounded-lg border text-sm space-y-1">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{t.Name}</p>
-              <StatusBadge status={t.Status} />
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium">{t.Name}</p>
+                <p className="text-muted-foreground">{t.Email}</p>
+                {t.Subjects && <p className="text-xs">Subjects: {t.Subjects}</p>}
+                {t.Specialty && <p className="text-xs">Specialty: {t.Specialty}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <StatusBadge status={t.Status} />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={acting === t.UserID}
+                  onClick={() => toggleStatus(t)}
+                  className="text-xs"
+                >
+                  {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                </Button>
+              </div>
             </div>
-            <p className="text-muted-foreground">{t.Email}</p>
-            {t.Subjects && <p className="text-xs">Subjects: {t.Subjects}</p>}
-            {t.Specialty && <p className="text-xs">Specialty: {t.Specialty}</p>}
           </div>
         ))}
       </div>
