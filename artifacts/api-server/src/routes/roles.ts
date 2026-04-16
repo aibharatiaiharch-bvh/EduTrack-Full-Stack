@@ -62,6 +62,7 @@ router.get('/roles/check', async (req, res): Promise<void> => {
         userId: 'ADM-DEV',
         found: true,
         tabMissing: false,
+        sheetId: process.env.DEFAULT_SHEET_ID || null,
       });
       return;
     }
@@ -74,6 +75,7 @@ router.get('/roles/check', async (req, res): Promise<void> => {
         userId: 'PRN-DEV',
         found: true,
         tabMissing: false,
+        sheetId: process.env.DEFAULT_SHEET_ID || null,
       });
       return;
     }

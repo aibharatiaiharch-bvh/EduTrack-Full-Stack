@@ -33,6 +33,7 @@ export default function SignInPage() {
       localStorage.setItem("edutrack_user_email", trimmed);
       if (data.name) localStorage.setItem("edutrack_user_name", data.name);
       if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
+      if (data.sheetId) localStorage.setItem("edutrack_sheet_id", data.sheetId);
 
       if (data.role === "developer" || data.role === "admin") {
         setLocation("/admin");
