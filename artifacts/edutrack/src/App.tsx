@@ -1,4 +1,4 @@
-import { ClerkProvider, useUser } from "@clerk/react";
+import { ClerkProvider } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -21,13 +21,10 @@ function stripBase(path: string) {
 }
 
 function ProtectedRoute({ component: Component, requiredRole }: { component: React.ComponentType; requiredRole?: string }) {
-  const { isLoaded, isSignedIn } = useUser();
   const storedRole = localStorage.getItem("edutrack_user_role");
 
   if (!storedRole) return <Redirect to="/" />;
   if (requiredRole && storedRole !== requiredRole && storedRole !== "developer") return <Redirect to="/" />;
-  if (!isLoaded) return null;
-  if (!isSignedIn && !storedRole) return <Redirect to="/" />;
   return <Component />;
 }
 
