@@ -1,4 +1,4 @@
-import { ClerkProvider, useUser, useClerk } from "@clerk/react";
+import { ClerkProvider, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -29,17 +29,6 @@ function ProtectedRoute({ component: Component, requiredRole }: { component: Rea
   if (!isLoaded) return null;
   if (!isSignedIn && !storedRole) return <Redirect to="/" />;
   return <Component />;
-}
-
-export function useSignOut() {
-  const { signOut } = useClerk();
-  const [, setLocation] = useLocation();
-  return () => {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith("edutrack_"))
-      .forEach((k) => localStorage.removeItem(k));
-    signOut().then(() => setLocation("/"));
-  };
 }
 
 function AppRoutes() {
