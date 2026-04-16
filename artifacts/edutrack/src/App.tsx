@@ -3,6 +3,7 @@ import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wo
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
+import { apiUrl } from "@/lib/api";
 
 import Home from "@/pages/home";
 import SignInPage from "@/pages/sign-in";
@@ -10,6 +11,16 @@ import AuthRedirect from "@/pages/auth-redirect";
 import AdminPortal from "@/pages/admin";
 import PrincipalDashboard from "@/pages/principal";
 import NotFound from "@/pages/not-found";
+
+async function ensureSheetId() {
+  if (localStorage.getItem("edutrack_sheet_id")) return;
+  try {
+    const res = await fetch(apiUrl("/config"));
+    const data = await res.json();
+    if (data.sheetId) localStorage.setItem("edutrack_sheet_id", data.sheetId);
+  } catch { /* silent */ }
+}
+ensureSheetId();
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 if (!clerkPubKey) throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");

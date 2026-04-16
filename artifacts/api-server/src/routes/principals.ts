@@ -8,7 +8,7 @@ import {
 const router: IRouter = Router();
 
 function getSheetId(req: any): string {
-  return req.query.sheetId || req.body?.sheetId || '';
+  return req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || '';
 }
 
 async function deleteSheetRow(spreadsheetId: string, tabTitle: string, rowNum: number): Promise<void> {
