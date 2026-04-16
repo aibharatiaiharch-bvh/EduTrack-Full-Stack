@@ -82,10 +82,11 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
 
-  const { name, email, phone, parentEmail, parentName, parentPhone, currentSchool, currentGrade, previousStudent } = req.body as {
+  const { name, email, phone, parentEmail, parentName, parentPhone, currentSchool, currentGrade, previousStudent, subjectsInterested, notes } = req.body as {
     name?: string; email?: string; phone?: string;
     parentEmail?: string; parentName?: string; parentPhone?: string;
     currentSchool?: string; currentGrade?: string; previousStudent?: boolean | string;
+    subjectsInterested?: string[]; notes?: string;
   };
   if (!name) { res.status(400).json({ error: 'name is required' }); return; }
 
@@ -142,8 +143,12 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
     // Write to Students extension tab
     const studentExtId = await generateTabId('STU', sheetId, SHEET_TABS.students);
     const isReEnroll = previousStudent === true || previousStudent === 'true' || previousStudent === 'yes';
+    const subjectsStr = Array.isArray(subjectsInterested) ? subjectsInterested.join(', ') : (subjectsInterested || '');
     await appendRow(sheetId, SHEET_TABS.students, [
-      studentExtId, studentId, parentId, '', (phone || '').trim(), '',
+      studentExtId, studentId, parentId,
+      subjectsStr,
+      (phone || '').trim(),
+      (notes || '').trim(),
       (currentSchool || '').trim(),
       (currentGrade  || '').trim(),
       isReEnroll ? 'Yes' : 'No',

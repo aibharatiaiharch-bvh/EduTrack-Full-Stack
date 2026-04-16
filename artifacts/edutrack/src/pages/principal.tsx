@@ -156,12 +156,59 @@ function EnrollmentRequestsTab() {
   );
 }
 
+const BLANK_STUDENT = {
+  name: "", email: "", parentName: "", parentEmail: "",
+  phone: "", parentPhone: "", currentGrade: "", currentSchool: "",
+  previousStudent: false, subjectsInterested: [] as string[], notes: "",
+};
+
+function SubjectMultiSelect({ selected, onChange, subjects }: {
+  selected: string[]; onChange: (v: string[]) => void; subjects: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const toggle = (s: string) =>
+    onChange(selected.includes(s) ? selected.filter(x => x !== s) : [...selected, s]);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between border rounded-md px-3 py-2 text-sm bg-background text-left min-h-[38px]"
+      >
+        <span className={selected.length ? "text-foreground" : "text-muted-foreground"}>
+          {selected.length ? selected.join(", ") : "Select subjects…"}
+        </span>
+        <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 ml-2" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full border rounded-md bg-popover shadow-md max-h-52 overflow-y-auto">
+          {subjects.length === 0 && (
+            <p className="text-xs text-muted-foreground px-3 py-2">No active subjects found.</p>
+          )}
+          {subjects.map(s => (
+            <label key={s} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(s)}
+                onChange={() => toggle(s)}
+                className="accent-primary"
+              />
+              {s}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StudentsTab() {
   const [students, setStudents] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "", currentSchool: "", currentGrade: "", previousStudent: false });
+  const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -169,24 +216,29 @@ function StudentsTab() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("/users");
-      if (Array.isArray(data)) setStudents(data.filter((u: any) => u.role === "student"));
+      const [userData, subjectData] = await Promise.all([
+        apiFetch("/users"),
+        apiFetch("/subjects?status=active"),
+      ]);
+      if (Array.isArray(userData)) setStudents(userData.filter((u: any) => u.role === "student"));
       else setError("Could not load students.");
+      if (Array.isArray(subjectData)) setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
     } catch { setError("Connection error."); }
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
+  function openForm() { setForm({ ...BLANK_STUDENT }); setFormError(""); setShowForm(true); }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim()) { setFormError("Name is required."); return; }
+    if (!form.name.trim()) { setFormError("Student name is required."); return; }
     setSaving(true);
     setFormError("");
     try {
       const data = await apiFetch("/principals/add-student", { method: "POST", body: JSON.stringify(form) });
       if (data.ok) {
-        setForm({ name: "", email: "", phone: "", parentEmail: "", parentName: "", parentPhone: "", currentSchool: "", currentGrade: "", previousStudent: false });
         setShowForm(false);
         await load();
       } else {
@@ -196,50 +248,77 @@ function StudentsTab() {
     setSaving(false);
   }
 
+  function field(label: string, input: React.ReactNode, required = false) {
+    return (
+      <div>
+        <label className="text-xs font-medium mb-1 block">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+        {input}
+      </div>
+    );
+  }
+
   return (
     <div>
       <SectionHeader title={`Students (${students.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-      <Button size="sm" className="mb-4 gap-1" onClick={() => setShowForm(!showForm)}>
+      <Button size="sm" className="mb-4 gap-1" onClick={openForm}>
         <UserPlus className="w-4 h-4" /> Add Student
       </Button>
 
       {showForm && (
-        <Card className="mb-4">
+        <Card className="mb-6">
           <CardHeader><CardTitle className="text-base">Add New Student</CardTitle></CardHeader>
           <CardContent>
-            <form onSubmit={handleAdd} className="space-y-3">
+            <form onSubmit={handleAdd} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="text-xs font-medium mb-1 block">Student Name *</label>
-                  <Input placeholder="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Student Email</label>
-                  <Input type="email" placeholder="student@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Student Phone</label>
-                  <Input placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Current School</label>
-                  <Input placeholder="e.g. Sydney Grammar School" value={form.currentSchool} onChange={e => setForm({ ...form, currentSchool: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Current Grade / Year</label>
-                  <Input placeholder="e.g. Year 10" value={form.currentGrade} onChange={e => setForm({ ...form, currentGrade: e.target.value })} /></div>
-                <div className="sm:col-span-2 flex items-center gap-3 pt-1">
-                  <input
-                    type="checkbox"
-                    id="previousStudent"
-                    checked={form.previousStudent}
-                    onChange={e => setForm({ ...form, previousStudent: e.target.checked })}
-                    className="w-4 h-4 rounded border-gray-300 accent-primary"
-                  />
-                  <label htmlFor="previousStudent" className="text-sm font-medium cursor-pointer">Previously enrolled / re-enrolment</label>
-                </div>
-                <div><label className="text-xs font-medium mb-1 block">Parent Email</label>
-                  <Input type="email" placeholder="parent@email.com" value={form.parentEmail} onChange={e => setForm({ ...form, parentEmail: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Parent Name</label>
-                  <Input placeholder="Parent full name" value={form.parentName} onChange={e => setForm({ ...form, parentName: e.target.value })} /></div>
-                <div><label className="text-xs font-medium mb-1 block">Parent Phone</label>
-                  <Input placeholder="Parent phone" value={form.parentPhone} onChange={e => setForm({ ...form, parentPhone: e.target.value })} /></div>
+                {field("Student Name", <Input placeholder="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />, true)}
+                {field("Student Email", <Input type="email" placeholder="student@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />)}
+                {field("Parent Name", <Input placeholder="Full name" value={form.parentName} onChange={e => setForm({ ...form, parentName: e.target.value })} />)}
+                {field("Parent Email", <Input type="email" placeholder="parent@email.com" value={form.parentEmail} onChange={e => setForm({ ...form, parentEmail: e.target.value })} />)}
+                {field("Student Contact Phone", <Input placeholder="e.g. 0412 345 678" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />)}
+                {field("Parent Contact Phone", <Input placeholder="e.g. 0412 345 678" value={form.parentPhone} onChange={e => setForm({ ...form, parentPhone: e.target.value })} />)}
+                {field("Current Grade / Year", <Input placeholder="e.g. Year 10" value={form.currentGrade} onChange={e => setForm({ ...form, currentGrade: e.target.value })} />)}
+                {field("Current School", <Input placeholder="e.g. Sydney Grammar School" value={form.currentSchool} onChange={e => setForm({ ...form, currentSchool: e.target.value })} />)}
               </div>
+
+              <div className="flex items-center gap-3 py-1">
+                <input
+                  type="checkbox"
+                  id="prevStudent"
+                  checked={form.previousStudent}
+                  onChange={e => setForm({ ...form, previousStudent: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 accent-primary"
+                />
+                <label htmlFor="prevStudent" className="text-sm font-medium cursor-pointer">
+                  Previously enrolled (re-enrolment)
+                </label>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium mb-1 block">Subjects Interested In</label>
+                <SubjectMultiSelect
+                  selected={form.subjectsInterested}
+                  onChange={v => setForm({ ...form, subjectsInterested: v })}
+                  subjects={subjects}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium mb-1 block">Notes</label>
+                <textarea
+                  placeholder="Any additional notes…"
+                  value={form.notes}
+                  onChange={e => setForm({ ...form, notes: e.target.value })}
+                  rows={3}
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
               {formError && <p className="text-sm text-red-500">{formError}</p>}
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Add Student"}</Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => { setShowForm(false); setFormError(""); }}>Cancel</Button>
               </div>
