@@ -259,3 +259,134 @@ Hook: `artifacts/edutrack/src/hooks/useAutoRefresh.ts` — pauses when browser t
 pnpm --filter @workspace/api-server run dev   # API server
 pnpm --filter @workspace/edutrack run dev      # Frontend
 ```
+
+---
+
+## FAQ — How To Scenarios
+
+### How do I sign in as each role?
+Go to `/sign-in` and enter the matching email:
+- **Developer** → email set in `DEVELOPER_EMAIL` env var
+- **Principal** → email set in `PRINCIPAL_EMAIL` env var (`bharati.h@gmail.com`)
+- **Tutor** → email of a user in the Users tab with role `tutor` or `teacher`
+- **Student** → email of a user in the Users tab with role `student`
+- **Developer can access any portal** by navigating directly to `/principal`, `/dashboard`, or `/student` after logging in
+
+---
+
+### How do I set up the Google Sheet from scratch?
+1. Sign in as developer → go to `/admin` → Dev Tools tab
+2. Click **"Create Sheet + Sample Data in My Drive"** — this creates a fully structured sheet in your Google Drive
+3. Click **"Use this sheet in the app"** to set it as active
+4. Copy the Sheet ID and set it as `DEFAULT_SHEET_ID` in Railway env vars
+
+---
+
+### How do I populate the sheet with test data?
+1. Sign in as developer → `/admin` → Dev Tools tab
+2. Click **"Ensure Headers"** first (creates all tabs and columns)
+3. Click **"Seed Demo Data"** (fills every tab with sample records)
+
+---
+
+### How do I add a new student?
+**Option A — via the public enrol form (preferred):**
+1. Go to `/enroll` → select Student/Family → fill in the form → submit
+2. Sign in as principal → Requests tab → approve the request
+
+**Option B — directly from the principal dashboard:**
+1. Sign in as principal → Students tab → click "Add Student"
+
+---
+
+### How do I add a new class/subject?
+**From the Principal Dashboard:**
+1. Sign in as principal → Classes tab → click **"Add New Class"**
+2. Fill in name, type, days, time, room, capacity, and assign a teacher
+
+**From the Developer Portal:**
+1. Sign in as developer → Dev Tools tab → **"Add New Class"** card → click "Add"
+
+The new class appears immediately in the enrol form dropdown for new students.
+
+---
+
+### How do I add a new tutor?
+1. Sign in as principal → Tutors tab → click "Add Tutor"
+2. Fill in name, email, subjects, and Zoom link
+3. The tutor can then sign in with their email and access the Tutor Dashboard
+
+---
+
+### How do I approve an enrolment request?
+1. Sign in as principal (or developer navigating to `/principal`)
+2. Go to the **Requests** tab — all pending submissions appear here
+3. Click **Approve** to enrol the student or **Reject** to decline
+
+---
+
+### What happens when a student picks "New Subject / Not in list" on the enrol form?
+- An amber badge appears showing the selection
+- The Notes field changes to prompt them to describe what they want
+- The principal sees this in the Requests tab and can create the class before approving
+
+---
+
+### How do I change the principal email?
+Update the `PRINCIPAL_EMAIL` environment variable:
+- **Replit (dev)**: the agent can update it via the Secrets/env panel
+- **Railway (production)**: go to your Railway project → Variables → update `PRINCIPAL_EMAIL`
+
+The new email takes effect immediately after the API server restarts.
+
+---
+
+### How do I handle an empty principal dashboard?
+The dashboard is empty when the Google Sheet has no data. Fix it by:
+1. Going to Developer Portal → Dev Tools → **"Seed Demo Data"**
+2. Or submitting a test enrolment via `/enroll` and approving it
+
+---
+
+### How do I trigger an email backup manually?
+1. Sign in as developer → Dev Tools tab → **"Send Backup Now"** button
+2. Requires SMTP env vars to be set in Railway (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`)
+
+---
+
+### How do I set up automatic daily email backups?
+Set these env vars in Railway:
+- `SMTP_HOST` — e.g. `smtp.gmail.com`
+- `SMTP_USER` — your Gmail address
+- `SMTP_PASS` — Gmail App Password (not your regular password)
+- `BACKUP_RECIPIENT` — who receives the backup (defaults to `PRINCIPAL_EMAIL`)
+- `BACKUP_CRON` — when to send (default: `0 7 * * *` = 7am daily)
+
+---
+
+### How do I deploy changes to production?
+Changes auto-deploy:
+- **GitHub Auto-Push** runs every 5 minutes and pushes new commits to GitHub
+- **Netlify** detects the push and rebuilds the frontend automatically
+- **Railway** detects the push and redeploys the API automatically
+
+No manual steps needed — just make your changes in Replit and wait ~5–10 minutes.
+
+---
+
+### How do I check if GitHub sync is working?
+Sign in as developer → `/admin` → Overview tab → **GitHub Sync** card.
+It shows the last sync time, branch, and latest commit message.
+
+---
+
+### How do I waive or confirm a late cancellation fee?
+1. Sign in as principal → **Late Cancellations** tab
+2. Find the record → click **"Waive Fee"** or **"Confirm Fee"**
+
+---
+
+### How do I mark attendance?
+1. Sign in as tutor → Tutor Dashboard
+2. Find the class session → click **"Mark Attendance"**
+3. Set each student to Present / Absent / Late and save
