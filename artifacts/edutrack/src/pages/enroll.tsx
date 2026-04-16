@@ -84,11 +84,15 @@ function parseCSV(text: string): Record<string, string>[] {
 
 const SHEET_KEY = "edutrack_sheet_id";
 
+const BULK_ALLOWED_ROLES = ["developer", "principal"];
+
 export default function EnrollPage() {
   const [, setLocation] = useLocation();
 
   const urlSheetId = new URLSearchParams(window.location.search).get("sheetId") || "";
   const sheetId = urlSheetId || localStorage.getItem(SHEET_KEY) || "";
+  const userRole = localStorage.getItem("edutrack_user_role") || "";
+  const canBulkUpload = BULK_ALLOWED_ROLES.includes(userRole);
 
   useEffect(() => {
     if (urlSheetId) localStorage.setItem(SHEET_KEY, urlSheetId);
@@ -311,7 +315,7 @@ export default function EnrollPage() {
             </p>
           </div>
           {!requestType && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${canBulkUpload ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
               <button type="button" onClick={() => setRequestType("student")} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
                   <Users className="w-6 h-6 text-blue-600" />
@@ -330,15 +334,17 @@ export default function EnrollPage() {
                   <p className="text-sm text-muted-foreground mt-1">Apply to join as a tutor or staff member.</p>
                 </div>
               </button>
-              <button type="button" onClick={() => { setRequestType("bulk"); setBulkRows([]); setBulkResults(null); }} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-purple-400 hover:bg-purple-50 transition-all text-left">
-                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Mass Upload</p>
-                  <p className="text-sm text-muted-foreground mt-1">Upload a CSV file to enrol multiple students at once.</p>
-                </div>
-              </button>
+              {canBulkUpload && (
+                <button type="button" onClick={() => { setRequestType("bulk"); setBulkRows([]); setBulkResults(null); }} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-purple-400 hover:bg-purple-50 transition-all text-left">
+                  <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">Mass Upload</p>
+                    <p className="text-sm text-muted-foreground mt-1">Upload a CSV file to enrol multiple students at once.</p>
+                  </div>
+                </button>
+              )}
             </div>
           )}
           {requestType && (
