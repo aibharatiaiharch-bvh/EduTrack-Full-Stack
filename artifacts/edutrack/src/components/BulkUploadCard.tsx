@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Upload, Download, FileText, XCircle } from "lucide-react";
+import { CheckCircle2, Upload, Download, FileText, XCircle, BookOpen } from "lucide-react";
 import { apiUrl } from "@/lib/api";
+
+type SubjectRow = { _row: number; Name: string; Type: string; Teachers: string; Status: string };
 
 const CSV_HEADERS = [
   "Student Name", "Student Email", "Age", "Current School", "Current Grade",
@@ -76,6 +78,15 @@ export function BulkUploadCard() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkResults, setBulkResults] = useState<BulkResult | null>(null);
   const [error, setError] = useState("");
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+
+  useEffect(() => {
+    const params = sheetId ? `?sheetId=${encodeURIComponent(sheetId)}` : "";
+    fetch(apiUrl(`/subjects${params}`))
+      .then(r => r.json())
+      .then(d => setSubjects((d.subjects || []).filter((s: SubjectRow) => (s.Status || "").toLowerCase() !== "inactive")))
+      .catch(() => {});
+  }, [sheetId]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -131,6 +142,31 @@ export function BulkUploadCard() {
             <p><span className="font-medium text-foreground">Required:</span> Student Name, Parent Email, Parent Phone</p>
             <p><span className="font-medium text-foreground">Optional:</span> Student Email, Age, Current School, Current Grade, Previously Enrolled, Classes Interested, Reference, Promo Code, Notes</p>
           </div>
+
+          {subjects.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" /> Available Classes — use these exact names in the "Classes Interested" column
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {subjects.map((s, i) => {
+                  const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      title="Click to copy"
+                      onClick={() => navigator.clipboard?.writeText(s.Name)}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-copy"
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">Click a class to copy its name to clipboard. Separate multiple classes with a semicolon in the CSV (e.g. <span className="font-mono">Maths Year 6; English Year 6</span>).</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
