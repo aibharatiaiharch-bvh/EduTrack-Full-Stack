@@ -302,7 +302,7 @@ export default function EnrollPage() {
                   <div className="space-y-2">
                     <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
                     <select id="classesInterested" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" value="" onChange={e => addSubject(e.target.value)}>
-                      <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "No classes available"}</option>
+                      <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "Select an option below..."}</option>
                       {subjects.filter(s => {
                         const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
                         return !selectedSubjects.includes(label);
