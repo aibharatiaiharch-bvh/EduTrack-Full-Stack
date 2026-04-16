@@ -254,8 +254,12 @@ router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
       const userId = studentUser?.userId || await generateUserId('student', sheetId);
       if (!studentUser) {
         await appendRow(sheetId, SHEET_TABS.users, [
-          userId, studentEmailClean || parentEmailClean, 'student', studentNameClean, 'Pending', today, now,
+          userId, studentEmailClean || parentEmailClean, 'student', studentNameClean, 'Active', today, now,
         ]);
+      } else {
+        // existing user — ensure they are active
+        const rowIdx = (studentUser as any)._row;
+        if (rowIdx) await updateCell(sheetId, `${SHEET_TABS.users}!E${rowIdx}`, 'Active');
       }
       const reqId = `REQ-${Date.now()}-${i}`;
       const packedNotes = packNotes({
@@ -274,7 +278,7 @@ router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
         submissionDate: now,
       });
       await appendRow(sheetId, SHEET_TABS.enrollments, [
-        reqId, userId, 'student', '', 'Pending', now, packedNotes,
+        reqId, userId, 'student', '', 'Active', now, packedNotes,
       ]);
       results.push({ row: i + 1, name: studentNameClean, ok: true, reqId });
     } catch (err: any) {
