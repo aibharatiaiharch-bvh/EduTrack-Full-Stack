@@ -412,6 +412,186 @@ function ToolButton({
 
 type NewSheetResult = { spreadsheetId: string; spreadsheetUrl: string; tabs: string[] };
 
+const SHEET_PREVIEW = [
+  {
+    tab: "Users",
+    headers: ["UserID", "Email", "Role", "Name", "Status", "CreatedAt", "UpdatedAt"],
+    samples: [
+      ["PRN-001", "p.anderson@edutrack.edu", "principal", "Principal Anderson", "Active"],
+      ["TCH-001", "s.chen@edutrack.edu",     "tutor",     "Dr. Sarah Chen",     "Active"],
+      ["STU-001", "emma.j@student.com",      "student",   "Emma Johnson",       "Active"],
+      ["PAR-001", "sarah.johnson@gmail.com", "parent",    "Sarah Johnson",      "Active"],
+    ],
+  },
+  {
+    tab: "Students",
+    headers: ["StudentID", "UserID", "Name", "ParentID", "Classes", "Phone", "Notes", "CurrentSchool", "CurrentGrade", "PreviousStudent"],
+    samples: [
+      ["STU-001", "STU-001", "Emma Johnson", "PAR-001", "SUB-001; SUB-005", "555-0101", "", "Riverside High",    "Year 10", "No"],
+      ["STU-002", "STU-002", "Liam Smith",   "PAR-002", "SUB-001; SUB-004", "555-0102", "", "Northside College", "Year 9",  "Yes"],
+      ["STU-003", "STU-003", "Olivia Brown", "PAR-003", "SUB-005; SUB-007", "555-0103", "", "Westview Academy",  "Year 11", "No"],
+    ],
+  },
+  {
+    tab: "Teachers",
+    headers: ["TeacherID", "UserID", "Name", "Subjects", "Zoom Link", "Specialty", "Notes"],
+    samples: [
+      ["TCH-001", "TCH-001", "Dr. Sarah Chen",   "Mathematics, Science",    "https://zoom.us/j/555001", "STEM",          ""],
+      ["TCH-002", "TCH-002", "Mr. James Taylor", "English",                 "https://zoom.us/j/555002", "Literacy",      ""],
+      ["TCH-003", "TCH-003", "Ms. Rachel Kim",   "Art, Physical Education", "https://zoom.us/j/555003", "Creative Arts", ""],
+    ],
+  },
+  {
+    tab: "Subjects",
+    headers: ["SubjectID", "Name", "Type", "TeacherID", "Room", "Days", "Time", "Status", "MaxCapacity"],
+    samples: [
+      ["SUB-001", "Mathematics",        "Individual", "TCH-001", "Room 101", "Mon, Wed",      "10:00 AM", "Active", "1"],
+      ["SUB-002", "Mathematics",        "Group",      "TCH-001", "Room 101", "Tue, Thu",      "09:00 AM", "Active", "8"],
+      ["SUB-004", "English",            "Group",      "TCH-002", "Room 201", "Tue, Thu, Fri", "11:00 AM", "Active", "8"],
+      ["SUB-008", "Physical Education", "Group",      "TCH-003", "Gym",      "Mon, Fri",      "09:00 AM", "Active", "8"],
+    ],
+  },
+  {
+    tab: "Enrollments",
+    headers: ["EnrollmentID", "UserID", "Student Name", "ClassID", "ParentID", "Status", "EnrolledAt", "TeacherID", "Teacher Name", "TeacherEmail", "Zoom Link", "Class Type", "ClassDate", "ClassTime"],
+    samples: [
+      ["ENR-001", "STU-001", "Emma Johnson", "SUB-001", "PAR-001", "Active",            "…", "TCH-001", "Dr. Sarah Chen",   "s.chen@edutrack.edu",   "…", "Individual", "+7 days", "10:00 AM"],
+      ["ENR-006", "STU-003", "Olivia Brown", "SUB-007", "PAR-003", "Pending",           "…", "TCH-003", "Ms. Rachel Kim",   "r.kim@edutrack.edu",    "…", "Group",      "+10 days","03:00 PM"],
+      ["ENR-014", "STU-001", "Emma Johnson", "SUB-002", "PAR-001", "Late Cancellation", "…", "TCH-001", "Dr. Sarah Chen",   "s.chen@edutrack.edu",   "…", "Group",      "-1 day",  "09:00 AM"],
+    ],
+  },
+  {
+    tab: "Attendance",
+    headers: ["AttendanceID", "ClassID", "UserID", "SessionDate", "Status", "Notes", "MarkedBy", "MarkedAt"],
+    samples: [
+      ["ATT-001", "SUB-001", "STU-001", "yesterday", "Present", "",                     "TCH-001", "…"],
+      ["ATT-002", "SUB-001", "STU-002", "yesterday", "Absent",  "Sick - parent called", "TCH-001", "…"],
+      ["ATT-004", "SUB-004", "STU-004", "yesterday", "Late",    "Arrived 10 min late",  "TCH-002", "…"],
+    ],
+  },
+  {
+    tab: "Parents",
+    headers: ["ParentID", "UserID", "Name", "Children", "Phone", "Notes"],
+    samples: [
+      ["PAR-001", "PAR-001", "Sarah Johnson", "STU-001; STU-005", "555-0201", ""],
+      ["PAR-002", "PAR-002", "Mike Smith",    "STU-002",          "555-0202", ""],
+    ],
+  },
+  {
+    tab: "Announcements",
+    headers: ["AnnouncementID", "Title", "Message", "Priority", "IsActive", "CreatedAt"],
+    samples: [
+      ["ANN-001", "Term 2 Enrolments Open", "Term 2 enrolments are now open…", "Standard", "true", "today"],
+      ["ANN-002", "Public Holiday Closure",  "EduTrack will be closed 22 April…", "Urgent", "true", "today"],
+    ],
+  },
+  {
+    tab: "PushSubscriptions",
+    headers: ["SubscriptionID", "UserID", "Endpoint", "Keys", "CreatedAt"],
+    samples: [],
+  },
+];
+
+function SheetPreview() {
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
+
+  return (
+    <div className="rounded-lg border bg-background overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium hover:bg-muted/40 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-muted-foreground">
+          <Eye className="w-3.5 h-3.5" />
+          Preview: {SHEET_PREVIEW.length} tabs · headers · sample rows
+        </span>
+        <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="border-t">
+          {/* Tab pills */}
+          <div className="flex gap-1 p-2 flex-wrap border-b bg-muted/30">
+            {SHEET_PREVIEW.map((t, i) => (
+              <button
+                key={t.tab}
+                onClick={() => setActiveTab(i)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  activeTab === i
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background border hover:border-primary hover:text-primary"
+                }`}
+              >
+                {t.tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Selected tab detail */}
+          {(() => {
+            const t = SHEET_PREVIEW[activeTab];
+            return (
+              <div className="p-3 space-y-3">
+                {/* Headers */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                    Columns ({t.headers.length})
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {t.headers.map((h, i) => (
+                      <span key={h}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted text-xs font-mono">
+                        <span className="text-muted-foreground">{String.fromCharCode(65 + i)}</span>
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sample rows */}
+                {t.samples.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                      Sample data ({t.samples.length} shown)
+                    </p>
+                    <div className="overflow-auto rounded border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted">
+                          <tr>
+                            {t.headers.map(h => (
+                              <th key={h} className="px-2 py-1.5 text-left font-medium text-muted-foreground whitespace-nowrap">
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {t.samples.map((row, ri) => (
+                            <tr key={ri} className="hover:bg-muted/30">
+                              {row.map((cell, ci) => (
+                                <td key={ci} className="px-2 py-1.5 whitespace-nowrap max-w-[160px] truncate">
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No sample rows — populated by the app at runtime.</p>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CreateSheetCard() {
   const [status, setStatus] = useState<ToolStatus>("idle");
   const [error, setError] = useState("");
@@ -455,11 +635,12 @@ function CreateSheetCard() {
           <p className="font-semibold text-sm">Create New EduTrack Sheet in My Drive</p>
           <p className="text-xs text-muted-foreground mt-0.5">
             Creates a brand-new Google Spreadsheet named <strong>"EduTrack Data"</strong> in your connected Drive account,
-            sets up all tabs (Users, Students, Teachers, Subjects, Enrollments, Attendance, etc.)
-            with correct headers, and pre-fills with sample data so the app works immediately.
+            sets up all 9 tabs with correct column headers, and pre-fills with sample data so the app works immediately.
           </p>
         </div>
       </div>
+
+      <SheetPreview />
 
       {status === "idle" && (
         <Button onClick={create} className="w-full gap-2">
