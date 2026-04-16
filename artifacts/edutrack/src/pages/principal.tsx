@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle, Clock, DollarSign, Plus, CheckCircle2,
+  BookOpen, AlertTriangle, Clock, DollarSign, Plus, CheckCircle2, Upload,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -291,7 +291,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "latecancels";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "latecancels" | "upload";
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
@@ -476,7 +476,6 @@ function StudentsTab() {
   const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
   const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
-  const [showBulk,        setShowBulk]        = useState(false);
 
   async function toggleStatus(s: any) {
     setActing(s.userId);
@@ -558,20 +557,9 @@ function StudentsTab() {
       <SectionHeader title={`Students (${students.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-      <div className="flex items-center gap-2 mb-4">
-        <Button size="sm" className="gap-1" onClick={openForm}>
-          <UserPlus className="w-4 h-4" /> Add Student
-        </Button>
-        <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBulk(b => !b)}>
-          {showBulk ? "Hide Upload" : "Mass Upload"}
-        </Button>
-      </div>
-
-      {showBulk && (
-        <div className="mb-6">
-          <BulkUploadCard />
-        </div>
-      )}
+      <Button size="sm" className="mb-4 gap-1" onClick={openForm}>
+        <UserPlus className="w-4 h-4" /> Add Student
+      </Button>
 
       {showForm && (
         <Card className="mb-6">
@@ -1031,6 +1019,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
+  { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
 ];
 
 export default function PrincipalDashboard() {
@@ -1087,6 +1076,7 @@ export default function PrincipalDashboard() {
         {tab === "tutors"      && <TutorsTab />}
         {tab === "classes"     && <ClassesTab />}
         {tab === "users"       && <UsersTab />}
+        {tab === "upload"      && <BulkUploadCard />}
       </main>
     </div>
   );

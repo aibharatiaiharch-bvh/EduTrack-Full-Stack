@@ -12,7 +12,7 @@ import {
   GraduationCap, LogOut, Users, Shield, Database, Wrench,
   CheckCircle2, XCircle, RefreshCw, ExternalLink, ChevronRight,
   BookOpen, UserCheck, ClipboardList, UserPlus, Eye, Loader2,
-  AlertTriangle, Activity, GitBranch, Plus,
+  AlertTriangle, Activity, GitBranch, Plus, Upload,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -36,7 +36,7 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return res.json();
 }
 
-type Tab = "overview" | "navigate" | "data" | "tools";
+type Tab = "overview" | "navigate" | "data" | "tools" | "upload";
 
 const SHEET_TABS = [
   { key: "users",       label: "Users" },
@@ -1041,10 +1041,6 @@ function ToolsTab() {
         action={() => runTool("/sheets/seed", "Demo data seeded ✓")}
       />
 
-      <div className="pt-2">
-        <h3 className="text-sm font-semibold mb-3">Mass Student Upload</h3>
-        <BulkUploadCard />
-      </div>
     </div>
   );
 }
@@ -1056,6 +1052,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "navigate",  label: "View as Role", icon: <Eye className="w-4 h-4" /> },
   { id: "data",      label: "Data Browser", icon: <Database className="w-4 h-4" /> },
   { id: "tools",     label: "Dev Tools",    icon: <Wrench className="w-4 h-4" /> },
+  { id: "upload",    label: "Mass Upload",  icon: <Upload className="w-4 h-4" /> },
 ];
 
 export default function AdminPortal() {
@@ -1108,6 +1105,7 @@ export default function AdminPortal() {
         {tab === "navigate" && <NavigateTab />}
         {tab === "data"     && <DataTab />}
         {tab === "tools"    && <ToolsTab />}
+        {tab === "upload"   && <BulkUploadCard />}
       </main>
     </div>
   );
