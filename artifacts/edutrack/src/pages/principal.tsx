@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -108,8 +109,13 @@ function ClassesTab() {
                     <p className="text-sm text-muted-foreground">
                       {s.Type} · {currentEnrolled} enrolled
                     </p>
+                    {(s.Days || s.Time) && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {[s.Days, s.Time].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Current teacher: <span className="font-medium text-foreground">{currentTeacher}</span>
+                      Teacher: <span className="font-medium text-foreground">{currentTeacher}</span>
                     </p>
                   </div>
                   {didSucceed && !isOpen && (
@@ -763,6 +769,7 @@ export default function PrincipalDashboard() {
       </div>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
+        <NotificationPrompt />
         {tab === "requests" && <EnrollmentRequestsTab />}
         {tab === "students" && <StudentsTab />}
         {tab === "tutors"   && <TutorsTab />}

@@ -12,6 +12,7 @@ import subjectsRouter from "./subjects";
 import announcementsRouter from "./announcements";
 import scheduleCalendarRouter from "./scheduleCalendar";
 import enrollmentRequestsRouter from "./enrollmentRequests";
+import pushRouter from "./push";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(subjectsRouter);
 router.use(announcementsRouter);
 router.use(scheduleCalendarRouter);
 router.use(enrollmentRequestsRouter);
+router.use(pushRouter);
 
 export default router;

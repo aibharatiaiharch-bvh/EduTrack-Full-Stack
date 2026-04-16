@@ -123,9 +123,9 @@ router.post('/subjects', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
-  const { name, type, teachers, teacherId, room, days, maxCapacity } = req.body as {
+  const { name, type, teachers, teacherId, room, days, time, maxCapacity } = req.body as {
     name?: string; type?: string; teachers?: string; teacherId?: string;
-    room?: string; days?: string; maxCapacity?: string;
+    room?: string; days?: string; time?: string; maxCapacity?: string;
   };
 
   if (!name?.trim()) { res.status(400).json({ error: 'Subject name is required' }); return; }
@@ -154,6 +154,7 @@ router.post('/subjects', async (req, res): Promise<void> => {
       if (h === 'TeacherID')   return resolvedTeacherId;
       if (h === 'Room')        return (room || '').trim();
       if (h === 'Days')        return (days || '').trim();
+      if (h === 'Time')        return (time || '').trim();
       if (h === 'Status')      return 'Active';
       if (h === 'MaxCapacity') return type === 'Group' ? (maxCapacity || '8').trim() : (maxCapacity || '999').trim();
       return '';

@@ -102,6 +102,7 @@ export const SHEET_TABS = {
   enrollments: 'Enrollments',
   parents: 'Parents',
   announcements: 'Announcements',
+  pushSubscriptions: 'PushSubscriptions',
 };
 
 // ─── SCHEMA (Users = master, all others use IDs) ────────────────────────────
@@ -119,7 +120,7 @@ export const SHEET_HEADERS = {
   parents:  ['ParentID',  'UserID', 'Name', 'Children', 'Phone', 'Notes'],
 
   // CLASSES — TeacherID FK links to Users; no Name/Email stored here
-  subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Status', 'MaxCapacity'],
+  subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Time', 'Status', 'MaxCapacity'],
 
   // TRANSACTIONS — UserIDs for all FKs; class date/time stored as session data
   enrollments: [
