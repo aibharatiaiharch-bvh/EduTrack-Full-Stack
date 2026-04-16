@@ -42,13 +42,13 @@ app.get("/api/config", (_req, res) => {
   const sheetId = process.env.DEFAULT_SHEET_ID || null;
   res.json({ sheetId });
 });
-// Clerk middleware — wrapped so a config failure doesn't crash all routes
-try {
+// Clerk middleware — only apply when both keys are present
+if (process.env.CLERK_SECRET_KEY && process.env.CLERK_PUBLISHABLE_KEY) {
   app.use((req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(clerkMiddleware()(req, res, next)).catch(next);
+    Promise.resolve(clerkMiddleware()(req, res, next)).catch(() => next());
   });
-} catch (e) {
-  logger.warn({ err: e }, "Clerk middleware failed to initialise — continuing without auth");
+} else {
+  logger.warn("CLERK_SECRET_KEY or CLERK_PUBLISHABLE_KEY missing — running without auth middleware");
 }
 
 app.use("/api", router);

@@ -71,7 +71,15 @@ function SignUpPage() {
 
 function ProtectedRoute({ component: Component }: { component: any }) {
   const { isLoaded, isSignedIn } = useUser();
-  if (!isLoaded) return null;
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded) return;
+    const t = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
+  if (!isLoaded && !timedOut) return null;
   if (!isSignedIn) return <Redirect to="/" />;
   return <Component />;
 }
