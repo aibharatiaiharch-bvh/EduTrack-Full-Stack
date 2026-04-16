@@ -6,3 +6,9 @@ id = "Dsvjreu76A9egeImcYM7z"
 uri = "file://exports/EduTrack-Documentation.md"
 type = "text"
 title = "EduTrack — Complete Documentation"
+
+[[outputs]]
+id = "-9KRB_syb4sjrZgOQoNhJ"
+uri = "file://replit.md"
+type = "text"
+title = "EduTrack Documentation"
