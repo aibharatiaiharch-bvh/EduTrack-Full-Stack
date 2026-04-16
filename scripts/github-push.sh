@@ -8,6 +8,9 @@
 
 INTERVAL_SECONDS=300  # 5 minutes
 SYNC_STATUS_FILE="${GITHUB_SYNC_STATUS_FILE:-/home/runner/workspace/.github-sync-status.json}"
+STATUS_FILE="${GITHUB_PUSH_STATUS_FILE:-/tmp/github-push-status.json}"
+
+# ─── Status helpers ───────────────────────────────────────────────────────────
 
 write_sync_status() {
   local branch="$1"
@@ -16,9 +19,54 @@ write_sync_status() {
   printf '{"lastSyncedAt":"%s","branch":"%s"}\n' "$ts" "$branch" > "$SYNC_STATUS_FILE"
 }
 
+write_status() {
+  local status="$1"
+  local message="$2"
+  local failure_count="$3"
+  local now
+  now=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+  # Read existing timestamps from the file to preserve the ones we're not updating.
+  # We strip surrounding quotes and whitespace, then re-add them when writing.
+  local last_succeeded_raw=""
+  local last_failed_raw=""
+  if [ -f "$STATUS_FILE" ]; then
+    last_succeeded_raw=$(grep -o '"lastSucceededAt" *: *"[^"]*"' "$STATUS_FILE" | grep -o '"[^"]*"$' | tr -d '"' || true)
+    last_failed_raw=$(grep -o '"lastFailedAt" *: *"[^"]*"' "$STATUS_FILE" | grep -o '"[^"]*"$' | tr -d '"' || true)
+  fi
+
+  # Update whichever timestamp applies to this call
+  if [ "$status" = "ok" ]; then
+    last_succeeded_raw="$now"
+  else
+    last_failed_raw="$now"
+  fi
+
+  # Format timestamps as JSON values (quoted string or null)
+  local last_succeeded_json="null"
+  local last_failed_json="null"
+  [ -n "$last_succeeded_raw" ] && last_succeeded_json="\"$last_succeeded_raw\""
+  [ -n "$last_failed_raw" ]    && last_failed_json="\"$last_failed_raw\""
+
+  local message_json
+  message_json="\"$(echo "$message" | sed 's/\\/\\\\/g; s/"/\\"/g')\""
+
+  cat > "$STATUS_FILE" <<EOF
+{
+  "status": "$status",
+  "message": $message_json,
+  "failureCount": $failure_count,
+  "lastAttemptAt": "$now",
+  "lastSucceededAt": $last_succeeded_json,
+  "lastFailedAt": $last_failed_json
+}
+EOF
+}
+
 push_if_needed() {
   if [ -z "${GITHUB_TOKEN:-}" ]; then
     echo "[github-push] ERROR: GITHUB_TOKEN is not set. Cannot push."
+    write_status "no_token" "GITHUB_TOKEN is not set" 0
     return
   fi
 
@@ -35,14 +83,24 @@ push_if_needed() {
   # Fetch to update remote tracking refs (transient auth, no config mutation)
   git -c "http.extraHeader=${AUTH_HEADER}" fetch origin --quiet 2>/dev/null || true
 
+  # Read previous failure count from status file
+  local prev_failures=0
+  if [ -f "$STATUS_FILE" ]; then
+    prev_failures=$(grep -o '"failureCount":[^,}]*' "$STATUS_FILE" | grep -o '[0-9]*' || echo "0")
+    [ -z "$prev_failures" ] && prev_failures=0
+  fi
+
   # Check whether the remote tracking branch exists yet
   if ! git rev-parse --verify "origin/${BRANCH}" >/dev/null 2>&1; then
     echo "[github-push] $(date -u '+%Y-%m-%d %H:%M:%S UTC') — Branch '$BRANCH' not on remote. Pushing and setting upstream…"
     if git -c "http.extraHeader=${AUTH_HEADER}" push -u origin "$BRANCH" --quiet 2>&1; then
       echo "[github-push] Push succeeded (new branch created on remote)."
       write_sync_status "$BRANCH"
+      write_status "ok" "Push succeeded (new branch created on remote)" 0
     else
-      echo "[github-push] Push FAILED — will retry next cycle."
+      local new_failures=$((prev_failures + 1))
+      echo "[github-push] Push FAILED — will retry next cycle. (consecutive failures: $new_failures)"
+      write_status "failed" "Push failed — new branch could not be pushed to remote" "$new_failures"
     fi
     return
   fi
@@ -58,6 +116,7 @@ push_if_needed() {
     if [ $PUSH_EXIT -eq 0 ]; then
       echo "[github-push] Push succeeded."
       write_sync_status "$BRANCH"
+      write_status "ok" "Pushed $AHEAD commit(s) on '$BRANCH'" 0
     elif echo "$PUSH_OUT" | grep -q "non-fast-forward\|fetch first"; then
       echo "[github-push] Remote has new commits — pulling and rebasing…"
       if GIT_EDITOR=true git -c "http.extraHeader=${AUTH_HEADER}" pull --rebase origin "$BRANCH" --quiet 2>&1; then
@@ -65,19 +124,33 @@ push_if_needed() {
         if git -c "http.extraHeader=${AUTH_HEADER}" push origin "$BRANCH" --quiet 2>&1; then
           echo "[github-push] Push succeeded after rebase."
           write_sync_status "$BRANCH"
+          write_status "ok" "Pushed $AHEAD commit(s) on '$BRANCH' (after rebase)" 0
         else
-          echo "[github-push] Push FAILED after rebase — will retry next cycle."
+          local new_failures=$((prev_failures + 1))
+          echo "[github-push] Push FAILED after rebase — will retry next cycle. (consecutive failures: $new_failures)"
+          write_status "failed" "Push failed after rebase on '$BRANCH' — check token permissions or conflicts" "$new_failures"
         fi
       else
         echo "[github-push] Rebase had conflicts — aborting. Manual intervention needed."
         git rebase --abort 2>/dev/null || true
+        local new_failures=$((prev_failures + 1))
+        write_status "failed" "Rebase conflict on '$BRANCH' — manual intervention needed" "$new_failures"
       fi
     else
-      echo "[github-push] Push FAILED — will retry next cycle."
+      local new_failures=$((prev_failures + 1))
+      echo "[github-push] Push FAILED — will retry next cycle. (consecutive failures: $new_failures)"
       echo "$PUSH_OUT"
+      write_status "failed" "Push failed on branch '$BRANCH' — check token permissions or conflicts" "$new_failures"
     fi
   else
     echo "[github-push] $(date -u '+%Y-%m-%d %H:%M:%S UTC') — No new commits on '$BRANCH'."
+    # Only write ok status (resetting failure count) if there wasn't already a clean state
+    if [ "$prev_failures" -gt 0 ]; then
+      write_status "ok" "No new commits — sync is healthy" 0
+    else
+      # Preserve existing ok status without overwriting timestamps unnecessarily
+      write_status "ok" "No new commits on '$BRANCH'" 0
+    fi
   fi
 }
 

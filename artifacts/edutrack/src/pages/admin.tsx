@@ -60,11 +60,21 @@ function timeAgo(isoString: string): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+type GithubSyncStatus = {
+  status: "ok" | "failed" | "no_token" | "unknown";
+  message: string;
+  failureCount: number;
+  lastAttemptAt: string | null;
+  lastSucceededAt: string | null;
+  lastFailedAt: string | null;
+};
+
 function OverviewTab() {
   const [health, setHealth] = useState<"loading" | "ok" | "error">("loading");
   const [config, setConfig] = useState<{ sheetId?: string } | null>(null);
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [syncLoading, setSyncLoading] = useState(true);
+  const [githubSync, setGithubSync] = useState<GithubSyncStatus | null>(null);
 
   async function checkHealth() {
     setHealth("loading");
@@ -84,10 +94,18 @@ function OverviewTab() {
     setSyncLoading(false);
   }
 
+  async function fetchGithubSyncStatus() {
+    try {
+      const res = await fetch(apiUrl("/github-sync-status"));
+      if (res.ok) setGithubSync(await res.json());
+    } catch { /* silently ignore */ }
+  }
+
   useEffect(() => {
     checkHealth();
     fetch(apiUrl("/config")).then(r => r.json()).then(setConfig).catch(() => {});
     fetchSync();
+    fetchGithubSyncStatus();
   }, []);
 
   const sid = sheetId();
@@ -190,6 +208,34 @@ function OverviewTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* GitHub Sync Status Alert */}
+      {githubSync && (githubSync.status === "failed" || githubSync.status === "no_token") && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 p-4">
+          <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-700">
+              GitHub sync failed
+              {githubSync.failureCount > 1 ? ` (${githubSync.failureCount} consecutive failures)` : ""}
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">{githubSync.message}</p>
+            {githubSync.lastFailedAt && (
+              <p className="text-xs text-red-500 mt-1">
+                Last failed: {new Date(githubSync.lastFailedAt).toLocaleString()}
+              </p>
+            )}
+            <p className="text-xs text-red-500 mt-0.5">
+              Check that <code className="font-mono">GITHUB_TOKEN</code> is valid and the repository allows pushes.
+            </p>
+          </div>
+          <button
+            onClick={fetchGithubSyncStatus}
+            className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 shrink-0"
+          >
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </button>
+        </div>
+      )}
 
       {/* Quick links */}
       <Card>
