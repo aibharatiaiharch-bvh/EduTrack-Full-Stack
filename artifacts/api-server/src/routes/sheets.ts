@@ -447,8 +447,7 @@ async function applyMasterProtection(sheetsClient: any, spreadsheetId: string): 
         protectedRange: {
           range: { sheetId: numericId },
           description: `Protect ${tab} master data`,
-          warningOnly: false,
-          editors: { users: [] },
+          warningOnly: true,
         },
       },
     }];
@@ -472,7 +471,12 @@ router.post('/sheets/apply-validation', async (req, res): Promise<void> => {
   try {
     const sheetsClient = await getUncachableGoogleSheetClient();
     const count = await applyDropdownValidation(sheetsClient, spreadsheetId);
-    const protectedCount = await applyMasterProtection(sheetsClient, spreadsheetId);
+    let protectedCount = 0;
+    try {
+      protectedCount = await applyMasterProtection(sheetsClient, spreadsheetId);
+    } catch {
+      // Protection is advisory only — non-fatal if the API rejects it
+    }
     res.json({ ok: true, rulesApplied: count, protectedCount });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
