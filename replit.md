@@ -1,144 +1,261 @@
-# EduTrack — Tutor & Coach Platform
+# EduTrack — Tutor & Coaching Management Platform
 
-## Overview
+## What It Is
 
-Full-stack tutoring and coaching platform management app. Multi-role portal app with Clerk authentication and Google Sheets as the primary data store.
+EduTrack is a multi-role management platform for a tutoring/coaching business. It handles student enrolments, tutor scheduling, attendance, late cancellation tracking, and principal oversight — all backed by a live Google Sheet as the database.
 
-## Stack
+---
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **Frontend**: React + Vite (`artifacts/edutrack/`) at path `/`
-- **API**: Express 5 (`artifacts/api-server/`) at path `/api`
-- **Authentication**: Clerk (multi-user login/signup)
-- **Database**: Google Sheets (via Replit Google Sheets integration)
+## Architecture
 
-## Portals & Role Routing
+| Layer | Tech | Location |
+|---|---|---|
+| Frontend | React + Vite | `artifacts/edutrack/` |
+| API | Express 5 (Node 24) | `artifacts/api-server/` |
+| Data store | Google Sheets | Via Replit Google Sheets integration |
+| Monorepo | pnpm workspaces | Root `pnpm-workspace.yaml` |
+| Production frontend | Netlify | Connected to GitHub `main` |
+| Production API | Railway | Connected to GitHub `main` |
+| GitHub sync | Auto-push script | `scripts/github-push.sh` (every 5 min) |
 
-Sign in → `/auth-redirect` → `/roles/check` → portal based on Users tab Role:
-- `developer` → portal selector (Admin + Principal)
-- `admin` → `/admin` (Developer/Admin Portal — no client data access)
-- `principal` → `/principal` (Principal Dashboard — full client data, 6 tabs)
-- `tutor` / `teacher` → `/tutor` (Tutor Portal — classes, students, attendance)
-- `student` → `/student` (Student Portal — enrolled classes, cancellation)
-- `/enroll` — **public, no login** — student/tutor application form
+---
 
-**Developer email bypass**: If email NOT in Users tab AND matches `DEVELOPER_EMAIL` env var → `developer` role, no Users tab entry required. If developer IS in the Users tab, Users tab role takes precedence.
+## Login & Role System
 
-**Data boundary**: Developer Portal has zero access to client data (students, teachers, enrollments, parents). All client data lives exclusively in the Principal Dashboard. When distributing the app, developer and principal must be separate accounts.
+Login is email-only — no password, no Clerk UI. User enters email → API checks role → stored in localStorage → redirected to correct portal.
+
+**Sign-in page**: `artifacts/edutrack/src/pages/sign-in.tsx`
+**Role check endpoint**: `GET /api/roles/check?email=`
+
+### Role routing
+
+| Role | Portal | Route |
+|---|---|---|
+| `developer` | Developer/Admin Portal | `/admin` |
+| `principal` | Principal Dashboard | `/principal` |
+| `tutor` / `teacher` | Tutor Dashboard | `/dashboard` |
+| `student` | Student Portal | `/student` |
+| *(public)* | Enrolment Form | `/enroll` |
+
+### Special bypasses (no Users tab entry needed)
+- **Developer**: email matches `DEVELOPER_EMAIL` env var → always gets `developer` role + `DEFAULT_SHEET_ID` returned at login
+- **Principal**: email matches `PRINCIPAL_EMAIL` env var → always gets `principal` role + `DEFAULT_SHEET_ID` returned at login
+
+### localStorage keys set on login
+```
+edutrack_user_role      — role string
+edutrack_user_email     — email
+edutrack_user_name      — display name
+edutrack_user_id        — UserID (e.g. STU-001)
+edutrack_sheet_id       — Google Sheet ID (from login response)
+```
+
+---
+
+## Portals
+
+### Developer Portal (`/admin`)
+Four tabs:
+1. **Overview** — API health, sheet link, GitHub sync status card (last synced, branch, commit hash/message), failure alerts
+2. **View as Role** — navigate to any portal as developer (bypasses role checks)
+3. **Data Browser** — read any sheet tab as a live table
+4. **Dev Tools** — create sheet, seed data, apply dropdown validation, ensure headers
+
+### Principal Dashboard (`/principal`) — 6 tabs
+1. **Requests** — incoming enrolment requests (approve/reject)
+2. **Students** — student list, enrol/unenrol, view schedule
+3. **Tutors** — tutor list, manage subjects/assignments
+4. **Users** — all system users, activate/deactivate/delete
+5. **Classes** — subject/class management
+6. **Late Cancellations** — override fee waiver or confirm fee
+
+All tabs auto-refresh every 30 seconds — no manual refresh needed.
+
+### Tutor Dashboard (`/dashboard`)
+- View assigned classes and student lists
+- Mark attendance (Present / Absent / Late) per session
+- Auto-refreshes every 30 seconds
+
+### Student Portal (`/student`)
+- View enrolled classes and schedule
+- Cancel upcoming classes (24-hour rule applies)
+
+### Public Enrolment Form (`/enroll`)
+- No login required
+- Students and tutors can apply
+- Submission creates a row in the Enrollments tab with `Pending` status
+
+---
 
 ## Google Sheet Schema
 
-All tabs and headers are defined in `artifacts/api-server/src/lib/googleSheets.ts`.
+Schema source of truth: `artifacts/api-server/src/lib/googleSheets.ts`
 
-### Users Tab: `UserID, Email, Role, Name, Added Date, Status`
-- **UserID**: role-prefixed sequential ID (`STU-001`, `TCH-001`, `PAR-001`, `PRN-001`, `ADM-001`)
-- **Status**: `Active` / `Inactive` / `Pending` — Inactive = access denied immediately
-- Users tab is the **single source of truth** for portal access. Role here = which portal.
-- Being in the Students/Teachers tabs does NOT grant login access unless also in Users tab.
+| Tab | Key Fields |
+|---|---|
+| **Users** | UserID, Email, Role, Name, Status, Added Date |
+| **Students** | StudentID, UserID, ParentID, CurrentSchool, CurrentGrade, PreviousStudent |
+| **Teachers** | UserID, Name, Email, Subjects, Role, Status, Zoom Link |
+| **Subjects** | SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity, Time |
+| **Enrollments** | EnrollmentID, UserID, ClassID, ParentID, Status, TeacherID, Zoom Link, Class Type |
+| **Attendance** | AttendanceID, ClassID, UserID, SessionDate, Status, Notes, MarkedBy, MarkedAt |
+| **Parents** | ParentID, Name, Email, Phone, LinkedStudents |
+| **Announcements** | AnnouncementID, Title, Message, Priority, IsActive |
+| **Archive** | UserID, Email, Role, Name, Added Date, Status, Archived Date |
 
-### Students Tab (extension): `StudentID, UserID, ParentID, Classes, Phone, Notes, CurrentSchool, CurrentGrade, PreviousStudent`
-- **CurrentSchool**: school name at time of enrolment
-- **CurrentGrade**: year/grade level (e.g. "Year 10")
-- **PreviousStudent**: `Yes` | `No` — whether this is a re-enrolment
-### Teachers Tab: `UserID, Name, Email, Subjects, Role, Status, Zoom Link`
-### Attendance Tab: `AttendanceID, ClassID, UserID, SessionDate, Status, Notes, MarkedBy, MarkedAt`
-- **Status**: `Present` | `Absent` | `Late`
-- **SessionDate**: YYYY-MM-DD of the actual class session
-- Upsert logic — one record per ClassID+UserID+SessionDate; updating re-marks
+**UserID format**: role-prefixed sequential (`STU-001`, `TCH-001`, `PAR-001`, `PRN-001`)
 
-### Subjects Tab: `SubjectID, Name, Type, Teachers, Room, Days, Status, MaxCapacity`
-- **SubjectID**: sequential `SUB-001`, `SUB-002`, …
-- **Type**: `Individual` | `Group` | `Both` — same subject can run as both group and individual classes
-- **Group class**: max 8 students per session
-- **Individual class**: max 1 student (1-on-1 tuition)
-- **Teachers**: comma-separated teacher names (multi-teacher support)
-- **MaxCapacity**: integer — defaults to `8` for Group, `1` for Individual. Used by `/subjects/with-capacity`.
-### Enrollments Tab: `Student Name, Class Name, Class Date, Class Time, Parent Email, Status, Override Action, Teacher, Teacher Email, Zoom Link, Class Type`
-- **Class Type**: `Individual` or `Group` — set at enrollment time
-- **Status**: `Active`, `Cancelled`, `Late Cancellation`, `Fee Waived`, `Fee Confirmed`
-### Enrollment Requests Tab: `Student Name, Student Email, Previously Enrolled, Current School, Current Grade, Age, Classes Interested, Parent Email, Parent Phone, Reference, Promo Code, Notes, Submission Date, Status, Request Type`
-### Archive Tab: `UserID, Email, Role, Name, Added Date, Status, Archived Date`
-- Rows copied here when a user is deactivated (Status set to Inactive).
-### Announcements Tab: `AnnouncementID, Title, Message, Priority, IsActive`
-- **Priority**: `Urgent` (red persistent banner) or `Standard` (amber dismissible banner)
-- **IsActive**: `true` / `false` string — only `true` rows are surfaced by the API
+**Enrolment Status values**: `Active`, `Cancelled`, `Late Cancellation`, `Fee Waived`, `Fee Confirmed`, `Pending`
 
-Other tabs: `Parents`
+**Attendance Status values**: `Present`, `Absent`, `Late`
 
-Note: The `Config` tab has been removed. Feature flags are localStorage-only. Developer contact email is set via `DEVELOPER_EMAIL` environment variable (read-only from the app).
+---
 
 ## Key API Routes
 
-- `GET /api/roles/check` — role lookup, returns role + status + userId
-- `POST /api/roles/enroll` — submit enrollment request
-- `GET/POST /api/enrollment-requests` — principal approval flow
-- `POST /api/principals/add-teacher` — creates Users + Teachers rows with UserID
-- `POST /api/principals/add-student` — creates Students row (+ Users if email given) with UserID
-- `GET /api/users` — list all Users tab entries
-- `POST /api/users/deactivate` — revoke access + archive record
-- `POST /api/users/reactivate` — restore access
-- `DELETE /api/users/:userId` — hard delete from Users tab
-- `GET /api/users/archive` — list archived users
-- `GET /api/admin/features` — returns feature defaults (localStorage manages actual state)
-- `GET /api/admin/contact` — returns developer contact from `DEVELOPER_EMAIL` env var only
-- `POST /api/sheets/ensure-headers` — safe: add missing tabs/headers only
-- `GET /api/enrollments?teacherEmail=&parentEmail=&status=` — filter enrollments by teacher/parent/status
-- `POST /api/enrollments/:row/cancel` — 24-hour cancellation check; sets `Cancelled` or `Late Cancellation`
-- `POST /api/enrollments/:row/override` — principal waives/confirms late-cancel fee
-- `POST /api/enrollments/join` — student/parent joins a class from the Browse Classes page
-- `GET /api/subjects/with-capacity` — subjects list enriched with `currentEnrolled`, `MaxCapacity`, `isFull`
-- `GET /api/announcements` — active announcements from the Announcements tab
+```
+GET  /api/roles/check              — role lookup by email
+POST /api/roles/enroll             — submit enrolment application
 
-## Pages
+GET  /api/enrollment-requests      — all enrolment rows (principal)
+POST /api/enrollment-requests/:row/approve
+POST /api/enrollment-requests/:row/reject
 
-| Route | Component | Who sees it |
+GET  /api/enrollments              — filter by teacherEmail, parentEmail, status
+POST /api/enrollments/:row/cancel  — 24h check → Cancelled or Late Cancellation
+POST /api/enrollments/:row/override — waive or confirm late-cancel fee
+POST /api/enrollments/join         — student joins a class
+
+GET  /api/subjects                 — list subjects
+GET  /api/subjects/with-capacity   — subjects + currentEnrolled + isFull
+
+GET  /api/users                    — all Users tab entries
+POST /api/users/deactivate         — revoke access + archive
+POST /api/users/reactivate         — restore access
+DELETE /api/users/:userId          — hard delete
+
+POST /api/principals/add-teacher   — create Users + Teachers rows
+POST /api/principals/add-student   — create Students row (+ Users)
+POST /api/principals/reassign-teacher
+
+GET  /api/announcements            — active announcements only
+GET  /api/attendance               — attendance records
+POST /api/attendance/mark          — upsert one record per ClassID+UserID+SessionDate
+
+GET  /api/sheets/:tab              — read any tab as JSON rows
+POST /api/sheets/setup             — create a new EduTrack spreadsheet
+POST /api/sheets/seed              — seed sample data
+POST /api/sheets/ensure-headers    — add missing tabs/headers only
+POST /api/sheets/apply-validation  — apply dropdown rules to status columns
+
+GET  /api/backup/status            — check email backup config
+POST /api/backup/send              — trigger manual backup email
+
+GET  /api/admin/github-sync        — last GitHub sync time + commit details
+GET  /api/github-sync-status       — push script failure status
+
+GET  /api/config                   — returns DEFAULT_SHEET_ID
+GET  /api/healthz                  — health check
+```
+
+---
+
+## Daily Email Backup
+
+Sends all sheet tabs as CSV attachments to the principal daily.
+
+**Required env vars (Railway):**
+
+| Var | Purpose |
+|---|---|
+| `SMTP_HOST` | e.g. `smtp.gmail.com` |
+| `SMTP_PORT` | `587` (default) |
+| `SMTP_USER` | Gmail address |
+| `SMTP_PASS` | Gmail App Password |
+| `BACKUP_RECIPIENT` | Who gets the email (defaults to `PRINCIPAL_EMAIL`) |
+| `BACKUP_CRON` | Cron schedule (default: `0 7 * * *` = 7am daily) |
+
+If SMTP vars are not set, backup silently skips — no errors.
+
+**Manual trigger**: Admin portal → Dev Tools → "Send Backup Now"
+
+**Implementation files:**
+- `artifacts/api-server/src/lib/email.ts` — Nodemailer transport
+- `artifacts/api-server/src/lib/backup.ts` — reads tabs, builds HTML email + CSVs
+- `artifacts/api-server/src/lib/scheduler.ts` — node-cron daily job
+- `artifacts/api-server/src/routes/backup.ts` — manual trigger endpoint
+
+---
+
+## GitHub Auto-Push
+
+Script: `scripts/github-push.sh`
+
+- Runs every 5 minutes via the "GitHub Auto-Push" workflow
+- Requires `GITHUB_TOKEN` secret (GitHub Personal Access Token, Contents: Read+Write)
+- Auth is ephemeral — token never written to git config or remote URL
+- Automatically pulls/rebases if remote has new commits (non-fast-forward), then retries push
+- Writes sync status to `.github-sync-status.json` after each successful push
+- Admin portal Overview tab shows last sync time, branch, and latest commit
+
+**Sync failure alerts**: If push fails 3+ consecutive times, an alert email fires (max once/hour).
+Required: `GITHUB_SYNC_ALERT_EMAIL` + SMTP vars.
+
+---
+
+## Announcements
+
+`AnnouncementBanner` in `artifacts/edutrack/src/components/announcement-banner.tsx`
+
+- Fetched from `/api/announcements` (active rows only)
+- **Urgent** (`Priority = Urgent`): red persistent bar, no dismiss
+- **Standard** (`Priority = Standard`): amber bar, dismissible (stored in localStorage)
+
+---
+
+## Environment Variables
+
+### Railway (API)
+| Var | Required | Purpose |
 |---|---|---|
-| `/` | `home.tsx` | Everyone |
-| `/dashboard` | `teacher-dashboard.tsx` | Tutors |
-| `/schedule` | `my-schedule.tsx` | Tutors — classes filtered by their email |
-| `/classes` | `browse-classes.tsx` | All logged-in — class list with capacity badges + Join button |
-| `/checkin` | `checkin.tsx` | Tutors |
-| `/student` | `student.tsx` | Students — schedule view |
-| `/parent` | `parent.tsx` | Parents — cancel classes, view schedule |
-| `/calendar` | `class-calendar.tsx` | Public — class calendar view |
-| `/principal` | `principal.tsx` | Principal — enrollment requests, late-cancel overrides |
-| `/housekeeping` | `housekeeping.tsx` | Principal — class/subject management |
-| `/admin` | `admin.tsx` | Developer Portal |
-| `/settings` | `settings.tsx` | All — link sheet |
-| `/enroll` | `enroll.tsx` | Public — new student enrollment form |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Yes | Google Sheets auth |
+| `GOOGLE_PRIVATE_KEY` | Yes | Google Sheets auth |
+| `DEFAULT_SHEET_ID` | Yes | Google Sheet ID (sent to browser at login) |
+| `DEVELOPER_EMAIL` | Yes | Email(s) that get developer role (comma-separated) |
+| `PRINCIPAL_EMAIL` | Yes | Email(s) that get principal role (comma-separated) |
+| `DEVELOPER_NAME` | No | Display name for developer |
+| `PRINCIPAL_NAME` | No | Display name for principal |
+| `GITHUB_TOKEN` | Yes | For auto-push workflow |
+| `SMTP_HOST` | No | Email backup/alerts |
+| `SMTP_PORT` | No | Email backup/alerts (default 587) |
+| `SMTP_USER` | No | Email backup/alerts |
+| `SMTP_PASS` | No | Email backup/alerts |
+| `SMTP_FROM` | No | Sender address (defaults to SMTP_USER) |
+| `BACKUP_RECIPIENT` | No | Backup email recipient (defaults to PRINCIPAL_EMAIL) |
+| `BACKUP_CRON` | No | Cron schedule (default: `0 7 * * *`) |
+| `GITHUB_SYNC_ALERT_EMAIL` | No | Who gets GitHub sync failure alerts |
 
-## Announcement Banner
+### Netlify (Frontend)
+| Var | Required | Purpose |
+|---|---|---|
+| `VITE_API_BASE_URL` | Yes | Railway API public URL |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Yes | Clerk (used for infrastructure, not UI auth) |
 
-`AnnouncementBanner` (in `layout.tsx` AppLayout) fetches `/api/announcements` at render and displays:
-- **Urgent** — solid red bar, no close button (always visible)
-- **Standard** — amber bar with dismiss button (localStorage key: `edutrack_dismissed_ann_{id}`)
+---
 
-## Helper Functions in googleSheets.ts
+## Auto-Refresh
 
-- `colLetter(tabKey, field)` — returns A1 column letter for a named field (avoids hardcoded column references)
-- `generateUserId(role, spreadsheetId)` — generates next sequential UserID for a role, checking both Users and Archive tabs so numbers never repeat
+Key pages poll for live data automatically:
+- **Principal Dashboard** — all 6 tabs refresh every 30 seconds
+- **Tutor Dashboard** — refreshes every 30 seconds
 
-## Features System
+Hook: `artifacts/edutrack/src/hooks/useAutoRefresh.ts` — pauses when browser tab is hidden.
 
-Feature flag (`schedule`) is stored in **localStorage only** (no sheet dependency). Controls whether the Full Schedule nav item appears in the Tutor sidebar.
+---
 
-`getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → Developer Portal toggle calls these directly with no API round-trip.
+## Dev Commands
 
-## GitHub Sync Failure Alerts
-
-When the GitHub auto-push script fails 3 or more consecutive times, an alert email is sent automatically. The alert is rate-limited to one per hour.
-
-**Required env vars:**
-- `GITHUB_SYNC_ALERT_EMAIL` — recipient address for alert emails (e.g. `admin@example.com`). If not set, no alerts are sent.
-- SMTP vars must also be configured (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`) — same ones used for backup emails.
-
-**Alert contents:** consecutive failure count, branch name, last failure timestamp, error message.
-
-**Implementation:** `artifacts/api-server/src/lib/githubSyncAlert.ts` — called from `artifacts/api-server/src/routes/githubSyncStatus.ts` on each frontend poll. Rate-limit state tracked in `/tmp/github-sync-alert-state.json`.
-
-## Key Commands
-
-- `pnpm --filter @workspace/api-server run dev` — API server
-- `pnpm --filter @workspace/edutrack run dev` — frontend
+```bash
+pnpm --filter @workspace/api-server run dev   # API server
+pnpm --filter @workspace/edutrack run dev      # Frontend
+```
