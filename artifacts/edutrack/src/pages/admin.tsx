@@ -10,7 +10,7 @@ import {
   GraduationCap, LogOut, Users, Shield, Database, Wrench,
   CheckCircle2, XCircle, RefreshCw, ExternalLink, ChevronRight,
   BookOpen, UserCheck, ClipboardList, UserPlus, Eye, Loader2,
-  AlertTriangle, Activity,
+  AlertTriangle, Activity, GitBranch,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -50,9 +50,21 @@ const SHEET_TABS = [
 
 // ─── Overview Tab ────────────────────────────────────────────────────────────
 
+type SyncStatus = { lastSyncedAt: string | null; branch: string | null };
+
+function timeAgo(isoString: string): string {
+  const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
 function OverviewTab() {
   const [health, setHealth] = useState<"loading" | "ok" | "error">("loading");
   const [config, setConfig] = useState<{ sheetId?: string } | null>(null);
+  const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [syncLoading, setSyncLoading] = useState(true);
 
   async function checkHealth() {
     setHealth("loading");
@@ -62,9 +74,20 @@ function OverviewTab() {
     } catch { setHealth("error"); }
   }
 
+  async function fetchSync() {
+    setSyncLoading(true);
+    try {
+      const res = await fetch(apiUrl("/admin/github-sync"));
+      const data = await res.json();
+      setSync(data);
+    } catch { setSync({ lastSyncedAt: null, branch: null }); }
+    setSyncLoading(false);
+  }
+
   useEffect(() => {
     checkHealth();
     fetch(apiUrl("/config")).then(r => r.json()).then(setConfig).catch(() => {});
+    fetchSync();
   }, []);
 
   const sid = sheetId();
@@ -72,7 +95,7 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Health */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
@@ -125,6 +148,45 @@ function OverviewTab() {
             <p className="text-sm font-medium">{localStorage.getItem("edutrack_user_name") || "—"}</p>
             <p className="text-xs text-muted-foreground truncate">{localStorage.getItem("edutrack_user_email") || "—"}</p>
             <Badge variant="secondary" className="mt-1.5 text-xs">developer</Badge>
+          </CardContent>
+        </Card>
+
+        {/* GitHub Sync */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">GitHub Sync</CardTitle>
+            <GitBranch className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {syncLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Checking…</span>
+              </div>
+            ) : sync?.lastSyncedAt ? (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                  <span
+                    className="text-sm font-semibold text-green-700 cursor-default"
+                    title={new Date(sync.lastSyncedAt).toLocaleString()}
+                  >
+                    {timeAgo(sync.lastSyncedAt)}
+                  </span>
+                </div>
+                {sync.branch && (
+                  <p className="text-xs text-muted-foreground mt-1 font-mono truncate">branch: {sync.branch}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <XCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                <span className="text-sm text-amber-600">No sync recorded</span>
+              </div>
+            )}
+            <button onClick={fetchSync} className="text-xs text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1">
+              <RefreshCw className="h-3 w-3" /> Recheck
+            </button>
           </CardContent>
         </Card>
       </div>
