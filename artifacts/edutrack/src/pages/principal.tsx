@@ -367,7 +367,11 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [acting, setActing] = useState<string | null>(null);
+  const [acting,          setActing]          = useState<string | null>(null);
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
+  const [classLoading,    setClassLoading]    = useState<string | null>(null);
+  const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
 
   async function toggleStatus(s: any) {
     setActing(s.userId);
@@ -377,6 +381,24 @@ function StudentsTab() {
       await load();
     } catch { /* ignore */ }
     setActing(null);
+  }
+
+  async function loadStudentClasses(userId: string) {
+    setClassLoading(userId);
+    try {
+      const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=approved,active`);
+      if (Array.isArray(data)) setStudentClasses(prev => ({ ...prev, [userId]: data }));
+    } catch { /* ignore */ }
+    setClassLoading(null);
+  }
+
+  async function cancelEnrollment(userId: string, rowNum: number) {
+    setCancellingRow(rowNum);
+    try {
+      await apiFetch(`/enrollments/${rowNum}/cancel`, { method: "POST", body: JSON.stringify({}) });
+      await loadStudentClasses(userId);
+    } catch { /* ignore */ }
+    setCancellingRow(null);
   }
 
   async function load() {
@@ -497,28 +519,74 @@ function StudentsTab() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && students.length === 0 && <p className="text-sm text-muted-foreground">No students yet.</p>}
       <div className="space-y-2">
-        {students.map((s) => (
-          <div key={s.userId} className="p-3 rounded-lg border text-sm space-y-0.5">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="font-medium">{s.name}</p>
-                {s.email && <p className="text-muted-foreground">{s.email}</p>}
+        {students.map((s) => {
+          const isExpanded = expandedStudent === s.userId;
+          const classes    = studentClasses[s.userId] || [];
+          return (
+            <div key={s.userId} className="rounded-lg border text-sm">
+              <div className="p-3 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{s.name}</p>
+                  {s.email && <p className="text-muted-foreground text-xs">{s.email}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <StatusBadge status={s.status} />
+                  <button
+                    className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
+                    onClick={() => {
+                      if (!isExpanded) {
+                        setExpandedStudent(s.userId);
+                        if (!studentClasses[s.userId]) loadStudentClasses(s.userId);
+                      } else {
+                        setExpandedStudent(null);
+                      }
+                    }}
+                  >
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    Classes
+                  </button>
+                  <Button
+                    size="sm" variant="outline"
+                    disabled={acting === s.userId}
+                    onClick={() => toggleStatus(s)}
+                    className="text-xs"
+                  >
+                    {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusBadge status={s.status} />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={acting === s.userId}
-                  onClick={() => toggleStatus(s)}
-                  className="text-xs"
-                >
-                  {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                </Button>
-              </div>
+
+              {isExpanded && (
+                <div className="border-t bg-muted/30 px-3 py-2 space-y-2">
+                  {classLoading === s.userId && (
+                    <p className="text-xs text-muted-foreground">Loading classes…</p>
+                  )}
+                  {classLoading !== s.userId && classes.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No active enrollments.</p>
+                  )}
+                  {classes.map((enr: any) => (
+                    <div key={enr.EnrollmentID || enr._row} className="flex items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="font-medium">{enr["Class Name"] || enr.ClassID}</span>
+                        {(enr["Class Date"] && enr["Class Date"] !== "TBD") && (
+                          <span className="text-muted-foreground ml-2">{enr["Class Date"]}</span>
+                        )}
+                      </div>
+                      <Button
+                        size="sm" variant="outline"
+                        disabled={cancellingRow === enr._row}
+                        onClick={() => cancelEnrollment(s.userId, enr._row)}
+                        className="text-xs h-6 px-2 text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        {cancellingRow === enr._row ? "…" : "Cancel"}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

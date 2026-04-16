@@ -1,230 +1,308 @@
-import { useUser } from "@clerk/react";
-import { AppLayout } from "@/components/layout";
+import { useState, useEffect } from "react";
+import { useSignOut } from "@/hooks/use-sign-out";
+import { apiUrl } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import {
-  Calendar, Clock, BookOpen, User, Users,
-  AlertTriangle, Video, CheckCircle2, ChevronRight,
+  GraduationCap, LogOut, RefreshCw, Video, Calendar, Clock,
+  AlertTriangle, BookOpen, Users, User,
 } from "lucide-react";
 
-const SHEET_KEY = "edutrack_sheet_id";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
-function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
+const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
 
-type EnrollmentRow = {
+async function apiFetch(path: string, options?: RequestInit) {
+  const sid = sheetId();
+  const sep = path.includes("?") ? "&" : "?";
+  const res = await fetch(apiUrl(`${path}${sep}sheetId=${encodeURIComponent(sid)}`), {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  return res.json();
+}
+
+type Enrollment = {
   _row: number;
-  "Student Name": string;
-  "Student Email": string;
+  EnrollmentID: string;
+  ClassID: string;
+  Status: string;
   "Class Name": string;
   "Class Date": string;
   "Class Time": string;
-  "Parent Email": string;
-  "Status": string;
-  "Override Action": string;
   "Teacher": string;
-  "Teacher Email": string;
   "Zoom Link": string;
   "Class Type": string;
 };
 
-function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "Active") return "default";
-  if (status === "Cancelled") return "secondary";
-  if (status === "Late Cancellation") return "destructive";
-  if (status === "Fee Waived") return "secondary";
-  if (status === "Fee Confirmed") return "destructive";
-  return "outline";
-}
-
-function isToday(dateStr: string): boolean {
-  if (!dateStr || dateStr === "TBD") return false;
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return false;
-    const today = new Date();
-    return (
-      d.getFullYear() === today.getFullYear() &&
-      d.getMonth() === today.getMonth() &&
-      d.getDate() === today.getDate()
-    );
-  } catch {
-    return false;
+/** Compute whether the next occurrence of 'days' at 'time' is within 24 h. */
+function nextSessionWithin24h(days: string, time: string): boolean {
+  if (!days || !time) return false;
+  const dayMap: Record<string, number> = {
+    sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
+    wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
+  };
+  const todayDay = new Date().getDay();
+  const parts = days.toLowerCase().split(/[,;\/\s]+/).map(d => d.trim()).filter(Boolean);
+  const timeParts = time.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  let h = 0, m = 0;
+  if (timeParts) {
+    h = parseInt(timeParts[1], 10);
+    m = parseInt(timeParts[2] || "0", 10);
+    const p = (timeParts[3] || "").toLowerCase();
+    if (p === "pm" && h !== 12) h += 12;
+    if (p === "am" && h === 12) h = 0;
   }
+  for (const part of parts) {
+    const target = dayMap[part];
+    if (target === undefined) continue;
+    let diff = (target - todayDay + 7) % 7;
+    const candidate = new Date();
+    candidate.setDate(candidate.getDate() + diff);
+    candidate.setHours(h, m, 0, 0);
+    if (candidate.getTime() < Date.now()) {
+      candidate.setDate(candidate.getDate() + 7);
+    }
+    const msUntil = candidate.getTime() - Date.now();
+    if (msUntil <= 24 * 60 * 60 * 1000) return true;
+  }
+  return false;
 }
 
-export default function StudentPortal() {
-  const { user } = useUser();
-  const sheetId = localStorage.getItem(SHEET_KEY);
-  const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
-  const name = localStorage.getItem("edutrack_user_name") || user?.fullName || "";
-
-  const todayStr = new Date().toLocaleDateString("en-AU", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
-  });
-
-  const { data: allClasses, isLoading, error } = useQuery<EnrollmentRow[]>({
-    queryKey: ["student-schedule", email, sheetId],
-    enabled: !!email && !!sheetId,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        studentEmail: email,
-        sheetId: sheetId!,
-        status: "Active",
-      });
-      const res = await fetch(apiUrl(`/enrollments?${params}`));
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-  });
-
-  const todayClasses = allClasses?.filter(c => isToday(c["Class Date"])) ?? [];
-  const upcomingClasses = allClasses?.filter(c => !isToday(c["Class Date"])) ?? [];
-
+function CancelModal({ name, days, time, onConfirm, onClose, confirming }: {
+  name: string; days: string; time: string;
+  onConfirm: () => void; onClose: () => void; confirming: boolean;
+}) {
+  const isLate = nextSessionWithin24h(days, time);
   return (
-    <AppLayout>
-      <div className="p-4 md:p-8 space-y-6 max-w-4xl">
-        <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {name ? `Welcome, ${name.split(" ")[0]}` : "My Schedule"}
-          </h1>
-          <p className="text-muted-foreground">{todayStr}</p>
-        </header>
-
-        {!sheetId && (
-          <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm">No Google Sheet linked. Please open the enrolment link from your school.</p>
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 w-full rounded-xl" />
-            ))}
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <p className="text-sm">Failed to load your schedule. Please try again.</p>
-          </div>
-        )}
-
-        {!isLoading && !error && allClasses && (
-          <>
-            {/* Today's Classes */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  Today's Classes
-                </h2>
-                <Badge variant="secondary">{todayClasses.length}</Badge>
-              </div>
-
-              {todayClasses.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-10 border border-dashed rounded-xl text-muted-foreground">
-                  <CheckCircle2 className="h-8 w-8 opacity-30" />
-                  <p className="text-sm font-medium">No classes scheduled for today</p>
-                  <p className="text-xs">Enjoy your day!</p>
-                </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <Card className="w-full max-w-sm shadow-xl">
+        <CardContent className="pt-5 space-y-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className={`w-5 h-5 shrink-0 mt-0.5 ${isLate ? "text-amber-500" : "text-red-500"}`} />
+            <div>
+              <p className="font-medium">Cancel enrollment in {name}?</p>
+              {isLate ? (
+                <p className="text-sm text-amber-700 mt-1">
+                  The next session is <strong>within 24 hours</strong>. This will be flagged as a late cancellation and may attract a fee at the principal's discretion.
+                </p>
               ) : (
-                todayClasses.map(cls => <ClassCard key={cls._row} cls={cls} highlight />)
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your recurring enrollment will end. You won't attend future sessions of this class.
+                </p>
               )}
-            </section>
-
-            {/* Upcoming Classes */}
-            {upcomingClasses.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold text-muted-foreground flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Upcoming Classes
-                  </h2>
-                  <Badge variant="outline">{upcomingClasses.length}</Badge>
-                </div>
-                {upcomingClasses.map(cls => <ClassCard key={cls._row} cls={cls} />)}
-              </section>
-            )}
-
-            {allClasses.length === 0 && (
-              <div className="text-center py-16 border border-dashed rounded-xl flex flex-col items-center gap-3 text-muted-foreground">
-                <BookOpen className="h-10 w-10 opacity-30" />
-                <p className="font-medium">No classes enrolled yet</p>
-                <p className="text-sm">Your enrolled classes will appear here once the principal activates them.</p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/classes">Browse Classes <ChevronRight className="w-3.5 h-3.5 ml-1" /></Link>
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </AppLayout>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={confirming}>Keep it</Button>
+            <Button
+              size="sm"
+              disabled={confirming}
+              className={isLate
+                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                : "bg-red-600 hover:bg-red-700 text-white"}
+              onClick={onConfirm}
+            >
+              {confirming ? "Cancelling…" : isLate ? "Cancel (late — fee may apply)" : "Yes, cancel"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function ClassCard({ cls, highlight }: { cls: EnrollmentRow; highlight?: boolean }) {
-  const isGroup = cls["Class Type"] === "Group";
+export default function StudentDashboard() {
+  const signOut  = useSignOut();
+  const name     = localStorage.getItem("edutrack_user_name") || "Student";
+  const userId   = localStorage.getItem("edutrack_user_id")   || "";
+
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [subjectMap,  setSubjectMap]  = useState<Record<string, any>>({});
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState("");
+  const [cancelling,  setCancelling]  = useState<Enrollment | null>(null);
+  const [confirming,  setConfirming]  = useState(false);
+
+  async function load() {
+    setLoading(true); setError("");
+    try {
+      const [enrData, subData] = await Promise.all([
+        apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=approved,active`),
+        apiFetch("/subjects?status=active"),
+      ]);
+      if (Array.isArray(enrData)) setEnrollments(enrData);
+      else setError("Could not load your classes.");
+      if (Array.isArray(subData)) {
+        const m: Record<string, any> = {};
+        for (const s of subData) m[s["SubjectID"] || s.SubjectID || ""] = s;
+        setSubjectMap(m);
+      }
+    } catch { setError("Connection error."); }
+    setLoading(false);
+  }
+
+  useEffect(() => { if (userId) load(); }, [userId]);
+
+  async function confirmCancel() {
+    if (!cancelling) return;
+    setConfirming(true);
+    try {
+      const data = await apiFetch(`/enrollments/${cancelling._row}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ sheetId: sheetId() }),
+      });
+      if (data.ok) {
+        setCancelling(null);
+        await load();
+      } else {
+        setError(data.error || "Cancellation failed.");
+        setCancelling(null);
+      }
+    } catch { setError("Connection error."); setCancelling(null); }
+    setConfirming(false);
+  }
+
+  const active = enrollments.filter(e =>
+    ["approved", "active"].includes((e.Status || "").toLowerCase())
+  );
 
   return (
-    <Card className={highlight ? "border-primary/30 bg-primary/5" : ""}>
-      <CardContent className="p-0">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 gap-4">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${highlight ? "bg-primary text-white" : "bg-primary/10 text-primary"}`}>
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <p className="font-semibold text-foreground">{cls["Class Name"] || "—"}</p>
-              {cls["Teacher"] && (
-                <p className="text-sm text-muted-foreground">
-                  Teacher: <span className="text-foreground">{cls["Teacher"]}</span>
-                </p>
-              )}
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                {cls["Class Date"] && cls["Class Date"] !== "TBD" && (
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />{cls["Class Date"]}
-                  </span>
-                )}
-                {cls["Class Time"] && cls["Class Time"] !== "TBD" && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />{cls["Class Time"]}
-                  </span>
-                )}
-                {cls["Class Type"] && (
-                  <span className="flex items-center gap-1">
-                    {isGroup ? <Users className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                    {cls["Class Type"]}
-                  </span>
-                )}
-              </div>
-              {cls["Zoom Link"] && (
-                <a
-                  href={cls["Zoom Link"]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-0.5"
-                >
-                  <Video className="h-3 w-3" />
-                  Join Zoom
-                </a>
-              )}
-            </div>
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-card px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <GraduationCap className="w-4 h-4 text-primary-foreground" />
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={statusVariant(cls["Status"])}>{cls["Status"]}</Badge>
-          </div>
+          <span className="font-semibold">EduTrack</span>
+          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Student</span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
+          <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
+            <LogOut className="w-4 h-4" /> Sign Out
+          </Button>
+        </div>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-6 py-8">
+        <NotificationPrompt />
+
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-semibold">My Classes</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              You're automatically enrolled each week until you cancel.
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+
+        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+        {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+
+        {!loading && active.length === 0 && (
+          <div className="text-center py-16 border border-dashed rounded-xl flex flex-col items-center gap-3 text-muted-foreground">
+            <BookOpen className="h-10 w-10 opacity-30" />
+            <p className="font-medium">No active classes</p>
+            <p className="text-sm">Your classes will appear here once the principal enrols you.</p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {active.map(enr => {
+            const sub  = subjectMap[enr.ClassID] || {};
+            const days = sub.Days || sub["Days"] || "";
+            const time = sub.Time || sub["Time"] || (enr["Class Time"] !== "TBD" ? enr["Class Time"] : "");
+            const isLate = nextSessionWithin24h(days, time);
+            const isGroup = (enr["Class Type"] || "").toLowerCase() === "group";
+
+            return (
+              <Card key={enr.EnrollmentID || enr._row}>
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="font-medium">{enr["Class Name"]}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        {days && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />{days}
+                          </span>
+                        )}
+                        {time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />{time}
+                          </span>
+                        )}
+                        {enr["Class Type"] && (
+                          <span className="flex items-center gap-1">
+                            {isGroup ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />}
+                            {enr["Class Type"]}
+                          </span>
+                        )}
+                      </div>
+                      {enr["Teacher"] && (
+                        <p className="text-xs text-muted-foreground">Teacher: <span className="text-foreground">{enr["Teacher"]}</span></p>
+                      )}
+                    </div>
+                    <Badge variant="outline" className="text-green-700 border-green-300 bg-green-50 shrink-0 text-xs">
+                      Active
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap pt-1 border-t">
+                    {enr["Zoom Link"] && (
+                      <a
+                        href={enr["Zoom Link"]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        <Video className="w-3 h-3" /> Join Zoom
+                      </a>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`text-xs ml-auto gap-1 ${isLate
+                        ? "border-amber-300 text-amber-700 hover:bg-amber-50"
+                        : "border-red-200 text-red-600 hover:bg-red-50"}`}
+                      onClick={() => setCancelling(enr)}
+                    >
+                      {isLate && <AlertTriangle className="w-3 h-3" />}
+                      Cancel enrollment
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {active.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-6">
+            Cancellations within 24 hours of a session may be flagged as late cancellations and may attract a fee.
+          </p>
+        )}
+      </main>
+
+      {cancelling && (() => {
+        const sub  = subjectMap[cancelling.ClassID] || {};
+        const days = sub.Days || sub["Days"] || "";
+        const time = sub.Time || sub["Time"] || "";
+        return (
+          <CancelModal
+            name={cancelling["Class Name"]}
+            days={days}
+            time={time}
+            onConfirm={confirmCancel}
+            onClose={() => setCancelling(null)}
+            confirming={confirming}
+          />
+        );
+      })()}
+    </div>
   );
 }

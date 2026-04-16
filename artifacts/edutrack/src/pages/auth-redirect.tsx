@@ -69,6 +69,10 @@ export default function AuthRedirect() {
       setLocation("/admin");
     } else if (role === "principal") {
       setLocation("/principal");
+    } else if (role === "student") {
+      setLocation("/student");
+    } else if (role === "tutor" || role === "teacher") {
+      setLocation("/student");
     } else {
       setLocation("/sign-in");
     }

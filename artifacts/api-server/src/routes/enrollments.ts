@@ -83,6 +83,40 @@ function classStartsInMoreThan24Hours(classDate: string, classTime: string): boo
   return classStart.getTime() - Date.now() > 24 * 60 * 60 * 1000;
 }
 
+/** For recurring classes where ClassDate is TBD, compute next session from Days+Time. */
+function recurringNextSessionWithin24h(days: string, time: string): boolean {
+  if (!days || !time) return false;
+  const dayMap: Record<string, number> = {
+    sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
+    wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
+  };
+  const todayDay = new Date().getDay();
+  const parts = days.toLowerCase().split(/[,;\/\s]+/).map(d => d.trim()).filter(Boolean);
+  const timeParts = time.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  let h = 0, m = 0;
+  if (timeParts) {
+    h = parseInt(timeParts[1], 10);
+    m = parseInt(timeParts[2] || '0', 10);
+    const p = (timeParts[3] || '').toLowerCase();
+    if (p === 'pm' && h !== 12) h += 12;
+    if (p === 'am' && h === 12) h = 0;
+  }
+  for (const part of parts) {
+    const target = dayMap[part];
+    if (target === undefined) continue;
+    const diff = (target - todayDay + 7) % 7;
+    const candidate = new Date();
+    candidate.setDate(candidate.getDate() + diff);
+    candidate.setHours(h, m, 0, 0);
+    if (candidate.getTime() < Date.now()) {
+      candidate.setDate(candidate.getDate() + 7);
+    }
+    const msUntil = candidate.getTime() - Date.now();
+    if (msUntil <= 24 * 60 * 60 * 1000) return true;
+  }
+  return false;
+}
+
 // ─── GET /api/enrollments ───────────────────────────────────────────────────
 router.get('/enrollments', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
@@ -284,11 +318,22 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
     const enrollment = rows.find(r => r._row === rowNum);
     if (!enrollment) { res.status(404).json({ error: 'Enrollment not found' }); return; }
 
-    const moreThan24h = classStartsInMoreThan24Hours(
-      enrollment['ClassDate'] || enrollment['Class Date'] || '',
-      enrollment['ClassTime'] || enrollment['Class Time'] || '',
-    );
-    // Late cancellations (< 24h notice) get their own status for the principal to review
+    const rawDate = enrollment['ClassDate'] || enrollment['Class Date'] || '';
+    const rawTime = enrollment['ClassTime'] || enrollment['Class Time'] || '';
+    const isRecurring = !rawDate || rawDate.toLowerCase() === 'tbd';
+
+    let moreThan24h: boolean;
+    if (isRecurring) {
+      // Recurring class: look up schedule from Subjects tab
+      const subjects = await readSubjectRows(spreadsheetId);
+      const subject  = subjects.find(s => s['SubjectID'] === enrollment['ClassID']);
+      const days = subject?.['Days'] || '';
+      const time = subject?.['Time'] || rawTime;
+      moreThan24h = !recurringNextSessionWithin24h(days, time);
+    } else {
+      moreThan24h = classStartsInMoreThan24Hours(rawDate, rawTime);
+    }
+
     const newStatus = moreThan24h ? 'Cancelled' : 'Late Cancellation';
 
     const sheets = await getUncachableGoogleSheetClient();
