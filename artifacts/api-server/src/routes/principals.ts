@@ -11,6 +11,50 @@ function getSheetId(req: any): string {
   return req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || '';
 }
 
+// ─── Protect the Name column (col D, index 3) in the Users tab ───────────────
+// Called after the first student is added. Idempotent — skips if already set.
+async function ensureNameColumnProtected(spreadsheetId: string): Promise<void> {
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const meta   = await sheets.spreadsheets.get({ spreadsheetId });
+    const usersTab = meta.data.sheets?.find((s: any) => s.properties?.title === SHEET_TABS.users);
+    if (!usersTab) return;
+
+    const numericSheetId = usersTab.properties?.sheetId;
+
+    // Skip if Name column (col D = index 3) is already covered by a protection
+    const existing = (usersTab as any).protectedRanges || [];
+    const covered  = existing.some((p: any) =>
+      p.range?.startColumnIndex <= 3 && p.range?.endColumnIndex > 3
+    );
+    if (covered) return;
+
+    // Only the service account can edit; everyone else sees a hard block
+    const serviceEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const editors = serviceEmail ? { users: [serviceEmail] } : undefined;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          addProtectedRange: {
+            protectedRange: {
+              range: {
+                sheetId:            numericSheetId,
+                startColumnIndex:   3,   // column D = Name
+                endColumnIndex:     4,
+              },
+              description: 'Name — set automatically by EduTrack. Do not edit manually.',
+              warningOnly: !editors,
+              ...(editors ? { editors } : {}),
+            },
+          },
+        }],
+      },
+    });
+  } catch { /* non-critical — never break student creation */ }
+}
+
 async function deleteSheetRow(spreadsheetId: string, tabTitle: string, rowNum: number): Promise<void> {
   const sheets = await getUncachableGoogleSheetClient();
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
@@ -153,6 +197,9 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
       (currentGrade  || '').trim(),
       isReEnroll ? 'Yes' : 'No',
     ]);
+
+    // Fire-and-forget: ensure Name column is protected in the sheet
+    ensureNameColumnProtected(sheetId).catch(() => {});
 
     res.json({ ok: true, userId: studentId, parentId, status: 'Active', reusedExisting: !!existingStudent });
   } catch (err: any) {
