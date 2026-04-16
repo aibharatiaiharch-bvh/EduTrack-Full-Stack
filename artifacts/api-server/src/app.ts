@@ -34,7 +34,7 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Pre-auth routes — must be accessible without Clerk
+// Pre-auth routes — must be accessible without Clerk (CORS already applied above)
 app.get("/api/healthz", (_req, res) => {
   res.json({ status: "ok" });
 });
@@ -42,7 +42,6 @@ app.get("/api/config", (_req, res) => {
   const sheetId = process.env.DEFAULT_SHEET_ID || null;
   res.json({ sheetId });
 });
-
 // Clerk middleware — wrapped so a config failure doesn't crash all routes
 try {
   app.use((req: Request, res: Response, next: NextFunction) => {

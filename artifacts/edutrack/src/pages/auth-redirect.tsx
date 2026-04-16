@@ -170,7 +170,8 @@ export default function AuthRedirect() {
 
     setStatusMsg("Looking up your account…");
 
-    fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/roles/check?email=${encodeURIComponent(activeEmail)}`)
+    const apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || import.meta.env.BASE_URL).replace(/\/$/, "");
+    fetch(`${apiBase}/api/roles/check?email=${encodeURIComponent(activeEmail)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.tabMissing) {
