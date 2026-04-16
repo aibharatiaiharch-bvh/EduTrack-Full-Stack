@@ -14,6 +14,7 @@ import scheduleCalendarRouter from "./scheduleCalendar";
 import enrollmentRequestsRouter from "./enrollmentRequests";
 import pushRouter from "./push";
 import attendanceRouter from "./attendance";
+import backupRouter from "./backup";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(scheduleCalendarRouter);
 router.use(enrollmentRequestsRouter);
 router.use(pushRouter);
 router.use(attendanceRouter);
+router.use(backupRouter);
 
 export default router;
