@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
+  BookOpen, AlertTriangle,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -31,7 +32,156 @@ async function apiFetch(path: string, opts?: RequestInit) {
   return res.json();
 }
 
-type Tab = "requests" | "students" | "tutors" | "users";
+function ClassesTab() {
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [tutors, setTutors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reassigning, setReassigning] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true); setError("");
+    try {
+      const [subjectData, tutorData] = await Promise.all([
+        apiFetch("/subjects/with-capacity?status=active"),
+        apiFetch("/principals/teachers"),
+      ]);
+      if (Array.isArray(subjectData)) setSubjects(subjectData);
+      else setError("Could not load classes.");
+      if (Array.isArray(tutorData)) setTutors(tutorData);
+    } catch { setError("Connection error."); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function doReassign(classId: string) {
+    const newTeacherId = selected[classId];
+    if (!newTeacherId) return;
+    setSaving(classId);
+    setSuccess(null);
+    try {
+      const data = await apiFetch("/principals/reassign-teacher", {
+        method: "POST",
+        body: JSON.stringify({ classId, newTeacherId }),
+      });
+      if (data.ok) {
+        setSuccess(classId);
+        setReassigning(null);
+        setSelected(s => { const n = { ...s }; delete n[classId]; return n; });
+        await load();
+      } else {
+        setError(data.error || "Reassignment failed.");
+      }
+    } catch { setError("Connection error."); }
+    setSaving(null);
+  }
+
+  return (
+    <div>
+      <SectionHeader title={`Classes (${subjects.length})`} onRefresh={load} loading={loading} />
+      {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
+
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {!loading && subjects.length === 0 && (
+        <p className="text-sm text-muted-foreground">No active classes found.</p>
+      )}
+
+      <div className="space-y-3">
+        {subjects.map((s) => {
+          const subjectId = s["SubjectID"] || s.SubjectID || "";
+          const isOpen    = reassigning === subjectId;
+          const isSaving  = saving === subjectId;
+          const didSucceed = success === subjectId;
+          const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
+          const currentEnrolled = s.currentEnrolled ?? 0;
+
+          return (
+            <Card key={subjectId} className={isOpen ? "border-amber-400" : ""}>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{s.Name || s["Name"]}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {s.Type} · {currentEnrolled} enrolled
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Current teacher: <span className="font-medium text-foreground">{currentTeacher}</span>
+                    </p>
+                  </div>
+                  {didSucceed && !isOpen && (
+                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Reassigned
+                    </span>
+                  )}
+                </div>
+
+                {!isOpen && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 text-amber-700 border-amber-300 hover:bg-amber-50"
+                    onClick={() => { setReassigning(subjectId); setSuccess(null); }}
+                  >
+                    <AlertTriangle className="w-3 h-3" /> Emergency Reassign
+                  </Button>
+                )}
+
+                {isOpen && (
+                  <div className="space-y-3 pt-1 border-t">
+                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      This will update the class and all active enrollments immediately.
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium mb-1 block">Assign new teacher</label>
+                      <select
+                        className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                        value={selected[subjectId] || ""}
+                        onChange={e => setSelected(sv => ({ ...sv, [subjectId]: e.target.value }))}
+                      >
+                        <option value="">Select a tutor…</option>
+                        {tutors.map(t => (
+                          <option key={t.UserID} value={t.UserID} disabled={t.UserID === s["TeacherID"]}>
+                            {t.Name}{t.UserID === s["TeacherID"] ? " (current)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={!selected[subjectId] || isSaving}
+                        onClick={() => doReassign(subjectId)}
+                        className="gap-1"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        {isSaving ? "Saving…" : `Confirm — reassign ${currentEnrolled} enrolment${currentEnrolled !== 1 ? "s" : ""}`}
+                      </Button>
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => { setReassigning(null); setSelected(sv => { const n = { ...sv }; delete n[subjectId]; return n; }); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type Tab = "requests" | "students" | "tutors" | "users" | "classes";
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
@@ -515,9 +665,10 @@ function UsersTab() {
 }
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "requests", label: "Requests", icon: <ClipboardList className="w-4 h-4" /> },
-  { id: "students", label: "Students", icon: <Users className="w-4 h-4" /> },
-  { id: "tutors",   label: "Tutors",   icon: <UserCheck className="w-4 h-4" /> },
+  { id: "requests", label: "Requests",  icon: <ClipboardList className="w-4 h-4" /> },
+  { id: "students", label: "Students",  icon: <Users className="w-4 h-4" /> },
+  { id: "tutors",   label: "Tutors",    icon: <UserCheck className="w-4 h-4" /> },
+  { id: "classes",  label: "Classes",   icon: <BookOpen className="w-4 h-4" /> },
   { id: "users",    label: "All Users", icon: <Users className="w-4 h-4" /> },
 ];
 
@@ -567,6 +718,7 @@ export default function PrincipalDashboard() {
         {tab === "requests" && <EnrollmentRequestsTab />}
         {tab === "students" && <StudentsTab />}
         {tab === "tutors"   && <TutorsTab />}
+        {tab === "classes"  && <ClassesTab />}
         {tab === "users"    && <UsersTab />}
       </main>
     </div>
