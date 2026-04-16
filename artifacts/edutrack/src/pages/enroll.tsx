@@ -69,8 +69,11 @@ export default function EnrollPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!sheetId) return;
-    fetch(apiUrl(`/subjects?sheetId=${encodeURIComponent(sheetId)}&status=active`))
+    const sid = sheetId;
+    const url = sid
+      ? apiUrl(`/subjects?sheetId=${encodeURIComponent(sid)}&status=active`)
+      : apiUrl(`/subjects?status=active`);
+    fetch(url)
       .then(r => r.ok ? r.json() : [])
       .then((rows: SubjectRow[]) => setSubjects(rows))
       .catch(() => setSubjects([]));

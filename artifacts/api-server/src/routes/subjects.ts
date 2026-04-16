@@ -9,7 +9,7 @@ const TAB     = SHEET_TABS.subjects;
 const HEADERS = SHEET_HEADERS.subjects;
 
 function getSheetId(req: any): string {
-  return req.query.sheetId || req.body?.sheetId || req.headers['x-sheet-id'] || '';
+  return req.query.sheetId || req.body?.sheetId || req.headers['x-sheet-id'] || process.env.DEFAULT_SHEET_ID || '';
 }
 
 async function readSubjectRows(spreadsheetId: string) {
