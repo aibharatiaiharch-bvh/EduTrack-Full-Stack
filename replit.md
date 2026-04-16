@@ -126,6 +126,18 @@ Feature flag (`schedule`) is stored in **localStorage only** (no sheet dependenc
 
 `getFeatures()` reads localStorage → `setStoredFeatures()` writes localStorage → Developer Portal toggle calls these directly with no API round-trip.
 
+## GitHub Sync Failure Alerts
+
+When the GitHub auto-push script fails 3 or more consecutive times, an alert email is sent automatically. The alert is rate-limited to one per hour.
+
+**Required env vars:**
+- `GITHUB_SYNC_ALERT_EMAIL` — recipient address for alert emails (e.g. `admin@example.com`). If not set, no alerts are sent.
+- SMTP vars must also be configured (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`) — same ones used for backup emails.
+
+**Alert contents:** consecutive failure count, branch name, last failure timestamp, error message.
+
+**Implementation:** `artifacts/api-server/src/lib/githubSyncAlert.ts` — called from `artifacts/api-server/src/routes/githubSyncStatus.ts` on each frontend poll. Rate-limit state tracked in `/tmp/github-sync-alert-state.json`.
+
 ## Key Commands
 
 - `pnpm --filter @workspace/api-server run dev` — API server
