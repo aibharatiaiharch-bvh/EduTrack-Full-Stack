@@ -311,7 +311,7 @@ export default function EnrollPage() {
                         return <option key={s._row} value={label}>{label}</option>;
                       })}
                       {!selectedSubjects.includes("Not in list — New Request") && (
-                        <option value="Not in list — New Request">Not in list — New Request</option>
+                        <option value="Not in list — New Request">➕ New Subject / Not in list</option>
                       )}
                     </select>
                     <p className="text-xs text-muted-foreground">Pick from the list to add classes. Selected classes appear below.</p>
