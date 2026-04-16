@@ -410,11 +410,144 @@ function ToolButton({
   );
 }
 
+type NewSheetResult = { spreadsheetId: string; spreadsheetUrl: string; tabs: string[] };
+
+function CreateSheetCard() {
+  const [status, setStatus] = useState<ToolStatus>("idle");
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<NewSheetResult | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function create() {
+    setStatus("running");
+    setError("");
+    setResult(null);
+    setSaved(false);
+    try {
+      const res = await fetch(apiUrl("/sheets/setup"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create sheet");
+      setResult(data);
+      setStatus("ok");
+    } catch (e: any) {
+      setError(e.message || "Unknown error");
+      setStatus("error");
+    }
+  }
+
+  function useThisSheet() {
+    if (!result) return;
+    localStorage.setItem("edutrack_sheet_id", result.spreadsheetId);
+    setSaved(true);
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-5 space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+          <Database className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-sm">Create New EduTrack Sheet in My Drive</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Creates a brand-new Google Spreadsheet named <strong>"EduTrack Data"</strong> in your connected Drive account,
+            sets up all tabs (Users, Students, Teachers, Subjects, Enrollments, Attendance, etc.)
+            with correct headers, and pre-fills with sample data so the app works immediately.
+          </p>
+        </div>
+      </div>
+
+      {status === "idle" && (
+        <Button onClick={create} className="w-full gap-2">
+          <Database className="w-4 h-4" />
+          Create Sheet + Sample Data in My Drive
+        </Button>
+      )}
+
+      {status === "running" && (
+        <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Creating sheet in your Drive… this takes a few seconds
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive text-sm">
+            <XCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={create} className="gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Try Again
+          </Button>
+        </div>
+      )}
+
+      {status === "ok" && result && (
+        <div className="space-y-3 p-4 rounded-lg border border-green-200 bg-green-50">
+          <div className="flex items-center gap-2 text-green-700 font-medium text-sm">
+            <CheckCircle2 className="w-4 h-4" />
+            Sheet created with {result.tabs.length} tabs + sample data!
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-green-800">Sheet ID</p>
+            <code className="block text-xs font-mono bg-white border border-green-200 rounded px-2 py-1.5 text-foreground break-all">
+              {result.spreadsheetId}
+            </code>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={result.spreadsheetUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-green-200 text-green-800 text-xs font-medium hover:bg-green-50 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open Sheet in Google Drive
+            </a>
+
+            {!saved ? (
+              <Button size="sm" onClick={useThisSheet} className="gap-1.5 text-xs h-7">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Use this sheet in the app
+              </Button>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs text-green-700 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Saved as active sheet
+              </span>
+            )}
+          </div>
+
+          {saved && (
+            <p className="text-xs text-green-700">
+              This sheet is now active. Reload the page or navigate to any portal to see your data.
+              Remember to also set <code className="font-mono bg-white px-0.5 rounded">DEFAULT_SHEET_ID={result.spreadsheetId}</code> in your Railway environment variables for production.
+            </p>
+          )}
+        </div>
+      )}
+
+      {status === "ok" && (
+        <button onClick={() => { setStatus("idle"); setResult(null); setSaved(false); }}
+          className="text-xs text-muted-foreground hover:text-foreground underline">
+          Create another sheet
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ToolsTab() {
   const sid = sheetId();
 
   async function runTool(path: string, successMsg: string) {
-    if (!sid) throw new Error("No Sheet ID set — link a sheet first.");
+    if (!sid) throw new Error("No Sheet ID set — create or link a sheet first.");
     const res = await fetch(apiUrl(path), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,22 +565,23 @@ function ToolsTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        These tools operate on the linked Google Sheet. Sheet ID: {" "}
-        <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded">{sid || "not set"}</code>
+    <div className="space-y-4">
+      <CreateSheetCard />
+
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground font-medium px-1">Manage existing linked sheet</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      <p className="text-xs text-muted-foreground -mt-1">
+        Active sheet: <code className="font-mono bg-muted px-1 py-0.5 rounded">{sid || "none"}</code>
       </p>
 
       <ToolButton
         label="Health Check"
         desc="Ping the API server and confirm it is responding."
         action={checkHealth}
-      />
-
-      <ToolButton
-        label="Setup Sheet Tabs"
-        desc="Creates any missing tabs (Users, Students, Teachers, Subjects, Enrollments, Attendance, etc.) with correct headers."
-        action={() => runTool("/sheets/setup", "Sheet tabs created / verified ✓")}
       />
 
       <ToolButton
