@@ -72,6 +72,7 @@ function SignUpPage() {
 function ProtectedRoute({ component: Component }: { component: any }) {
   const { isLoaded, isSignedIn } = useUser();
   const [timedOut, setTimedOut] = useState(false);
+  const hasStoredRole = !!localStorage.getItem("edutrack_user_role");
 
   useEffect(() => {
     if (isLoaded) return;
@@ -79,8 +80,8 @@ function ProtectedRoute({ component: Component }: { component: any }) {
     return () => clearTimeout(t);
   }, [isLoaded]);
 
-  if (!isLoaded && !timedOut) return null;
-  if (!isSignedIn) return <Redirect to="/" />;
+  if (!isLoaded && !timedOut && !hasStoredRole) return null;
+  if (!isSignedIn && !hasStoredRole) return <Redirect to="/" />;
   return <Component />;
 }
 
