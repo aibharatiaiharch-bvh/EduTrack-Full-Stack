@@ -28,26 +28,12 @@ const CSV_FIELD_MAP: Record<string, string> = {
   "notes":                        "notes",
 };
 
-function downloadTemplate(subjects: SubjectRow[]) {
-  const sampleClassName = subjects.length > 0 ? subjects[0].Name : "Maths Year 6";
+function downloadTemplate() {
   const sampleRow = [
     "Emma Johnson", "emma@email.com", "12", "Greenwood Primary", "Year 6",
-    "No", sampleClassName, "parent@email.com", "0412 345 678", "Friend", "", "",
+    "No", "Maths Year 6", "parent@email.com", "0412 345 678", "Friend", "", "",
   ];
-  const rows: string[] = [
-    CSV_HEADERS.join(","),
-    sampleRow.map(v => `"${v}"`).join(","),
-  ];
-  if (subjects.length > 0) {
-    rows.push("");
-    rows.push(`"# ── AVAILABLE CLASS NAMES (rows below are reference only — do not upload)",,,,,,,,,,,,`);
-    rows.push(`"# Copy a class name exactly into the Classes Interested column. Separate multiple classes with a semicolon.",,,,,,,,,,,,`);
-    subjects.forEach(s => {
-      const label = `${s.Name}${s.Type ? ` (${s.Type})` : ""}${s.Teachers ? ` — ${s.Teachers}` : ""}`;
-      rows.push(`"# ${label}",,,,,,"${s.Name}",,,,,,`);
-    });
-  }
-  const csv = rows.join("\n");
+  const csv = [CSV_HEADERS.join(","), sampleRow.map(v => `"${v}"`).join(",")].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -59,7 +45,7 @@ function parseCSV(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
   const headers = lines[0].split(",").map(h => h.replace(/^"|"$/g, "").trim().toLowerCase());
-  return lines.slice(1).filter(l => l.trim() && !l.trimStart().startsWith('"#') && !l.trimStart().startsWith('#')).map(line => {
+  return lines.slice(1).filter(l => l.trim()).map(line => {
     const values: string[] = [];
     let cur = "", inQuote = false;
     for (let i = 0; i <= line.length; i++) {
@@ -93,19 +79,13 @@ export function BulkUploadCard() {
   const [bulkResults, setBulkResults] = useState<BulkResult | null>(null);
   const [error, setError] = useState("");
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
-  const [subjectsLoading, setSubjectsLoading] = useState(true);
-
-  function fetchSubjects(sid: string): Promise<SubjectRow[]> {
-    const params = sid ? `?sheetId=${encodeURIComponent(sid)}` : "";
-    return fetch(apiUrl(`/subjects${params}`))
-      .then(r => r.json())
-      .then(d => (d.subjects || []).filter((s: SubjectRow) => (s.Status || "").toLowerCase() !== "inactive"))
-      .catch(err => { console.error("[BulkUpload] subjects fetch failed:", err); return []; });
-  }
 
   useEffect(() => {
-    setSubjectsLoading(true);
-    fetchSubjects(sheetId).then(list => { setSubjects(list); setSubjectsLoading(false); });
+    const params = sheetId ? `?sheetId=${encodeURIComponent(sheetId)}` : "";
+    fetch(apiUrl(`/subjects${params}`))
+      .then(r => r.json())
+      .then(d => setSubjects((d.subjects || []).filter((s: SubjectRow) => (s.Status || "").toLowerCase() !== "inactive")))
+      .catch(() => {});
   }, [sheetId]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -155,29 +135,9 @@ export function BulkUploadCard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button
-              variant="outline"
-              onClick={async () => {
-                let list = subjects;
-                if (list.length === 0) {
-                  list = await fetchSubjects(sheetId);
-                  if (list.length > 0) setSubjects(list);
-                }
-                downloadTemplate(list);
-              }}
-              className="gap-2"
-            >
-              <FileText className="w-4 h-4" /> Download CSV Template
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              {subjectsLoading
-                ? "Loading classes…"
-                : subjects.length > 0
-                  ? `${subjects.length} class${subjects.length !== 1 ? "es" : ""} will be included`
-                  : "No classes found — template will be generic"}
-            </span>
-          </div>
+          <Button variant="outline" onClick={downloadTemplate} className="gap-2">
+            <FileText className="w-4 h-4" /> Download CSV Template
+          </Button>
           <div className="mt-3 text-xs text-muted-foreground space-y-1">
             <p><span className="font-medium text-foreground">Required:</span> Student Name, Parent Email, Parent Phone</p>
             <p><span className="font-medium text-foreground">Optional:</span> Student Email, Age, Current School, Current Grade, Previously Enrolled, Classes Interested, Reference, Promo Code, Notes</p>
