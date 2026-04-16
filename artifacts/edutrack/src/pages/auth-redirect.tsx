@@ -1,249 +1,100 @@
 import { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
-import { Loader2, Clock, LogOut, ShieldCheck, UserPlus } from "lucide-react";
+import { Loader2, ShieldCheck, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiUrl } from "@/lib/api";
 
-// Shown when the user's email is not registered
-function NotFoundScreen({ onEnroll }: { sheetId: string; onEnroll: () => void }) {
-  const { signOut } = useClerk();
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
-          <ShieldCheck className="w-8 h-8 text-red-500" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">Access Denied</h1>
-        <p className="text-muted-foreground text-sm">
-          Your email is not registered in this school's system. Only approved users can sign in.
-          If you're a new family, you can submit an enrolment request below.
-        </p>
-        <div className="grid grid-cols-1 gap-3">
-          <Button className="w-full gap-2" onClick={onEnroll}>
-            <UserPlus className="w-4 h-4" />
-            Submit Enrolment Request
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full gap-2 text-muted-foreground"
-            onClick={() => signOut({ redirectUrl: "/" })}
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Tutors and staff must be added to the Users tab by a principal before they can sign in.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Shown when the Users tab itself doesn't exist (sheet not seeded yet)
-function SetupRequiredScreen() {
-  const { signOut } = useClerk();
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-          <ShieldCheck className="w-8 h-8 text-amber-500" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">Sheet Setup Required</h1>
-        <p className="text-muted-foreground text-sm">
-          Your Google Sheet hasn't been set up yet. Go to the Developer Portal to initialise the sheet,
-          then sign in again.
-        </p>
-        <div className="grid grid-cols-1 gap-3">
-          <Button className="w-full" onClick={() => window.location.href = "/admin"}>
-            Go to Developer Portal
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full gap-2 text-muted-foreground"
-            onClick={() => signOut({ redirectUrl: "/" })}
-          >
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Shown when the account exists but is still pending activation
-function PendingApprovalScreen({ name }: { name: string }) {
-  const { signOut } = useClerk();
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md text-center space-y-5">
-        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-          <Clock className="w-8 h-8 text-amber-500" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">Pending Approval</h1>
-        <p className="text-muted-foreground text-sm">
-          Hi{name ? ` ${name}` : ""}! Your enrolment request has been received.
-          A staff member or principal will review and activate your account shortly.
-          Once activated you'll be able to sign in and access your portal.
-        </p>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => signOut({ redirectUrl: "/" })}
-        >
-          <LogOut className="w-4 h-4" />
-          Sign Out
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// Shown when the account is Inactive — either new (awaiting payment) or deactivated
-function InactiveScreen({ name }: { name: string }) {
-  const { signOut } = useClerk();
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md text-center space-y-5">
-        <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
-          <Clock className="w-8 h-8 text-amber-500" />
-        </div>
-        <h1 className="text-2xl font-bold text-foreground">Awaiting Activation</h1>
-        <p className="text-muted-foreground text-sm">
-          Hi{name ? ` ${name}` : ""}! Your enrolment request has been received.
-          Your account will be activated once payment is confirmed by the principal.
-          You'll be able to sign in and access your portal once that's done.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Already paid? Contact your school's front desk or principal to confirm activation.
-        </p>
-        <Button
-          variant="ghost"
-          className="gap-2"
-          onClick={() => window.location.href = "/principal"}
-        >
-          <ShieldCheck className="w-4 h-4" />
-          Principal Dashboard
-        </Button>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => signOut({ redirectUrl: "/" })}
-        >
-          <LogOut className="w-4 h-4" />
-          Sign Out
-        </Button>
-      </div>
-    </div>
-  );
-}
+type Screen = "loading" | "not-found" | "error";
 
 export default function AuthRedirect() {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const [, setLocation] = useLocation();
-  const [screen, setScreen] = useState<"loading" | "pending" | "inactive" | "not-found" | "setup-required">("loading");
-  const [statusMsg, setStatusMsg] = useState("Checking your account…");
-  const [userName, setUserName] = useState("");
-
-  // Read email from URL query param first, then localStorage fallback, then Clerk session
-  const urlParams = new URLSearchParams(window.location.search);
-  const emailFromUrl = urlParams.get("email")?.toLowerCase().trim() || "";
-  const emailFromStorage = localStorage.getItem("edutrack_login_email")?.toLowerCase().trim() || "";
+  const [screen, setScreen] = useState<Screen>("loading");
 
   useEffect(() => {
-    // If we already have the email from URL or localStorage, don't wait for Clerk
-    const hasEmail = !!(emailFromUrl || emailFromStorage);
-    if (!hasEmail && !isLoaded) return;
+    if (!isLoaded) return;
 
-    const activeEmail =
-      emailFromUrl ||
-      emailFromStorage ||
-      (isSignedIn && user ? user.primaryEmailAddress?.emailAddress?.toLowerCase().trim() || "" : "");
-
-    if (!activeEmail) {
-      // No email available — send back to sign-in
+    if (!isSignedIn || !user) {
       setLocation("/sign-in");
       return;
     }
 
-    setStatusMsg("Looking up your account…");
+    const email = user.primaryEmailAddress?.emailAddress?.toLowerCase().trim() || "";
+    if (!email) {
+      setLocation("/sign-in");
+      return;
+    }
 
-    const apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || import.meta.env.BASE_URL).replace(/\/$/, "");
-    fetch(`${apiBase}/api/roles/check?email=${encodeURIComponent(activeEmail)}`)
+    fetch(apiUrl(`/roles/check?email=${encodeURIComponent(email)}`))
       .then((r) => r.json())
       .then((data) => {
-        if (data.tabMissing) {
-          setScreen("setup-required");
-          return;
-        }
-
         if (!data.found || !data.role) {
           setScreen("not-found");
           return;
         }
 
-        setUserName(data.name || "");
-
-        if (data.status === "pending") {
-          setScreen("pending");
-          return;
-        }
-
-        if (data.status === "inactive") {
-          setScreen("inactive");
-          return;
-        }
-
-        const role: string = data.role;
-        localStorage.removeItem("edutrack_dev_role_override");
-        localStorage.setItem("edutrack_user_role", role);
-        localStorage.setItem("edutrack_user_email", activeEmail);
+        localStorage.setItem("edutrack_user_role", data.role);
+        localStorage.setItem("edutrack_user_email", email);
         if (data.name) localStorage.setItem("edutrack_user_name", data.name);
         if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
-        localStorage.removeItem("edutrack_login_email");
 
+        const role: string = data.role;
         if (role === "developer" || role === "admin") {
-          setStatusMsg("Welcome, Developer. Redirecting…");
-          setTimeout(() => setLocation("/admin"), 500);
+          setLocation("/admin");
         } else if (role === "principal") {
-          setStatusMsg("Welcome, Principal. Redirecting…");
-          setTimeout(() => setLocation("/principal"), 500);
-        } else if (role === "tutor") {
-          setStatusMsg("Welcome back. Redirecting to your dashboard…");
-          setTimeout(() => setLocation("/dashboard"), 500);
-        } else if (role === "parent") {
-          setStatusMsg("Welcome. Redirecting to the Parent Portal…");
-          setTimeout(() => setLocation("/parent"), 500);
-        } else if (role === "student") {
-          setStatusMsg("Welcome. Redirecting to your schedule…");
-          setTimeout(() => setLocation("/student"), 500);
+          setLocation("/principal");
         } else {
           setLocation("/");
         }
       })
-      .catch(() => {
-        setScreen("setup-required");
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => setScreen("error"));
   }, [isLoaded, isSignedIn, user]);
 
-  if (screen === "pending")  return <PendingApprovalScreen name={userName} />;
-  if (screen === "inactive") return <InactiveScreen name={userName} />;
-  if (screen === "not-found") return (
-    <NotFoundScreen
-      sheetId=""
-      onEnroll={() => setLocation(`/enroll`)}
-    />
-  );
+  if (screen === "not-found") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground text-sm">
+            Your email is not registered in this system. Contact your principal to be added.
+          </p>
+          <Button variant="outline" className="gap-2" onClick={() => signOut({ redirectUrl: "/" })}>
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  if (screen === "setup-required") return <SetupRequiredScreen />;
+  if (screen === "error") {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <h1 className="text-2xl font-bold">Connection Error</h1>
+          <p className="text-muted-foreground text-sm">
+            Could not reach the server. Please try again.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+            <Button variant="outline" onClick={() => signOut({ redirectUrl: "/" })}>
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">{statusMsg}</p>
+      <p className="text-sm text-muted-foreground">Signing you in…</p>
     </div>
   );
 }

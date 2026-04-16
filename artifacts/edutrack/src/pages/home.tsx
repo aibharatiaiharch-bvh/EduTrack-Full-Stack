@@ -1,105 +1,37 @@
-import { useLocation, Link } from "wouter";
-import { GraduationCap, Users, UserPlus, ArrowRight, ShieldCheck } from "lucide-react";
-
-const SHEET_KEY = "edutrack_sheet_id";
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { GraduationCap } from "lucide-react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const sheetId = localStorage.getItem(SHEET_KEY) || "";
+  const storedRole = localStorage.getItem("edutrack_user_role");
 
-  function handleNewStudent() {
-    if (sheetId) {
-      setLocation(`/enroll?sheetId=${encodeURIComponent(sheetId)}`);
+  function goToPortal() {
+    if (storedRole === "developer" || storedRole === "admin") {
+      setLocation("/admin");
+    } else if (storedRole === "principal") {
+      setLocation("/principal");
     } else {
-      setLocation("/enroll");
+      setLocation("/sign-in");
     }
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="px-6 py-4 flex items-center bg-white border-b border-border shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold text-lg">
-            E
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
+      <div className="w-full max-w-sm text-center space-y-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
+            <GraduationCap className="w-8 h-8 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-foreground">EduTrack</span>
+          <h1 className="text-3xl font-bold tracking-tight">EduTrack</h1>
+          <p className="text-muted-foreground text-sm">
+            Tutor &amp; coaching management platform
+          </p>
         </div>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-lg space-y-6 text-center">
-          <div className="space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-              Welcome to EduTrack
-            </h1>
-            <p className="text-muted-foreground text-base sm:text-lg">
-              Select your portal to continue.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Link href="/sign-in">
-              <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <GraduationCap className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Tutor / Staff</h2>
-                <p className="text-sm text-muted-foreground">
-                  Access your dashboard, manage classes, students, and attendance.
-                </p>
-              </div>
-            </Link>
-
-            <Link href="/parent">
-              <div className="group cursor-pointer rounded-xl border-2 border-border bg-white p-6 text-left hover:border-primary hover:shadow-md transition-all duration-200">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <h2 className="text-base font-semibold text-foreground mb-1">Parent / Student Portal</h2>
-                <p className="text-sm text-muted-foreground">
-                  View your child's enrolments, attendance, and manage cancellations.
-                </p>
-              </div>
-            </Link>
-          </div>
-
-          <button
-            onClick={handleNewStudent}
-            className="w-full rounded-xl border-2 border-dashed border-border bg-white p-5 flex items-center gap-4 text-left hover:bg-muted/40 hover:border-orange-300 transition-all duration-200"
-          >
-            <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
-              <UserPlus className="w-5 h-5 text-orange-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">New Student or Family?</p>
-              <p className="text-xs text-muted-foreground">
-                Sign up and submit an enrolment request — your school will activate your account.
-              </p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-          </button>
-
-          <Link href="/sign-in">
-            <div className="group cursor-pointer rounded-md border border-border bg-white/60 p-2.5 text-left hover:border-primary/60 hover:bg-white transition-all duration-200 opacity-60 w-full max-w-sm mx-auto">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-[11px] font-semibold text-foreground">Developer / Admin</h2>
-                  <p className="text-[10px] text-muted-foreground">Setup and system tools</p>
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </main>
-
-      <footer className="py-6 text-center text-sm text-muted-foreground border-t border-border bg-white space-y-1">
-        <p>© {new Date().getFullYear()} EduTrack. All rights reserved.</p>
-        <p>App by <a href="https://qb2bsol.com" target="_blank" rel="noopener noreferrer" className="hover:text-foreground underline underline-offset-2 transition-colors">Qb2bsol.com</a></p>
-      </footer>
+        <Button className="w-full" size="lg" onClick={goToPortal}>
+          {storedRole ? "Go to My Portal" : "Sign In"}
+        </Button>
+      </div>
     </div>
   );
 }
