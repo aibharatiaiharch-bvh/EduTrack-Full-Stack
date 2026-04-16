@@ -104,10 +104,11 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
       ]);
     }
 
-    // Write to Teachers extension tab (no Name/Email/Status — join from Users)
+    // Write to Teachers extension tab — Name at col C so sheet is always human-readable
     const teacherId = await generateTabId('TCH', sheetId, SHEET_TABS.teachers);
     await appendRow(sheetId, SHEET_TABS.teachers, [
       teacherId, userId,
+      name.trim(),                    // col C = Name (denormalised for readability)
       (subjects || '').trim(),
       (zoomLink || '').trim(),
       (specialty || '').trim(),
@@ -162,34 +163,46 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
           const existing = (parentExt['Children'] || '').split(';').map((s: string) => s.trim()).filter(Boolean);
           if (!existing.includes(name.trim())) {
             existing.push(name.trim());
-            const col = String.fromCharCode(65 + 2); // Children = col C (index 2)
+            const col = String.fromCharCode(65 + 3); // Children = col D (index 3, after Name at C)
             await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${parentExt._row}`, existing.join('; '));
           }
         } else {
           // Parent in Users but no extension row — create one
+          // col C = parent's Name (from Users master), col D = Children (student name)
           await appendRow(sheetId, SHEET_TABS.parents, [
-            parentId, parentId, name.trim(), (parentPhone || '').trim(), '',
+            parentId, parentId,
+            existingParentUser.name,  // col C = parent's Name
+            name.trim(),              // col D = Children (first child)
+            (parentPhone || '').trim(),
+            '',
           ]);
         }
       } else {
         // Create new parent
+        const resolvedParentName = (parentName || '').trim() || 'Parent';
         parentId = await generateUserId('parent', sheetId);
         await appendRow(sheetId, SHEET_TABS.users, [
-          parentId, parentNorm, 'parent',
-          (parentName || '').trim() || 'Parent', 'Active', today, now,
+          parentId, parentNorm, 'parent', resolvedParentName, 'Active', today, now,
         ]);
+        // col C = parent's Name, col D = Children (first child = this student)
         await appendRow(sheetId, SHEET_TABS.parents, [
-          parentId, parentId, name.trim(), (parentPhone || '').trim(), '',
+          parentId, parentId,
+          resolvedParentName,   // col C = parent's Name
+          name.trim(),          // col D = Children
+          (parentPhone || '').trim(),
+          '',
         ]);
       }
     }
 
-    // Write to Students extension tab
+    // Write to Students extension tab — Name at col C so sheet is always human-readable
     const studentExtId = await generateTabId('STU', sheetId, SHEET_TABS.students);
     const isReEnroll = previousStudent === true || previousStudent === 'true' || previousStudent === 'yes';
     const subjectsStr = Array.isArray(subjectsInterested) ? subjectsInterested.join(', ') : (subjectsInterested || '');
     await appendRow(sheetId, SHEET_TABS.students, [
-      studentExtId, studentId, parentId,
+      studentExtId, studentId,
+      name.trim(),                    // col C = Name (denormalised for readability)
+      parentId,
       subjectsStr,
       (phone || '').trim(),
       (notes || '').trim(),
