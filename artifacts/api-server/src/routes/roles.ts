@@ -218,4 +218,72 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
   }
 });
 
+router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+
+  const { students } = req.body;
+  if (!Array.isArray(students) || students.length === 0) {
+    res.status(400).json({ error: 'students array is required and must not be empty' }); return;
+  }
+  if (students.length > 200) {
+    res.status(400).json({ error: 'Maximum 200 students per upload' }); return;
+  }
+
+  const now = new Date().toISOString();
+  const today = new Date().toLocaleDateString('en-AU');
+  const results: { row: number; name: string; ok: boolean; reqId?: string; error?: string }[] = [];
+
+  for (let i = 0; i < students.length; i++) {
+    const s = students[i];
+    const studentNameClean = (s.studentName || '').trim();
+    const studentEmailClean = (s.studentEmail || '').toLowerCase().trim();
+    const parentEmailClean = (s.parentEmail || '').toLowerCase().trim();
+
+    if (!studentNameClean || !parentEmailClean) {
+      results.push({ row: i + 1, name: studentNameClean || `Row ${i + 1}`, ok: false, error: 'Student name and parent email are required' });
+      continue;
+    }
+
+    try {
+      const users = await readUsersTab(sheetId);
+      let studentUser = users.find(u =>
+        (studentEmailClean && u.email === studentEmailClean) ||
+        u.email === parentEmailClean
+      );
+      const userId = studentUser?.userId || await generateUserId('student', sheetId);
+      if (!studentUser) {
+        await appendRow(sheetId, SHEET_TABS.users, [
+          userId, studentEmailClean || parentEmailClean, 'student', studentNameClean, 'Pending', today, now,
+        ]);
+      }
+      const reqId = `REQ-${Date.now()}-${i}`;
+      const packedNotes = packNotes({
+        studentName: studentNameClean,
+        studentEmail: studentEmailClean,
+        previouslyEnrolled: s.previouslyEnrolled || '',
+        currentSchool: s.currentSchool || '',
+        currentGrade: s.currentGrade || '',
+        age: s.age || '',
+        classesInterested: s.classesInterested || '',
+        parentEmail: parentEmailClean,
+        parentPhone: s.parentPhone || '',
+        reference: s.reference || '',
+        promoCode: s.promoCode || '',
+        extra: s.notes || '',
+        submissionDate: now,
+      });
+      await appendRow(sheetId, SHEET_TABS.enrollments, [
+        reqId, userId, 'student', '', 'Pending', now, packedNotes,
+      ]);
+      results.push({ row: i + 1, name: studentNameClean, ok: true, reqId });
+    } catch (err: any) {
+      results.push({ row: i + 1, name: studentNameClean, ok: false, error: err.message });
+    }
+  }
+
+  const successCount = results.filter(r => r.ok).length;
+  res.json({ results, total: students.length, success: successCount, failed: students.length - successCount });
+});
+
 export default router;

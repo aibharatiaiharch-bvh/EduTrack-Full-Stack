@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertTriangle, Users, GraduationCap, BookOpen } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Users, GraduationCap, BookOpen, Upload, Download, FileText, XCircle } from "lucide-react";
 
 type SubjectRow = {
   _row: number;
@@ -23,7 +23,64 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
 function apiUrl(path: string) { return `${_apiBase}/api${path}`; }
 
-type RequestType = "student" | "tutor";
+type RequestType = "student" | "tutor" | "bulk";
+
+const CSV_HEADERS = [
+  "Student Name", "Student Email", "Age", "Current School", "Current Grade",
+  "Previously Enrolled (Yes/No)", "Classes Interested", "Parent Email",
+  "Parent Phone", "Reference", "Promo Code", "Notes",
+];
+
+const CSV_FIELD_MAP: Record<string, string> = {
+  "student name":              "studentName",
+  "student email":             "studentEmail",
+  "age":                       "age",
+  "current school":            "currentSchool",
+  "current grade":             "currentGrade",
+  "previously enrolled (yes/no)": "previouslyEnrolled",
+  "previously enrolled":       "previouslyEnrolled",
+  "classes interested":        "classesInterested",
+  "parent email":              "parentEmail",
+  "parent phone":              "parentPhone",
+  "reference":                 "reference",
+  "promo code":                "promoCode",
+  "notes":                     "notes",
+};
+
+function downloadTemplate() {
+  const sampleRow = [
+    "Emma Johnson", "emma@email.com", "12", "Greenwood Primary", "Year 6",
+    "No", "Maths Year 6", "parent@email.com", "0412 345 678", "Friend", "", "",
+  ];
+  const csv = [CSV_HEADERS.join(","), sampleRow.map(v => `"${v}"`).join(",")].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "EduTrack_Student_Upload_Template.csv";
+  a.click();
+}
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.replace(/^"|"$/g, "").trim().toLowerCase());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const values: string[] = [];
+    let cur = "", inQuote = false;
+    for (let i = 0; i <= line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuote = !inQuote; }
+      else if ((ch === "," || i === line.length) && !inQuote) { values.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      const key = CSV_FIELD_MAP[h] || h;
+      row[key] = values[i] || "";
+    });
+    return row;
+  });
+}
 
 const SHEET_KEY = "edutrack_sheet_id";
 
@@ -67,6 +124,47 @@ export default function EnrollPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([]);
+  const [bulkFileName, setBulkFileName] = useState("");
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkResults, setBulkResults] = useState<{ total: number; success: number; failed: number; results: { row: number; name: string; ok: boolean; error?: string }[] } | null>(null);
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBulkFileName(file.name);
+    setBulkResults(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const rows = parseCSV(text);
+      setBulkRows(rows);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  async function handleBulkSubmit() {
+    if (!bulkRows.length) return;
+    setBulkSubmitting(true);
+    setBulkProgress(0);
+    setBulkResults(null);
+    const sid = sheetId || localStorage.getItem(SHEET_KEY) || "";
+    try {
+      const res = await fetch(apiUrl("/roles/enroll-bulk"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId: sid, students: bulkRows }),
+      });
+      const data = await res.json();
+      setBulkResults(data);
+      setBulkProgress(100);
+    } catch {
+      setBulkResults({ total: bulkRows.length, success: 0, failed: bulkRows.length, results: [] });
+    }
+    setBulkSubmitting(false);
+  }
 
   useEffect(() => {
     const sid = sheetId;
@@ -213,7 +311,7 @@ export default function EnrollPage() {
             </p>
           </div>
           {!requestType && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button type="button" onClick={() => setRequestType("student")} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
                 <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
                   <Users className="w-6 h-6 text-blue-600" />
@@ -232,13 +330,28 @@ export default function EnrollPage() {
                   <p className="text-sm text-muted-foreground mt-1">Apply to join as a tutor or staff member.</p>
                 </div>
               </button>
+              <button type="button" onClick={() => { setRequestType("bulk"); setBulkRows([]); setBulkResults(null); }} className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-purple-400 hover:bg-purple-50 transition-all text-left">
+                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Mass Upload</p>
+                  <p className="text-sm text-muted-foreground mt-1">Upload a CSV file to enrol multiple students at once.</p>
+                </div>
+              </button>
             </div>
           )}
           {requestType && (
             <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${requestType === "tutor" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                {requestType === "tutor" ? <GraduationCap className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-                {requestType === "tutor" ? "Tutor / Staff Application" : "Student Enrolment"}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                requestType === "tutor" ? "bg-green-100 text-green-700" :
+                requestType === "bulk"  ? "bg-purple-100 text-purple-700" :
+                "bg-blue-100 text-blue-700"
+              }`}>
+                {requestType === "tutor" ? <GraduationCap className="w-3.5 h-3.5" /> :
+                 requestType === "bulk"  ? <Upload className="w-3.5 h-3.5" /> :
+                 <Users className="w-3.5 h-3.5" />}
+                {requestType === "tutor" ? "Tutor / Staff Application" : requestType === "bulk" ? "Mass Student Upload" : "Student Enrolment"}
               </div>
               <button type="button" onClick={() => setRequestType(null)} className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2">
                 Change
@@ -454,6 +567,117 @@ export default function EnrollPage() {
                 {submitting ? "Submitting…" : "Submit Application"}
               </Button>
             </form>
+          )}
+
+          {requestType === "bulk" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Download className="w-4 h-4" /> Step 1 — Download the Template</CardTitle>
+                  <CardDescription>Fill in the CSV template with your student list, then upload it below. Maximum 200 students per file.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" onClick={downloadTemplate} className="gap-2">
+                    <FileText className="w-4 h-4" /> Download CSV Template
+                  </Button>
+                  <div className="mt-3 text-xs text-muted-foreground space-y-1">
+                    <p><span className="font-medium text-foreground">Required columns:</span> Student Name, Parent Email, Parent Phone</p>
+                    <p><span className="font-medium text-foreground">Optional:</span> Student Email, Age, Current School, Current Grade, Previously Enrolled, Classes Interested, Reference, Promo Code, Notes</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2"><Upload className="w-4 h-4" /> Step 2 — Upload Your CSV</CardTitle>
+                  <CardDescription>Select your completed CSV file. A preview will appear below before you submit.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary hover:bg-primary/5 transition-all">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <p className="text-sm font-medium">{bulkFileName ? bulkFileName : "Click to choose a CSV file"}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{bulkRows.length > 0 ? `${bulkRows.length} student${bulkRows.length !== 1 ? "s" : ""} detected` : ".csv files only"}</p>
+                    </div>
+                    <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleFileUpload} />
+                  </label>
+
+                  {bulkRows.length > 0 && !bulkResults && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preview ({bulkRows.length} rows)</p>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted/50 border-b">
+                              <th className="px-3 py-2 text-left font-medium">#</th>
+                              <th className="px-3 py-2 text-left font-medium">Student Name</th>
+                              <th className="px-3 py-2 text-left font-medium">Student Email</th>
+                              <th className="px-3 py-2 text-left font-medium">Parent Email</th>
+                              <th className="px-3 py-2 text-left font-medium">Classes</th>
+                              <th className="px-3 py-2 text-left font-medium">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bulkRows.map((row, i) => {
+                              const missing = !row.studentName?.trim() || !row.parentEmail?.trim();
+                              return (
+                                <tr key={i} className={`border-b last:border-0 ${missing ? "bg-red-50" : "hover:bg-muted/30"}`}>
+                                  <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
+                                  <td className="px-3 py-2 font-medium">{row.studentName || <span className="text-destructive">Missing</span>}</td>
+                                  <td className="px-3 py-2 text-muted-foreground">{row.studentEmail || "—"}</td>
+                                  <td className="px-3 py-2">{row.parentEmail || <span className="text-destructive">Missing</span>}</td>
+                                  <td className="px-3 py-2 text-muted-foreground truncate max-w-[120px]">{row.classesInterested || "—"}</td>
+                                  <td className="px-3 py-2">{missing ? <span className="text-destructive font-medium">⚠ Fix required</span> : <span className="text-green-600">✓ Ready</span>}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Button onClick={handleBulkSubmit} disabled={bulkSubmitting} className="w-full gap-2 mt-2">
+                        <Upload className="w-4 h-4" />
+                        {bulkSubmitting ? "Submitting…" : `Submit ${bulkRows.length} Student${bulkRows.length !== 1 ? "s" : ""}`}
+                      </Button>
+                    </div>
+                  )}
+
+                  {bulkResults && (
+                    <div className="space-y-3">
+                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${bulkResults.failed === 0 ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}`}>
+                        <CheckCircle2 className={`w-5 h-5 shrink-0 ${bulkResults.failed === 0 ? "text-green-600" : "text-amber-600"}`} />
+                        <div>
+                          <p className="font-medium text-sm">{bulkResults.success} of {bulkResults.total} submitted successfully</p>
+                          {bulkResults.failed > 0 && <p className="text-xs text-muted-foreground">{bulkResults.failed} failed — see details below</p>}
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="bg-muted/50 border-b">
+                              <th className="px-3 py-2 text-left font-medium">#</th>
+                              <th className="px-3 py-2 text-left font-medium">Name</th>
+                              <th className="px-3 py-2 text-left font-medium">Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bulkResults.results.map((r, i) => (
+                              <tr key={i} className={`border-b last:border-0 ${r.ok ? "" : "bg-red-50"}`}>
+                                <td className="px-3 py-2 text-muted-foreground">{r.row}</td>
+                                <td className="px-3 py-2 font-medium">{r.name}</td>
+                                <td className="px-3 py-2">{r.ok ? <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Submitted</span> : <span className="text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" /> {r.error}</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => { setBulkRows([]); setBulkResults(null); setBulkFileName(""); }} className="gap-1.5">
+                        Upload Another File
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
         </div>
       </main>
