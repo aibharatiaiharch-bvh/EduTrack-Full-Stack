@@ -106,6 +106,8 @@ function OverviewTab() {
     fetch(apiUrl("/config")).then(r => r.json()).then(setConfig).catch(() => {});
     fetchSync();
     fetchGithubSyncStatus();
+    const interval = setInterval(fetchSync, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const sid = sheetId();
