@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, Users, Shield, Database, Wrench,
   CheckCircle2, XCircle, RefreshCw, ExternalLink, ChevronRight,
   BookOpen, UserCheck, ClipboardList, UserPlus, Eye, Loader2,
-  AlertTriangle, Activity, GitBranch,
+  AlertTriangle, Activity, GitBranch, Plus,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -840,6 +841,104 @@ function CreateSheetCard() {
   );
 }
 
+function AddSubjectCard() {
+  const [show, setShow] = useState(false);
+  const [form, setForm] = useState({ name: "", type: "Group", days: "", time: "", room: "", maxCapacity: "8", teacherName: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true); setResult(null);
+    try {
+      const sid = sheetId();
+      const res = await fetch(apiUrl("/subjects"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sheetId: sid,
+          name: form.name,
+          type: form.type,
+          teachers: form.teacherName,
+          days: form.days,
+          time: form.time,
+          room: form.room,
+          maxCapacity: form.maxCapacity,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setResult({ ok: true, msg: `Class "${form.name}" created (${data.subjectId})` });
+        setForm({ name: "", type: "Group", days: "", time: "", room: "", maxCapacity: "8", teacherName: "" });
+        setShow(false);
+      } else {
+        setResult({ ok: false, msg: data.error || "Failed to create class." });
+      }
+    } catch { setResult({ ok: false, msg: "Connection error." }); }
+    setSubmitting(false);
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-sm font-medium">Add New Class</p>
+          <p className="text-xs text-muted-foreground">Create a new subject / class in the Google Sheet.</p>
+          {result && (
+            <p className={`text-xs mt-1 ${result.ok ? "text-green-600" : "text-red-600"}`}>{result.msg}</p>
+          )}
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { setShow(s => !s); setResult(null); }} className="shrink-0 gap-1.5">
+          <Plus className="h-3.5 w-3.5" />{show ? "Cancel" : "Add"}
+        </Button>
+      </div>
+      {show && (
+        <form onSubmit={handleSubmit} className="space-y-3 pt-2 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Class Name <span className="text-destructive">*</span></Label>
+              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Maths Year 5" required className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Type <span className="text-destructive">*</span></Label>
+              <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <option value="Group">Group</option>
+                <option value="Individual">Individual</option>
+                <option value="Both">Both</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Days</Label>
+              <Input value={form.days} onChange={e => setForm(f => ({ ...f, days: e.target.value }))} placeholder="e.g. Mon, Wed" className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Time</Label>
+              <Input value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} placeholder="e.g. 4:00 PM" className="h-8 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Room</Label>
+              <Input value={form.room} onChange={e => setForm(f => ({ ...f, room: e.target.value }))} placeholder="e.g. Room 3" className="h-8 text-sm" />
+            </div>
+            {(form.type === "Group" || form.type === "Both") && (
+              <div className="space-y-1">
+                <Label className="text-xs">Max Capacity</Label>
+                <Input type="number" min="1" value={form.maxCapacity} onChange={e => setForm(f => ({ ...f, maxCapacity: e.target.value }))} placeholder="8" className="h-8 text-sm" />
+              </div>
+            )}
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Teacher Name (optional)</Label>
+              <Input value={form.teacherName} onChange={e => setForm(f => ({ ...f, teacherName: e.target.value }))} placeholder="e.g. Sarah Johnson" className="h-8 text-sm" />
+            </div>
+          </div>
+          <Button type="submit" size="sm" disabled={submitting} className="gap-1.5">
+            <Plus className="h-3.5 w-3.5" />{submitting ? "Saving…" : "Create Class"}
+          </Button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 function ToolsTab() {
   const [manualId, setManualId] = useState("");
 
@@ -914,6 +1013,8 @@ function ToolsTab() {
           </button>
         )}
       </div>
+
+      <AddSubjectCard />
 
       <ToolButton
         label="Health Check"

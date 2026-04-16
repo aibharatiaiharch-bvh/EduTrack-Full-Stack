@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle, Clock, DollarSign,
+  BookOpen, AlertTriangle, Clock, DollarSign, Plus, CheckCircle2,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -43,6 +44,11 @@ function ClassesTab() {
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", type: "Group", days: "", time: "", room: "", maxCapacity: "8", teacherId: "" });
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState("");
+  const [addSuccess, setAddSuccess] = useState("");
 
   async function load() {
     setLoading(true); setError("");
@@ -59,6 +65,34 @@ function ClassesTab() {
   }
 
   useAutoRefresh(load);
+
+  async function handleAddSubject(e: React.FormEvent) {
+    e.preventDefault();
+    setAddSubmitting(true); setAddError(""); setAddSuccess("");
+    try {
+      const data = await apiFetch("/subjects", {
+        method: "POST",
+        body: JSON.stringify({
+          name: addForm.name,
+          type: addForm.type,
+          teacherId: addForm.teacherId,
+          days: addForm.days,
+          time: addForm.time,
+          room: addForm.room,
+          maxCapacity: addForm.maxCapacity,
+        }),
+      });
+      if (data.ok) {
+        setAddSuccess(`Class "${addForm.name}" created (${data.subjectId})`);
+        setAddForm({ name: "", type: "Group", days: "", time: "", room: "", maxCapacity: "8", teacherId: "" });
+        setShowAdd(false);
+        await load();
+      } else {
+        setAddError(data.error || "Failed to create class.");
+      }
+    } catch { setAddError("Connection error."); }
+    setAddSubmitting(false);
+  }
 
   async function doReassign(classId: string) {
     const newTeacherId = selected[classId];
@@ -86,6 +120,74 @@ function ClassesTab() {
     <div>
       <SectionHeader title={`Classes (${subjects.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
+
+      {/* Add Subject */}
+      <div className="mb-4">
+        {addSuccess && !showAdd && (
+          <p className="text-xs text-green-600 flex items-center gap-1 mb-2"><CheckCircle2 className="w-3 h-3" />{addSuccess}</p>
+        )}
+        {!showAdd ? (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setShowAdd(true); setAddSuccess(""); }}>
+            <Plus className="w-3.5 h-3.5" /> Add New Class
+          </Button>
+        ) : (
+          <Card className="border-primary/30">
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm">Add New Class</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <form onSubmit={handleAddSubject} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Class Name <span className="text-destructive">*</span></Label>
+                    <Input value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Maths Year 5" required className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Type <span className="text-destructive">*</span></Label>
+                    <select value={addForm.type} onChange={e => setAddForm(f => ({ ...f, type: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="Group">Group</option>
+                      <option value="Individual">Individual</option>
+                      <option value="Both">Both</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Days</Label>
+                    <Input value={addForm.days} onChange={e => setAddForm(f => ({ ...f, days: e.target.value }))} placeholder="e.g. Mon, Wed" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Time</Label>
+                    <Input value={addForm.time} onChange={e => setAddForm(f => ({ ...f, time: e.target.value }))} placeholder="e.g. 4:00 PM" className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Room</Label>
+                    <Input value={addForm.room} onChange={e => setAddForm(f => ({ ...f, room: e.target.value }))} placeholder="e.g. Room 3" className="h-8 text-sm" />
+                  </div>
+                  {(addForm.type === "Group" || addForm.type === "Both") && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Max Capacity</Label>
+                      <Input type="number" min="1" value={addForm.maxCapacity} onChange={e => setAddForm(f => ({ ...f, maxCapacity: e.target.value }))} placeholder="8" className="h-8 text-sm" />
+                    </div>
+                  )}
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs">Assign Teacher</Label>
+                    <select value={addForm.teacherId} onChange={e => setAddForm(f => ({ ...f, teacherId: e.target.value }))} className="w-full h-8 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="">Unassigned</option>
+                      {tutors.map(t => <option key={t.UserID} value={t.UserID}>{t.Name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {addError && <p className="text-xs text-destructive">{addError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" size="sm" disabled={addSubmitting} className="gap-1">
+                    <Plus className="w-3.5 h-3.5" />{addSubmitting ? "Saving…" : "Create Class"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => { setShowAdd(false); setAddError(""); }}>Cancel</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && subjects.length === 0 && (
