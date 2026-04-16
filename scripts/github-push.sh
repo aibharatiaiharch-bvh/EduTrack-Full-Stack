@@ -52,11 +52,29 @@ push_if_needed() {
   if [ "$AHEAD" -gt 0 ]; then
     echo "[github-push] $(date -u '+%Y-%m-%d %H:%M:%S UTC') — Pushing $AHEAD commit(s) on '$BRANCH'…"
 
-    if git -c "http.extraHeader=${AUTH_HEADER}" push origin "$BRANCH" --quiet 2>&1; then
+    PUSH_OUT=$(git -c "http.extraHeader=${AUTH_HEADER}" push origin "$BRANCH" --quiet 2>&1)
+    PUSH_EXIT=$?
+
+    if [ $PUSH_EXIT -eq 0 ]; then
       echo "[github-push] Push succeeded."
       write_sync_status "$BRANCH"
+    elif echo "$PUSH_OUT" | grep -q "non-fast-forward\|fetch first"; then
+      echo "[github-push] Remote has new commits — pulling and rebasing…"
+      if GIT_EDITOR=true git -c "http.extraHeader=${AUTH_HEADER}" pull --rebase origin "$BRANCH" --quiet 2>&1; then
+        echo "[github-push] Rebase OK — retrying push…"
+        if git -c "http.extraHeader=${AUTH_HEADER}" push origin "$BRANCH" --quiet 2>&1; then
+          echo "[github-push] Push succeeded after rebase."
+          write_sync_status "$BRANCH"
+        else
+          echo "[github-push] Push FAILED after rebase — will retry next cycle."
+        fi
+      else
+        echo "[github-push] Rebase had conflicts — aborting. Manual intervention needed."
+        git rebase --abort 2>/dev/null || true
+      fi
     else
       echo "[github-push] Push FAILED — will retry next cycle."
+      echo "$PUSH_OUT"
     fi
   else
     echo "[github-push] $(date -u '+%Y-%m-%d %H:%M:%S UTC') — No new commits on '$BRANCH'."

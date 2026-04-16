@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -262,7 +263,7 @@ export default function TeacherDashboard() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   // Redirect if not a tutor
   if (role && role !== "tutor" && role !== "teacher" && role !== "developer") {

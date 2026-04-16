@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
@@ -57,7 +58,7 @@ function ClassesTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   async function doReassign(classId: string) {
     const newTeacherId = selected[classId];
@@ -229,7 +230,7 @@ function EnrollmentRequestsTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   async function act(row: any, action: "approve" | "reject") {
     setActing(row._row);
@@ -416,7 +417,7 @@ function StudentsTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   function openForm() { setForm({ ...BLANK_STUDENT }); setFormError(""); setShowForm(true); }
 
@@ -623,7 +624,7 @@ function TutorsTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -729,7 +730,7 @@ function UsersTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   async function toggleStatus(user: any) {
     setActing(user.userId);
@@ -803,7 +804,7 @@ function LateCancellationsTab() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useAutoRefresh(load);
 
   async function override(row: any, action: "Fee Waived" | "Fee Confirmed") {
     setActing(row._row);
