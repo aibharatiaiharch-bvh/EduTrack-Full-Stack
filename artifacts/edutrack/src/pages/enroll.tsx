@@ -310,13 +310,16 @@ export default function EnrollPage() {
                         const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
                         return <option key={s._row} value={label}>{label}</option>;
                       })}
+                      {!selectedSubjects.includes("Not in list — New Request") && (
+                        <option value="Not in list — New Request">Not in list — New Request</option>
+                      )}
                     </select>
                     <p className="text-xs text-muted-foreground">Pick from the list to add classes. Selected classes appear below.</p>
                   </div>
-                  {subjects.length > 0 ? (
+                  {selectedSubjects.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {selectedSubjects.map(name => (
-                        <span key={name} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium px-2.5 py-1">
+                        <span key={name} className={`inline-flex items-center gap-1.5 rounded-full text-xs font-medium px-2.5 py-1 ${name === "Not in list — New Request" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}>
                           <BookOpen className="h-3 w-3" />
                           {name}
                           <button type="button" onClick={() => removeSubject(name)} className="ml-0.5 hover:text-destructive transition-colors" aria-label={`Remove ${name}`}>×</button>
@@ -364,7 +367,10 @@ export default function EnrollPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes</Label>
-                    <textarea id="notes" rows={3} value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder="Any extra requests, scheduling needs, or information for the principal…" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+                    {selectedSubjects.includes("Not in list — New Request") && (
+                      <p className="text-xs text-amber-600 font-medium">You selected "Not in list — New Request". Please describe the class or subject you are looking for below.</p>
+                    )}
+                    <textarea id="notes" rows={3} value={studentForm.notes} onChange={e => setStudent("notes", e.target.value)} placeholder={selectedSubjects.includes("Not in list — New Request") ? "Describe the class or subject you are looking for…" : "Any extra requests, scheduling needs, or information for the principal…"} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
                   </div>
                 </CardContent>
               </Card>
