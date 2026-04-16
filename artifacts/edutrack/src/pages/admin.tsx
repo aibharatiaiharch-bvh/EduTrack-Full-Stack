@@ -725,10 +725,20 @@ function CreateSheetCard() {
 }
 
 function ToolsTab() {
-  const sid = sheetId();
+  const [manualId, setManualId] = useState("");
+
+  function activeSid(): string {
+    return manualId.trim() || sheetId();
+  }
+
+  function saveManual() {
+    const v = manualId.trim();
+    if (v) { localStorage.setItem("edutrack_sheet_id", v); setManualId(""); }
+  }
 
   async function runTool(path: string, successMsg: string) {
-    if (!sid) throw new Error("No Sheet ID set — create or link a sheet first.");
+    const sid = activeSid();
+    if (!sid) throw new Error("No Sheet ID — paste it in the field below first.");
     const res = await fetch(apiUrl(path), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -745,6 +755,8 @@ function ToolsTab() {
     return `API is ${data.status || "ok"} ✓`;
   }
 
+  const stored = sheetId();
+
   return (
     <div className="space-y-4">
       <CreateSheetCard />
@@ -755,9 +767,37 @@ function ToolsTab() {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      <p className="text-xs text-muted-foreground -mt-1">
-        Active sheet: <code className="font-mono bg-muted px-1 py-0.5 rounded">{sid || "none"}</code>
-      </p>
+      {/* Sheet ID row — always visible, editable */}
+      <div className="rounded-lg border bg-card p-4 space-y-2">
+        <p className="text-sm font-medium">Active Sheet ID</p>
+        {stored ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-xs font-mono bg-muted px-2 py-1.5 rounded border truncate">{stored}</code>
+            <a href={`https://docs.google.com/spreadsheets/d/${stored}`} target="_blank" rel="noreferrer"
+              className="shrink-0 text-xs text-primary hover:underline flex items-center gap-1">
+              <ExternalLink className="w-3 h-3" /> Open
+            </a>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              value={manualId}
+              onChange={e => setManualId(e.target.value)}
+              placeholder="Paste your Google Sheet ID here"
+              className="font-mono text-xs"
+            />
+            <Button size="sm" onClick={saveManual} disabled={!manualId.trim()}>
+              Save
+            </Button>
+          </div>
+        )}
+        {stored && (
+          <button onClick={() => { localStorage.removeItem("edutrack_sheet_id"); window.location.reload(); }}
+            className="text-xs text-muted-foreground hover:text-destructive underline">
+            Change sheet ID
+          </button>
+        )}
+      </div>
 
       <ToolButton
         label="Health Check"
@@ -779,7 +819,7 @@ function ToolsTab() {
 
       <ToolButton
         label="Seed Demo Data"
-        desc="Loads sample users, students, tutors, classes, and enrollments into the sheet for testing. Will add rows — does not delete existing data."
+        desc="Clears and re-fills every tab with sample data. Use this to reset the sheet to a clean demo state."
         action={() => runTool("/sheets/seed", "Demo data seeded ✓")}
       />
     </div>
