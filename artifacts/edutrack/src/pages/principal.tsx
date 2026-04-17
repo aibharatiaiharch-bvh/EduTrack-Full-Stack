@@ -13,7 +13,7 @@ import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
   BookOpen, AlertTriangle, DollarSign, Plus, CheckCircle2, Upload,
-  Search, ChevronLeft, ChevronRight,
+  Search, ChevronLeft, ChevronRight, CalendarDays,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -351,7 +351,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "upload";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "attendance" | "upload";
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
@@ -1419,11 +1419,170 @@ function UsersTab() {
   );
 }
 
+// ─── Attendance monthly summary ──────────────────────────────────────────────
+function AttendanceTab() {
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [month, setMonth] = useState(defaultMonth);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function load(m: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await apiFetch(`/attendance/summary?month=${encodeURIComponent(m)}`);
+      if (result.error) setError(result.error);
+      else setData(result);
+    } catch { setError("Connection error."); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(month); }, [month]);
+
+  const monthLabel = month
+    ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
+    : "";
+
+  const students: any[] = data?.students ?? [];
+  const tutors:   any[] = data?.tutors   ?? [];
+
+  return (
+    <div>
+      <SectionHeader title="Attendance Summary" onRefresh={() => load(month)} loading={loading} />
+
+      {/* Month picker */}
+      <div className="flex items-center gap-3 mb-6">
+        <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Month</label>
+        <input
+          type="month"
+          value={month}
+          onChange={e => setMonth(e.target.value)}
+          className="border rounded-md px-3 py-1.5 text-sm bg-background"
+        />
+        {monthLabel && <span className="text-sm text-muted-foreground">{monthLabel}</span>}
+      </div>
+
+      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+
+      {!loading && data && students.length === 0 && tutors.length === 0 && (
+        <p className="text-sm text-muted-foreground py-6 text-center">No attendance records found for {monthLabel}.</p>
+      )}
+
+      {/* Student Billing Summary */}
+      {students.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Student Billing Summary
+          </h3>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Student</th>
+                  <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Class</th>
+                  <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Tutor</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-green-700">Present</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 hidden sm:table-cell">Late</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-red-700 hidden sm:table-cell">Absent</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Attended</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {students.flatMap((s: any) =>
+                  s.classes.map((c: any, ci: number) => (
+                    <tr key={`${s.studentId}-${c.classId}`} className="hover:bg-muted/30">
+                      <td className="px-3 py-2.5 font-medium">
+                        {ci === 0 ? s.studentName : ""}
+                      </td>
+                      <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{c.className}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{c.teacherName}</td>
+                      <td className="px-3 py-2.5 text-center text-green-700 font-medium">{c.present}</td>
+                      <td className="px-3 py-2.5 text-center text-amber-700 hidden sm:table-cell">{c.late}</td>
+                      <td className="px-3 py-2.5 text-center text-red-700 hidden sm:table-cell">{c.absent}</td>
+                      <td className="px-3 py-2.5 text-center font-semibold bg-primary/5">
+                        {c.attended}
+                        <span className="text-xs text-muted-foreground font-normal"> / {c.totalSessions}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {students.length > 1 && (
+                <tfoot className="bg-muted/60 border-t-2">
+                  <tr>
+                    <td className="px-3 py-2 font-semibold" colSpan={3}>Total</td>
+                    <td className="px-3 py-2 text-center font-semibold text-green-700">
+                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0)}
+                    </td>
+                    <td className="px-3 py-2 text-center font-semibold text-amber-700 hidden sm:table-cell">
+                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.late, 0), 0)}
+                    </td>
+                    <td className="px-3 py-2 text-center font-semibold text-red-700 hidden sm:table-cell">
+                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0)}
+                    </td>
+                    <td className="px-3 py-2 text-center font-bold bg-primary/10">
+                      {students.reduce((n: number, s: any) => n + s.totalAttended, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tutor Payment Summary */}
+      {tutors.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Tutor Payment Summary
+          </h3>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Tutor</th>
+                  <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Class</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Sessions Taught</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {tutors.flatMap((t: any) =>
+                  t.classes.map((c: any, ci: number) => (
+                    <tr key={`${t.teacherId}-${c.classId}`} className="hover:bg-muted/30">
+                      <td className="px-3 py-2.5 font-medium">{ci === 0 ? t.teacherName : ""}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{c.className}</td>
+                      <td className="px-3 py-2.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {tutors.length > 1 && (
+                <tfoot className="bg-muted/60 border-t-2">
+                  <tr>
+                    <td className="px-3 py-2 font-semibold" colSpan={2}>Total</td>
+                    <td className="px-3 py-2 text-center font-bold bg-primary/10">
+                      {tutors.reduce((n: number, t: any) => n + t.totalSessions, 0)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
+  { id: "attendance",  label: "Attendance",         icon: <CalendarDays className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
   { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
 ];
@@ -1480,6 +1639,7 @@ export default function PrincipalDashboard() {
         {tab === "students"    && <StudentsTab />}
         {tab === "tutors"      && <TutorsTab />}
         {tab === "classes"     && <ClassesTab />}
+        {tab === "attendance"  && <AttendanceTab />}
         {tab === "users"       && <UsersTab />}
         {tab === "upload"      && <BulkUploadCard />}
       </main>
