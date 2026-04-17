@@ -248,7 +248,7 @@ export default function EnrollPage() {
             </div>
           )}
           {requestType === "student" && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Student Information</CardTitle>
@@ -388,7 +388,7 @@ export default function EnrollPage() {
             </form>
           )}
           {requestType === "tutor" && (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Your Details</CardTitle>
