@@ -342,7 +342,7 @@ export default function EnrollPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="parentEmail">Parent Email</Label>
-                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" />
+                      <Input id="parentEmail" type="text" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="parentPhone">Phone</Label>
