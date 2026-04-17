@@ -134,8 +134,10 @@ export const SHEET_HEADERS = {
   subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Time', 'Status', 'MaxCapacity'],
 
   // TRANSACTIONS — UserIDs for all FKs; class date/time stored as session data
+  // Status: Active | Inactive  (default Active)
+  // Fee:    Not Applicable | Not Waived | Waived  (default Not Applicable; only set when Inactive)
   enrollments: [
-    'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'EnrolledAt',
+    'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'Fee', 'EnrolledAt',
     'TeacherID', 'Teacher Name', 'TeacherEmail', 'Zoom Link', 'Class Type',
     'ClassDate', 'ClassTime', 'Notes',
   ],
