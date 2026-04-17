@@ -13,6 +13,7 @@ import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
   BookOpen, AlertTriangle, Clock, DollarSign, Plus, CheckCircle2, Upload,
+  Search, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -489,6 +490,91 @@ function SubjectMultiSelect({ selected, onChange, subjects }: {
   );
 }
 
+const PAGE_SIZE = 15;
+
+function ListControls({
+  search, onSearch,
+  statusFilter, onStatusFilter,
+  total, filtered,
+}: {
+  search: string; onSearch: (v: string) => void;
+  statusFilter: string; onStatusFilter: (v: string) => void;
+  total: number; filtered: number;
+}) {
+  return (
+    <div className="flex flex-col sm:flex-row gap-2 mb-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          value={search}
+          onChange={e => onSearch(e.target.value)}
+          placeholder="Search by name or email…"
+          className="pl-8 h-8 text-sm"
+        />
+      </div>
+      <div className="flex gap-1 shrink-0">
+        {(["all", "active", "inactive"] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => onStatusFilter(f)}
+            className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
+              statusFilter === f
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:bg-muted"
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+      {search || statusFilter !== "all" ? (
+        <p className="text-xs text-muted-foreground self-center shrink-0">
+          {filtered} of {total}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PaginationBar({
+  page, totalPages, onPage,
+}: {
+  page: number; totalPages: number; onPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t">
+      <button
+        onClick={() => onPage(page - 1)}
+        disabled={page === 1}
+        className="p-1 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+        <button
+          key={p}
+          onClick={() => onPage(p)}
+          className={`w-7 h-7 rounded-md text-xs font-medium transition-colors ${
+            p === page
+              ? "bg-primary text-primary-foreground"
+              : "hover:bg-muted text-muted-foreground"
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        onClick={() => onPage(page + 1)}
+        disabled={page === totalPages}
+        className="p-1 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 function StudentsTab() {
   const [students, setStudents] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -503,6 +589,9 @@ function StudentsTab() {
   const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
   const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
+  const [search,       setSearch]       = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page,         setPage]         = useState(1);
 
   async function toggleStatus(s: any) {
     setActing(s.userId);
@@ -648,11 +737,28 @@ function StudentsTab() {
       )}
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!loading && students.length === 0 && <p className="text-sm text-muted-foreground">No students yet.</p>}
-      <div className="space-y-2">
-        {students.map((s) => {
-          const isExpanded = expandedStudent === s.userId;
-          const classes    = studentClasses[s.userId] || [];
+      {!loading && students.length > 0 && (() => {
+        const q = search.toLowerCase();
+        const filtered = students.filter(s => {
+          const matchesSearch = !q || s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
+          const matchesStatus = statusFilter === "all" || (s.status?.toLowerCase() ?? "") === statusFilter;
+          return matchesSearch && matchesStatus;
+        });
+        const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+        return (
+          <>
+            <ListControls
+              search={search} onSearch={v => { setSearch(v); setPage(1); }}
+              statusFilter={statusFilter} onStatusFilter={v => { setStatusFilter(v); setPage(1); }}
+              total={students.length} filtered={filtered.length}
+            />
+            {paged.length === 0 && <p className="text-sm text-muted-foreground">No students match your search.</p>}
+            <div className="space-y-2">
+              {paged.map((s) => {
+                const isExpanded = expandedStudent === s.userId;
+                const classes    = studentClasses[s.userId] || [];
           return (
             <div key={s.userId} className="rounded-lg border text-sm">
               <div className="p-3 flex items-center justify-between gap-2">
@@ -716,9 +822,14 @@ function StudentsTab() {
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
+              );
+            })}
+            </div>
+            <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
+          </>
+        );
+      })()}
+      {!loading && students.length === 0 && <p className="text-sm text-muted-foreground">No students yet.</p>}
     </div>
   );
 }
@@ -732,6 +843,9 @@ function TutorsTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [acting, setActing] = useState<string | null>(null);
+  const [search,       setSearch]       = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page,         setPage]         = useState(1);
 
   async function toggleStatus(t: any) {
     setActing(t.UserID);
@@ -811,33 +925,55 @@ function TutorsTab() {
       )}
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!loading && tutors.length === 0 && <p className="text-sm text-muted-foreground">No tutors yet.</p>}
-      <div className="space-y-2">
-        {tutors.map((t) => (
-          <div key={t.UserID} className="p-3 rounded-lg border text-sm space-y-1">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-medium">{t.Name}</p>
-                <p className="text-muted-foreground">{t.Email}</p>
-                {t.Subjects && <p className="text-xs">Subjects: {t.Subjects}</p>}
-                {t.Specialty && <p className="text-xs">Specialty: {t.Specialty}</p>}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusBadge status={t.Status} />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={acting === t.UserID}
-                  onClick={() => toggleStatus(t)}
-                  className="text-xs"
-                >
-                  {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                </Button>
-              </div>
+      {!loading && tutors.length > 0 && (() => {
+        const q = search.toLowerCase();
+        const filtered = tutors.filter(t => {
+          const matchesSearch = !q || t.Name?.toLowerCase().includes(q) || t.Email?.toLowerCase().includes(q) || t.Subjects?.toLowerCase().includes(q);
+          const matchesStatus = statusFilter === "all" || (t.Status?.toLowerCase() ?? "") === statusFilter;
+          return matchesSearch && matchesStatus;
+        });
+        const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+        const safePage = Math.min(page, totalPages);
+        const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+        return (
+          <>
+            <ListControls
+              search={search} onSearch={v => { setSearch(v); setPage(1); }}
+              statusFilter={statusFilter} onStatusFilter={v => { setStatusFilter(v); setPage(1); }}
+              total={tutors.length} filtered={filtered.length}
+            />
+            {paged.length === 0 && <p className="text-sm text-muted-foreground">No tutors match your search.</p>}
+            <div className="space-y-2">
+              {paged.map((t) => (
+                <div key={t.UserID} className="p-3 rounded-lg border text-sm space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{t.Name}</p>
+                      <p className="text-muted-foreground">{t.Email}</p>
+                      {t.Subjects && <p className="text-xs">Subjects: {t.Subjects}</p>}
+                      {t.Specialty && <p className="text-xs">Specialty: {t.Specialty}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <StatusBadge status={t.Status} />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={acting === t.UserID}
+                        onClick={() => toggleStatus(t)}
+                        className="text-xs"
+                      >
+                        {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
+            <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
+          </>
+        );
+      })()}
+      {!loading && tutors.length === 0 && <p className="text-sm text-muted-foreground">No tutors yet.</p>}
     </div>
   );
 }
