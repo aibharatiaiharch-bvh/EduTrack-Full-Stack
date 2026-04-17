@@ -1204,7 +1204,8 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   async function load() {
     setLoading(true);
@@ -1229,47 +1230,92 @@ function UsersTab() {
     setActing(null);
   }
 
-  const filtered = users.filter(u =>
-    !filter || u.name?.toLowerCase().includes(filter.toLowerCase()) || u.email?.toLowerCase().includes(filter.toLowerCase())
-  );
+  const q = search.toLowerCase();
+  const filtered = users.filter(u => {
+    const matchSearch = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.role?.toLowerCase().includes(q);
+    const matchStatus = statusFilter === "all" || (u.status?.toLowerCase() ?? "") === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   return (
     <div>
       <SectionHeader title={`All Users (${users.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-      <Input
-        placeholder="Search by name or email…"
-        value={filter}
-        onChange={e => setFilter(e.target.value)}
-        className="mb-4"
-      />
+      {/* Filter bar */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, email or role…"
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        <div className="flex gap-1 shrink-0">
+          {["active", "all", "inactive"].map(s => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors capitalize ${
+                statusFilter === s
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        {(search || statusFilter !== "active") && (
+          <p className="text-xs text-muted-foreground self-center shrink-0">{filtered.length} of {users.length}</p>
+        )}
+      </div>
 
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!loading && filtered.length === 0 && <p className="text-sm text-muted-foreground">No users found.</p>}
-      <div className="space-y-2">
-        {filtered.map((u) => (
-          <div key={u.userId} className="flex items-center justify-between p-3 rounded-lg border text-sm">
-            <div>
-              <p className="font-medium">{u.name}</p>
-              <p className="text-muted-foreground">{u.email}</p>
-              <p className="text-xs text-muted-foreground capitalize">{u.role}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={u.status} />
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={acting === u.userId}
-                onClick={() => toggleStatus(u)}
-                className="text-xs"
-              >
-                {u.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {!loading && filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground">No users match your search.</p>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50 border-b">
+              <tr>
+                <th className="text-left font-medium px-3 py-2.5">Name</th>
+                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                <th className="text-left font-medium px-3 py-2.5">Role</th>
+                <th className="text-left font-medium px-3 py-2.5">Status</th>
+                <th className="px-3 py-2.5" />
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map((u) => (
+                <tr key={u.userId} className="hover:bg-muted/20">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{u.name}</span>
+                      <Button
+                        size="sm" variant="outline"
+                        disabled={acting === u.userId}
+                        onClick={() => toggleStatus(u)}
+                        className="text-xs h-6 px-2 shrink-0"
+                      >
+                        {u.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{u.email || "—"}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
+                  <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
+                  <td className="px-3 py-2.5" />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
