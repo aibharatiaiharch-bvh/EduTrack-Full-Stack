@@ -1427,6 +1427,8 @@ function AttendanceTab() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
+  const [expandedTutors, setExpandedTutors] = useState<Set<string>>(new Set());
 
   async function load(m: string) {
     setLoading(true);
@@ -1441,12 +1443,32 @@ function AttendanceTab() {
 
   useEffect(() => { load(month); }, [month]);
 
+  function toggleStudent(id: string) {
+    setExpandedStudents(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleTutor(id: string) {
+    setExpandedTutors(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   const monthLabel = month
     ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
     : "";
 
   const students: any[] = data?.students ?? [];
   const tutors:   any[] = data?.tutors   ?? [];
+
+  const totalPresent  = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0);
+  const totalLate     = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.late, 0), 0);
+  const totalAbsent   = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0);
+  const totalAttended = students.reduce((n: number, s: any) => n + s.totalAttended, 0);
 
   return (
     <div>
@@ -1470,105 +1492,144 @@ function AttendanceTab() {
         <p className="text-sm text-muted-foreground py-6 text-center">No attendance records found for {monthLabel}.</p>
       )}
 
-      {/* Student Billing Summary */}
+      {/* ── Student Billing Summary ── */}
       {students.length > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Student Billing Summary
+            <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
           </h3>
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="text-left font-medium px-3 py-2.5 w-6" />
                   <th className="text-left font-medium px-3 py-2.5">Student</th>
-                  <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Class</th>
-                  <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Tutor</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-green-700">Present</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 hidden sm:table-cell">Late</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-red-700 hidden sm:table-cell">Absent</th>
-                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Attended</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-green-700 hidden sm:table-cell">Present</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 hidden md:table-cell">Late</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-red-700 hidden md:table-cell">Absent</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Sessions Attended</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {students.flatMap((s: any) =>
-                  s.classes.map((c: any, ci: number) => (
-                    <tr key={`${s.studentId}-${c.classId}`} className="hover:bg-muted/30">
-                      <td className="px-3 py-2.5 font-medium">
-                        {ci === 0 ? s.studentName : ""}
-                      </td>
-                      <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{c.className}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{c.teacherName}</td>
-                      <td className="px-3 py-2.5 text-center text-green-700 font-medium">{c.present}</td>
-                      <td className="px-3 py-2.5 text-center text-amber-700 hidden sm:table-cell">{c.late}</td>
-                      <td className="px-3 py-2.5 text-center text-red-700 hidden sm:table-cell">{c.absent}</td>
-                      <td className="px-3 py-2.5 text-center font-semibold bg-primary/5">
-                        {c.attended}
-                        <span className="text-xs text-muted-foreground font-normal"> / {c.totalSessions}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
+              <tbody>
+                {students.map((s: any) => {
+                  const isOpen = expandedStudents.has(s.studentId);
+                  const sPresent = s.classes.reduce((n: number, c: any) => n + c.present, 0);
+                  const sLate   = s.classes.reduce((n: number, c: any) => n + c.late, 0);
+                  const sAbsent = s.classes.reduce((n: number, c: any) => n + c.absent, 0);
+                  return (
+                    <Fragment key={s.studentId}>
+                      {/* ── Student subtotal row ── */}
+                      <tr
+                        className="border-t hover:bg-muted/40 cursor-pointer select-none"
+                        onClick={() => toggleStudent(s.studentId)}
+                      >
+                        <td className="px-2 py-2.5 text-muted-foreground text-center">
+                          {isOpen
+                            ? <ChevronUp className="w-3.5 h-3.5 inline" />
+                            : <ChevronDown className="w-3.5 h-3.5 inline" />}
+                        </td>
+                        <td className="px-3 py-2.5 font-semibold">{s.studentName}</td>
+                        <td className="px-3 py-2.5 text-center text-green-700 font-medium hidden sm:table-cell">{sPresent}</td>
+                        <td className="px-3 py-2.5 text-center text-amber-700 hidden md:table-cell">{sLate}</td>
+                        <td className="px-3 py-2.5 text-center text-red-700 hidden md:table-cell">{sAbsent}</td>
+                        <td className="px-3 py-2.5 text-center font-bold bg-primary/5">
+                          {s.totalAttended}
+                          <span className="text-xs font-normal text-muted-foreground"> / {s.classes.reduce((n: number, c: any) => n + c.totalSessions, 0)}</span>
+                        </td>
+                      </tr>
+                      {/* ── Per-class breakdown (collapsed by default) ── */}
+                      {isOpen && s.classes.map((c: any) => (
+                        <tr key={`${s.studentId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
+                          <td className="px-2 py-1.5" />
+                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
+                            <span className="font-medium text-foreground">{c.className}</span>
+                            <span className="ml-1.5 text-muted-foreground hidden sm:inline">— {c.teacherName}</span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center text-green-700 hidden sm:table-cell">{c.present}</td>
+                          <td className="px-3 py-1.5 text-center text-amber-700 hidden md:table-cell">{c.late}</td>
+                          <td className="px-3 py-1.5 text-center text-red-700 hidden md:table-cell">{c.absent}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">
+                            {c.attended}
+                            <span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
-              {students.length > 1 && (
-                <tfoot className="bg-muted/60 border-t-2">
-                  <tr>
-                    <td className="px-3 py-2 font-semibold" colSpan={3}>Total</td>
-                    <td className="px-3 py-2 text-center font-semibold text-green-700">
-                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0)}
-                    </td>
-                    <td className="px-3 py-2 text-center font-semibold text-amber-700 hidden sm:table-cell">
-                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.late, 0), 0)}
-                    </td>
-                    <td className="px-3 py-2 text-center font-semibold text-red-700 hidden sm:table-cell">
-                      {students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0)}
-                    </td>
-                    <td className="px-3 py-2 text-center font-bold bg-primary/10">
-                      {students.reduce((n: number, s: any) => n + s.totalAttended, 0)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+              {/* Grand total */}
+              <tfoot className="bg-muted/60 border-t-2">
+                <tr>
+                  <td className="px-3 py-2" />
+                  <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
+                  <td className="px-3 py-2 text-center font-semibold text-green-700 hidden sm:table-cell">{totalPresent}</td>
+                  <td className="px-3 py-2 text-center font-semibold text-amber-700 hidden md:table-cell">{totalLate}</td>
+                  <td className="px-3 py-2 text-center font-semibold text-red-700 hidden md:table-cell">{totalAbsent}</td>
+                  <td className="px-3 py-2 text-center font-bold bg-primary/10">{totalAttended}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
       )}
 
-      {/* Tutor Payment Summary */}
+      {/* ── Tutor Payment Summary ── */}
       {tutors.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Tutor Payment Summary
+            <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
           </h3>
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
+                  <th className="text-left font-medium px-3 py-2.5 w-6" />
                   <th className="text-left font-medium px-3 py-2.5">Tutor</th>
-                  <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Class</th>
                   <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Sessions Taught</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
-                {tutors.flatMap((t: any) =>
-                  t.classes.map((c: any, ci: number) => (
-                    <tr key={`${t.teacherId}-${c.classId}`} className="hover:bg-muted/30">
-                      <td className="px-3 py-2.5 font-medium">{ci === 0 ? t.teacherName : ""}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{c.className}</td>
-                      <td className="px-3 py-2.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
-                    </tr>
-                  ))
-                )}
+              <tbody>
+                {tutors.map((t: any) => {
+                  const isOpen = expandedTutors.has(t.teacherId);
+                  return (
+                    <Fragment key={t.teacherId}>
+                      <tr
+                        className="border-t hover:bg-muted/40 cursor-pointer select-none"
+                        onClick={() => toggleTutor(t.teacherId)}
+                      >
+                        <td className="px-2 py-2.5 text-muted-foreground text-center">
+                          {isOpen
+                            ? <ChevronUp className="w-3.5 h-3.5 inline" />
+                            : <ChevronDown className="w-3.5 h-3.5 inline" />}
+                        </td>
+                        <td className="px-3 py-2.5 font-semibold">{t.teacherName}</td>
+                        <td className="px-3 py-2.5 text-center font-bold bg-primary/5">{t.totalSessions}</td>
+                      </tr>
+                      {isOpen && t.classes.map((c: any) => (
+                        <tr key={`${t.teacherId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
+                          <td className="px-2 py-1.5" />
+                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
+                            <span className="font-medium text-foreground">{c.className}</span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
-              {tutors.length > 1 && (
-                <tfoot className="bg-muted/60 border-t-2">
-                  <tr>
-                    <td className="px-3 py-2 font-semibold" colSpan={2}>Total</td>
-                    <td className="px-3 py-2 text-center font-bold bg-primary/10">
-                      {tutors.reduce((n: number, t: any) => n + t.totalSessions, 0)}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+              <tfoot className="bg-muted/60 border-t-2">
+                <tr>
+                  <td className="px-3 py-2" />
+                  <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
+                  <td className="px-3 py-2 text-center font-bold bg-primary/10">
+                    {tutors.reduce((n: number, t: any) => n + t.totalSessions, 0)}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

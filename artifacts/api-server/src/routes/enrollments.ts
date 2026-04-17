@@ -14,15 +14,29 @@ function getSheetId(req: any): string {
     req.headers['x-sheet-id'] || '';
 }
 
+/**
+ * Canonical enrollment status values:
+ *   Pending          — submitted, awaiting principal review
+ *   Approved         — principal approved, awaiting payment
+ *   Paid             — payment received, student activated
+ *   Active           — directly-enrolled and active (no request workflow)
+ *   Rejected         — declined by principal
+ *   Cancelled        — cancelled (>24 h notice)
+ *   Late Cancellation — cancelled (<24 h notice)
+ *   Fee Waived       — fee waived by principal
+ *   Fee Confirmed    — fee separately confirmed
+ */
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
-  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled' || v === 'paid') return 'Active';
-  if (v === 'pending') return 'Pending';
-  if (v === 'reject' || v === 'rejected') return 'Rejected';
-  if (v === 'cancelled' || v === 'canceled') return 'Cancelled';
-  if (v === 'late cancellation') return 'Late Cancellation';
-  if (v === 'fee waived') return 'Fee Waived';
-  if (v === 'fee confirmed') return 'Fee Confirmed';
+  if (v === 'pending')                              return 'Pending';
+  if (v === 'approved' || v === 'approve')          return 'Approved';
+  if (v === 'paid')                                 return 'Paid';
+  if (v === 'active' || v === 'enrolled')           return 'Active';
+  if (v === 'reject' || v === 'rejected')           return 'Rejected';
+  if (v === 'cancelled' || v === 'canceled')        return 'Cancelled';
+  if (v === 'late cancellation')                    return 'Late Cancellation';
+  if (v === 'fee waived')                           return 'Fee Waived';
+  if (v === 'fee confirmed')                        return 'Fee Confirmed';
   return 'Pending';
 }
 
