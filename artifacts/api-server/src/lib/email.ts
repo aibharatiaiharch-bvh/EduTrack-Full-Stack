@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { getSetting } from './settings.js';
 
 export interface EmailAttachment {
   filename: string;
@@ -36,7 +37,7 @@ function getTransporter() {
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
   const transporter = getTransporter();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  const senderName = process.env.PRINCIPAL_NAME || 'EduTrack';
+  const senderName = getSetting('PRINCIPAL_NAME') || 'EduTrack';
 
   await transporter.sendMail({
     from: `"${senderName}" <${from}>`,

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { readTabRows, readUsersTab, updateCell, colLetter, SHEET_TABS, appendRow, generateUserId, generateTabId } from "../lib/googleSheets";
 import { sendEmail, isEmailConfigured } from "../lib/email";
+import { getSetting } from "../lib/settings";
 
 const router = Router();
 
@@ -181,7 +182,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
     // Send welcome email now that payment is confirmed
     if (isEmailConfigured()) {
       const studentEmail   = extra.studentEmail || "";
-      const principalName  = process.env.PRINCIPAL_NAME || "The Principal";
+      const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
       const principalEmail = process.env.PRINCIPAL_EMAIL || "";
       const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
       const uniqueRecipients = [...new Set(recipients)];

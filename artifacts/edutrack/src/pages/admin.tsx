@@ -940,6 +940,66 @@ function AddSubjectCard() {
   );
 }
 
+function SettingsCard() {
+  const [principalName, setPrincipalName] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(apiUrl("/settings"))
+      .then(r => r.json())
+      .then(d => setPrincipalName(d.PRINCIPAL_NAME || ""))
+      .catch(() => {});
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch(apiUrl("/settings"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ PRINCIPAL_NAME: principalName }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } catch {}
+    setSaving(false);
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <p className="text-sm font-medium">Runtime Settings</p>
+      <p className="text-xs text-muted-foreground">
+        Changes here take effect immediately but reset to the Railway default on server restart.
+      </p>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor="principal-name" className="text-xs">Principal sign-off name</Label>
+          <Input
+            id="principal-name"
+            value={principalName}
+            onChange={e => setPrincipalName(e.target.value)}
+            placeholder="The Principal"
+            className="h-8 text-sm"
+          />
+        </div>
+        <Button
+          size="sm"
+          className="mt-5 shrink-0 gap-1.5"
+          onClick={save}
+          disabled={saving}
+        >
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
+           saved   ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> :
+                     null}
+          {saved ? "Saved" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function BackupCard() {
   const [status, setStatus] = useState<any>(null);
   const [toggling, setToggling] = useState(false);
@@ -1141,6 +1201,7 @@ function ToolsTab() {
         <div className="flex-1 h-px bg-border" />
       </div>
 
+      <SettingsCard />
       <BackupCard />
 
     </div>
