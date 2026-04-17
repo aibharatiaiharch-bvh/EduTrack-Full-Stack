@@ -397,8 +397,6 @@ function RequestsTab() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
   const [acting, setActing]         = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"pending" | "all" | "enrollment" | "fee-waiver">("pending");
-  const [showCompleted, setShowCompleted] = useState(false);
   const [assigningRow, setAssigningRow]   = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [assignSaving, setAssignSaving]   = useState(false);
@@ -453,69 +451,28 @@ function RequestsTab() {
     setAssignSaving(false);
   }
 
-  // Tag every row with _src and _type for unified table
   const DONE_STATUSES = ["paid", "rejected", "fee waived", "fee confirmed"];
   const allRows = [
     ...enrollRows.map(r => ({ ...r, _src: "enrollment" as const })),
     ...lateRows.map(r => ({ ...r, _src: "fee-waiver" as const })),
   ];
 
-  const filtered = allRows.filter(r => {
-    const status = (r["Status"] || "").toLowerCase();
-    const isDone = DONE_STATUSES.includes(status);
-    if (typeFilter === "pending") return !isDone;
-    if (!showCompleted && isDone) return false;
-    if (typeFilter !== "all" && r._src !== typeFilter) return false;
-    return true;
-  });
+  // Only show rows that still need action — completed requests live in their respective records
+  const filtered = allRows.filter(r =>
+    !DONE_STATUSES.includes((r["Status"] || "").toLowerCase())
+  );
 
-  const activeCount = allRows.filter(r => !DONE_STATUSES.includes((r["Status"] || "").toLowerCase())).length;
-  const completedCount = allRows.filter(r => DONE_STATUSES.includes((r["Status"] || "").toLowerCase())).length;
-
-  const isEmpty = allRows.length === 0;
+  const isEmpty = filtered.length === 0;
 
   return (
     <div>
-      <SectionHeader title={`Requests (${activeCount} need action)`} onRefresh={load} loading={loading} />
+      <SectionHeader title={`Requests (${filtered.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!loading && isEmpty && <p className="text-sm text-muted-foreground">No requests found.</p>}
+      {!loading && isEmpty && <p className="text-sm text-muted-foreground">No pending requests — all caught up!</p>}
 
       {!loading && !isEmpty && (
         <>
-          {/* Filter bar */}
-          <div className="flex flex-wrap gap-2 mb-4 items-center justify-between">
-            <div className="flex gap-1">
-              {([
-                { id: "pending",      label: "Pending" },
-                { id: "all",          label: "All" },
-                { id: "enrollment",   label: "New Enrollment" },
-                { id: "fee-waiver",   label: "Fee Waiver" },
-              ] as const).map(t => (
-                <button key={t.id} onClick={() => setTypeFilter(t.id)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    typeFilter === t.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted"
-                  }`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {typeFilter !== "pending" && (
-              <button
-                onClick={() => setShowCompleted(v => !v)}
-                className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
-                  showCompleted
-                    ? "bg-muted text-foreground border-border"
-                    : "text-muted-foreground border-border hover:bg-muted"
-                }`}
-              >
-                {showCompleted ? "Hide" : "Show"} completed ({completedCount})
-              </button>
-            )}
-          </div>
-
           {/* Table */}
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm">
@@ -531,7 +488,7 @@ function RequestsTab() {
               <tbody className="divide-y">
                 {filtered.length === 0 && (
                   <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground text-sm">
-                    {typeFilter === "pending" ? "No pending requests — all caught up!" : "No requests match this filter."}
+                    No pending requests — all caught up!
                   </td></tr>
                 )}
                 {filtered.map(row => {
