@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { readTabRows, readUsersTab, updateCell, colLetter, SHEET_TABS } from "../lib/googleSheets";
+import { sendEmail, isEmailConfigured } from "../lib/email";
 
 const router = Router();
 
@@ -9,6 +10,29 @@ function getSheetId(req: any): string {
 
 function tryParseJson(val: string): Record<string, string> {
   try { return val.startsWith("{") ? JSON.parse(val) : {}; } catch { return {}; }
+}
+
+function buildWelcomeEmail(studentName: string, classes: string, principalName: string): string {
+  const classLine = classes
+    ? `<p>You have expressed interest in: <strong>${classes}</strong>. Our team will be in touch shortly to confirm class placement and scheduling details.</p>`
+    : `<p>Our team will be in touch shortly to confirm class placement and scheduling details.</p>`;
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
+      <div style="background: #1d4ed8; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 22px;">Welcome to EduTrack!</h1>
+      </div>
+      <div style="padding: 32px; background: #f9fafb; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+        <p style="font-size: 16px;">Dear Parent/Guardian of <strong>${studentName}</strong>,</p>
+        <p>We are delighted to welcome <strong>${studentName}</strong> to our tutoring program. Your enrolment request has been reviewed and <strong>approved</strong>.</p>
+        ${classLine}
+        <p>If you have any questions in the meantime, please don't hesitate to reply to this email — we're happy to help.</p>
+        <p style="margin-top: 32px;">Warm regards,<br/>
+        <strong>${principalName}</strong><br/>
+        <span style="color: #6b7280; font-size: 14px;">EduTrack</span></p>
+      </div>
+    </div>
+  `;
 }
 
 // GET /api/enrollment-requests — returns all rows from Enrollments tab, enriched with unpacked notes
@@ -64,6 +88,34 @@ router.post("/enrollment-requests/:row/approve", async (req, res) => {
       if (user && (user as any)._row) {
         const userStatusCol = colLetter("users", "Status");
         await updateCell(sheetId, `${SHEET_TABS.users}!${userStatusCol}${(user as any)._row}`, "Active");
+      }
+    }
+
+    // 3. Send welcome email if SMTP is configured
+    if (isEmailConfigured() && enrollRow) {
+      const extra = tryParseJson(enrollRow["Notes"] || "") || tryParseJson(enrollRow["EnrolledAt"] || "");
+      const studentName   = enrollRow["Student Name"] || extra.studentName || extra.applicantName || "Student";
+      const studentEmail  = extra.studentEmail || "";
+      const parentEmail   = extra.parentEmail  || extra.applicantEmail || enrollRow["ParentID"] || "";
+      const classes       = enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "";
+      const principalName = process.env.PRINCIPAL_NAME || "The Principal";
+      const principalEmail = process.env.PRINCIPAL_EMAIL || "";
+
+      const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
+      const uniqueRecipients = [...new Set(recipients)];
+
+      if (uniqueRecipients.length > 0) {
+        try {
+          await sendEmail({
+            to: uniqueRecipients,
+            cc: principalEmail || undefined,
+            subject: `Welcome to EduTrack — ${studentName} is approved!`,
+            html: buildWelcomeEmail(studentName, classes, principalName),
+          });
+        } catch (emailErr: any) {
+          // Log but don't fail the approval if email fails
+          console.error("Welcome email failed:", emailErr.message);
+        }
       }
     }
 

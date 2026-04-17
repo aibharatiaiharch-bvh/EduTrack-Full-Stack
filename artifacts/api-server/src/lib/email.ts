@@ -7,7 +7,8 @@ export interface EmailAttachment {
 }
 
 export interface SendEmailOptions {
-  to: string;
+  to: string | string[];
+  cc?: string | string[];
   subject: string;
   html: string;
   attachments?: EmailAttachment[];
@@ -35,10 +36,12 @@ function getTransporter() {
 export async function sendEmail(opts: SendEmailOptions): Promise<void> {
   const transporter = getTransporter();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const senderName = process.env.PRINCIPAL_NAME || 'EduTrack';
 
   await transporter.sendMail({
-    from: `"EduTrack" <${from}>`,
-    to: opts.to,
+    from: `"${senderName}" <${from}>`,
+    to: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
+    cc: opts.cc ? (Array.isArray(opts.cc) ? opts.cc.join(', ') : opts.cc) : undefined,
     subject: opts.subject,
     html: opts.html,
     attachments: (opts.attachments || []).map(a => ({
