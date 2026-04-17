@@ -590,7 +590,7 @@ function StudentsTab() {
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
   const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
   const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
 
   async function toggleStatus(s: any) {
@@ -844,7 +844,7 @@ function TutorsTab() {
   const [formError, setFormError] = useState("");
   const [acting, setActing] = useState<string | null>(null);
   const [search,       setSearch]       = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
 
   async function toggleStatus(t: any) {
