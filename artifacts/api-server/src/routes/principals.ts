@@ -635,4 +635,41 @@ router.post('/principals/reassign-teacher', async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/principals/reconcile-active
+// Finds all users who have an Approved enrollment but are still Pending — activates them
+router.post('/principals/reconcile-active', async (req, res) => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId required' }); return; }
+  try {
+    const [enrollRows, users] = await Promise.all([
+      readTabRows(sheetId, SHEET_TABS.enrollments),
+      readUsersTab(sheetId),
+    ]);
+
+    const approvedUserIds = new Set(
+      enrollRows
+        .filter(r => (r['Status'] || '').toLowerCase() === 'approved')
+        .map(r => r['UserID'])
+        .filter(Boolean)
+    );
+
+    const statusCol = colLetter('users', 'Status');
+    const fixed: string[] = [];
+
+    for (const user of users) {
+      if (user.status === 'pending' && approvedUserIds.has(user.userId)) {
+        const row = (user as any)._row;
+        if (row) {
+          await updateCell(sheetId, `${SHEET_TABS.users}!${statusCol}${row}`, 'Active');
+          fixed.push(user.userId);
+        }
+      }
+    }
+
+    res.json({ ok: true, fixed, count: fixed.length });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
