@@ -15,29 +15,26 @@ function getSheetId(req: any): string {
 }
 
 /**
- * Canonical enrollment status values:
- *   Pending          — submitted, awaiting principal review
- *   Approved         — principal approved, awaiting payment
- *   Paid             — payment received, student activated
- *   Active           — directly-enrolled and active (no request workflow)
- *   Rejected         — declined by principal
- *   Cancelled        — cancelled (>24 h notice)
- *   Late Cancellation — cancelled (<24 h notice)
- *   Fee Waived       — fee waived by principal
- *   Fee Confirmed    — fee separately confirmed
+ * The Enrollments tab tracks CLASS MEMBERSHIP ONLY.
+ * The only valid status values are:
+ *   Active           — student is currently enrolled in the class
+ *   Cancelled        — cancelled with >24 h notice (no fee)
+ *   Late Cancellation — cancelled with <24 h notice (fee decision pending)
+ *
+ * New student program enrollments (Pending/Approved) are transient states
+ * managed through the Requests workflow. Once App Paid is clicked, the row
+ * becomes Active. Paid, Rejected, Fee Waived, Fee Confirmed are legacy values
+ * that normalise to their closest equivalent.
  */
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
-  if (v === 'pending')                              return 'Pending';
-  if (v === 'approved' || v === 'approve')          return 'Approved';
-  if (v === 'paid')                                 return 'Paid';
-  if (v === 'active' || v === 'enrolled')           return 'Active';
-  if (v === 'reject' || v === 'rejected')           return 'Rejected';
-  if (v === 'cancelled' || v === 'canceled')        return 'Cancelled';
-  if (v === 'late cancellation')                    return 'Late Cancellation';
-  if (v === 'fee waived')                           return 'Fee Waived';
-  if (v === 'fee confirmed')                        return 'Fee Confirmed';
-  return 'Pending';
+  if (v === 'cancelled' || v === 'canceled')  return 'Cancelled';
+  if (v === 'late cancellation')              return 'Late Cancellation';
+  if (v === 'fee waived')                     return 'Fee Waived';
+  if (v === 'fee confirmed')                  return 'Fee Confirmed';
+  // active, approved, paid, enrolled, pending and any other transient
+  // new-enrollment states all resolve to Active once the class row exists
+  return 'Active';
 }
 
 function normalizeEnrollmentRow(row: any) {
@@ -251,15 +248,17 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       resolvedTeacherId = t?.userId || '';
     }
 
-    // Capacity check
+    // Capacity check — class assignments are always Active but warn when over capacity
     const subject    = subjects.find(s => s['SubjectID'] === resolvedClassId || (s['Name'] || '').toLowerCase() === resolvedClassName.toLowerCase());
     const maxCapacity = Math.max(parseInt(subject?.['MaxCapacity'] || '8', 10) || 8, 1);
     const activeCount = currentEnrollments.filter(r =>
       r['ClassID'] === resolvedClassId &&
-      !['cancelled', 'late cancellation', 'rejected'].includes((r['Status'] || '').toLowerCase().trim())
+      (r['Status'] || '').toLowerCase().trim() === 'active'
     ).length;
+    const overCapacity = activeCount >= maxCapacity;
 
-    const status = activeCount >= maxCapacity ? 'Pending' : 'Approved';
+    // Class assignments are always Active — no pending/approval required
+    const status = 'Active';
     const enrollmentId = await generateTabId('ENR', spreadsheetId, TAB);
     const now = new Date().toISOString();
     const rowValues = HEADERS.map(h => {
@@ -286,7 +285,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [rowValues] },
     });
-    res.json({ ok: true, status });
+    res.json({ ok: true, status, overCapacity });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

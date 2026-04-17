@@ -188,15 +188,15 @@ router.post("/enrollment-requests/:row/approve", async (req, res) => {
 });
 
 // POST /api/enrollment-requests/:row/mark-paid
-// Confirms payment — activates the student account and creates parent/student records
+// Confirms payment — activates the student account and marks the enrollment row Active
 router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
   const sheetId = getSheetId(req);
   const rowNum = parseInt(req.params.row, 10);
   if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: "Missing sheetId or row" }); return; }
   try {
-    // Mark enrollment as Paid
+    // Mark enrollment row as Active (not Paid — Enrollments tab only tracks class membership state)
     const col = colLetter("enrollments", "Status");
-    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${col}${rowNum}`, "Paid");
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${col}${rowNum}`, "Active");
 
     // Read enrollment row then activate student + create parent records
     const { enrollRow, users, extra } = await getEnrollRow(sheetId, rowNum);

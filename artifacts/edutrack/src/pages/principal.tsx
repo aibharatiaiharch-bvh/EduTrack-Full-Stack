@@ -379,9 +379,9 @@ function SectionHeader({ title, onRefresh, loading }: { title: string; onRefresh
 // ─── Type badge for request type ───────────────────────────────────────────
 function RequestTypeBadge({ type }: { type: string }) {
   const map: Record<string, string> = {
-    "New Enrollment": "bg-blue-100 text-blue-800 border-blue-200",
-    "Fee Waiver":     "bg-amber-100 text-amber-800 border-amber-200",
-    "Completed":      "bg-gray-100 text-gray-600 border-gray-200",
+    "New Enrollment":       "bg-blue-100 text-blue-800 border-blue-200",
+    "Late Cancellation Fee": "bg-amber-100 text-amber-800 border-amber-200",
+    "Completed":            "bg-gray-100 text-gray-600 border-gray-200",
   };
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${map[type] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
@@ -451,7 +451,7 @@ function RequestsTab() {
     setAssignSaving(false);
   }
 
-  const DONE_STATUSES = ["paid", "rejected", "fee waived", "fee confirmed"];
+  const DONE_STATUSES = ["active", "rejected", "fee waived", "fee confirmed"];
   const allRows = [
     ...enrollRows.map(r => ({ ...r, _src: "enrollment" as const })),
     ...lateRows.map(r => ({ ...r, _src: "fee-waiver" as const })),
@@ -553,7 +553,7 @@ function RequestsTab() {
                       <tr className={`hover:bg-muted/20 ${isDone ? "opacity-60" : ""}`}>
                         {/* Type */}
                         <td className="px-3 py-2.5 align-middle">
-                          <RequestTypeBadge type={row._src === "enrollment" ? "New Enrollment" : "Fee Waiver"} />
+                          <RequestTypeBadge type={row._src === "enrollment" ? "New Enrollment" : "Late Cancellation Fee"} />
                         </td>
                         {/* Student — name only, no parent ID */}
                         <td className="px-3 py-2.5 align-middle">
@@ -820,7 +820,7 @@ function StudentsTab() {
   async function loadStudentClasses(userId: string) {
     setClassLoading(userId);
     try {
-      const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=approved,active`);
+      const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
       if (Array.isArray(data)) setStudentClasses(prev => ({ ...prev, [userId]: data }));
     } catch { /* ignore */ }
     setClassLoading(null);
@@ -852,6 +852,7 @@ function StudentsTab() {
         setJoiningStudent(null);
         setJoinSubjectId("");
         await loadStudentClasses(userId);
+        if (data.overCapacity) setJoinError("Added — note: class is over maximum capacity.");
       } else {
         setJoinError(data.error || "Failed to add to class.");
       }
