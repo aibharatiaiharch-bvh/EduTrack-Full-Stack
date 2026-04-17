@@ -46,6 +46,20 @@ router.get("/enrollment-requests", async (req, res) => {
     // Enrich rows: unpack Notes JSON (or legacy EnrolledAt JSON) into named fields
     const enriched = rows.map(row => {
       const extra = tryParseJson(row["Notes"] || "") || tryParseJson(row["EnrolledAt"] || "");
+
+      // Build a human-readable "Requested On" date from available sources
+      const rawDate = extra.submittedAt || extra.createdAt || (
+        row["EnrolledAt"] && !row["EnrolledAt"].startsWith("{") ? row["EnrolledAt"] : ""
+      );
+      let requestedOn = "";
+      if (rawDate) {
+        try {
+          requestedOn = new Date(rawDate).toLocaleDateString("en-AU", {
+            day: "numeric", month: "short", year: "numeric",
+          });
+        } catch { requestedOn = rawDate; }
+      }
+
       return {
         ...row,
         "Student Name":       row["Student Name"] || extra.studentName || extra.applicantName || extra.requesterName || "",
@@ -57,6 +71,7 @@ router.get("/enrollment-requests", async (req, res) => {
         "Previously Enrolled": extra.previouslyEnrolled || "",
         "Reference":          extra.reference || "",
         "Extra Notes":        extra.extra || "",
+        "Requested On":       requestedOn,
       };
     });
 

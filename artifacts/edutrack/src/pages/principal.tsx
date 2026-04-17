@@ -406,35 +406,78 @@ function EnrollmentRequestsTab() {
   const done     = rows.filter(r => ["paid", "rejected"].includes((r["Status"] || "").toLowerCase()));
 
   function RequestCard({ row, actions }: { row: any; actions: React.ReactNode }) {
+    const HIDDEN = ["_row", "Status", "Student Name", "Name", "Parent Email", "Email",
+                    "Classes Interested", "Grade", "School", "Requested On", "Phone"];
+    const extras = Object.entries(row).filter(([k, v]) => !HIDDEN.includes(k) && v && String(v).trim());
+
     return (
       <Card key={row._row}>
         <CardContent className="pt-4 space-y-3">
+          {/* Header row */}
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</p>
-              <p className="text-sm text-muted-foreground">{row["Parent Email"] || row["Email"] || ""}</p>
-              {row["Classes Interested"] && (
-                <p className="text-sm mt-1">Interested in: <span className="font-medium">{row["Classes Interested"]}</span></p>
+              <p className="font-medium text-base">{row["Student Name"] || row["Name"] || "Unknown"}</p>
+              {(row["Parent Email"] || row["Email"]) && (
+                <p className="text-sm text-muted-foreground">{row["Parent Email"] || row["Email"]}</p>
               )}
             </div>
             <StatusBadge status={row["Status"] || "Pending"} />
           </div>
-          <button
-            className="text-xs text-muted-foreground flex items-center gap-1"
-            onClick={() => setExpanded(expanded === row._row ? null : row._row)}
-          >
-            {expanded === row._row ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {expanded === row._row ? "Hide details" : "Show details"}
-          </button>
-          {expanded === row._row && (
-            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
-              {Object.entries(row)
-                .filter(([k]) => !["_row", "Status"].includes(k) && row[k])
-                .map(([k, v]) => (
-                  <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
-                ))}
-            </div>
+
+          {/* Key details grid — always visible */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+            {row["Classes Interested"] && (
+              <div className="sm:col-span-2 flex gap-1.5">
+                <span className="text-muted-foreground shrink-0">Classes:</span>
+                <span className="font-medium">{row["Classes Interested"]}</span>
+              </div>
+            )}
+            {row["Grade"] && (
+              <div className="flex gap-1.5">
+                <span className="text-muted-foreground shrink-0">Grade:</span>
+                <span>{row["Grade"]}</span>
+              </div>
+            )}
+            {row["School"] && (
+              <div className="flex gap-1.5">
+                <span className="text-muted-foreground shrink-0">School:</span>
+                <span>{row["School"]}</span>
+              </div>
+            )}
+            {row["Phone"] && (
+              <div className="flex gap-1.5">
+                <span className="text-muted-foreground shrink-0">Phone:</span>
+                <span>{row["Phone"]}</span>
+              </div>
+            )}
+            {row["Requested On"] && (
+              <div className="flex gap-1.5">
+                <span className="text-muted-foreground shrink-0">Requested:</span>
+                <span>{row["Requested On"]}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Expandable extra details */}
+          {extras.length > 0 && (
+            <>
+              <button
+                className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
+                onClick={() => setExpanded(expanded === row._row ? null : row._row)}
+              >
+                {expanded === row._row ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {expanded === row._row ? "Hide extra details" : "More details"}
+              </button>
+              {expanded === row._row && (
+                <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
+                  {extras.map(([k, v]) => (
+                    <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
+
           <div className="flex gap-2 pt-1">{actions}</div>
         </CardContent>
       </Card>
