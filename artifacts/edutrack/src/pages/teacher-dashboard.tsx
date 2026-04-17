@@ -124,7 +124,10 @@ function ClassCard({
   const markedCount = localStudents.filter(s => s.attendanceToday).length;
 
   return (
-    <Card className={group.isToday ? "border-primary/30 bg-primary/[0.02]" : ""}>
+    <Card
+      className={group.isToday ? "border-primary/30 bg-primary/[0.02] cursor-pointer" : ""}
+      onClick={() => group.isToday && setExpanded(v => !v)}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">
@@ -169,7 +172,10 @@ function ClassCard({
               </a>
             )}
             <button
-              onClick={() => setExpanded(v => !v)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(v => !v);
+              }}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {expanded ? "▲ Hide" : "▼ Students"}
@@ -190,7 +196,10 @@ function ClassCard({
                     Attendance for today · {markedCount}/{localStudents.length} marked
                   </p>
                   <button
-                    onClick={() => setShowAttendance(v => !v)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowAttendance(v => !v);
+                    }}
                     className="text-xs text-primary hover:underline"
                   >
                     {showAttendance ? "Hide attendance" : "Mark attendance"}
