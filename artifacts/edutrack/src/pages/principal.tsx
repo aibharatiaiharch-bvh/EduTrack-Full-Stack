@@ -801,7 +801,6 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [acting,          setActing]          = useState<string | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
@@ -814,16 +813,6 @@ function StudentsTab() {
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
-
-  async function toggleStatus(s: any) {
-    setActing(s.userId);
-    const endpoint = s.status?.toLowerCase() === "active" ? "/users/deactivate" : "/users/reactivate";
-    try {
-      await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: s.userId }) });
-      await load();
-    } catch { /* ignore */ }
-    setActing(null);
-  }
 
   async function loadStudentClasses(userId: string) {
     setClassLoading(userId);
@@ -1015,7 +1004,6 @@ function StudentsTab() {
                       <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Grade</th>
                       <th className="text-left font-medium px-3 py-2.5">Status</th>
                       <th className="text-left font-medium px-3 py-2.5">Classes</th>
-                      <th className="px-3 py-2.5" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1044,16 +1032,6 @@ function StudentsTab() {
                                 {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                 View
                               </button>
-                            </td>
-                            <td className="px-3 py-2.5 text-right">
-                              <Button
-                                size="sm" variant="outline"
-                                disabled={acting === s.userId}
-                                onClick={() => toggleStatus(s)}
-                                className="text-xs h-7"
-                              >
-                                {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                              </Button>
                             </td>
                           </tr>
                           {isExpanded && (
