@@ -648,7 +648,7 @@ router.post('/principals/reconcile-active', async (req, res) => {
 
     const approvedUserIds = new Set(
       enrollRows
-        .filter(r => (r['Status'] || '').toLowerCase() === 'approved')
+        .filter(r => ['approved', 'paid'].includes((r['Status'] || '').toLowerCase()))
         .map(r => r['UserID'])
         .filter(Boolean)
     );

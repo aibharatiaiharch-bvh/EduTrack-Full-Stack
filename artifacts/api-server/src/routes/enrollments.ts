@@ -16,7 +16,7 @@ function getSheetId(req: any): string {
 
 function normalizeEnrollmentStatus(value: string | undefined): string {
   const v = (value || '').toLowerCase().trim();
-  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled') return 'Active';
+  if (v === 'approved' || v === 'approve' || v === 'active' || v === 'enrolled' || v === 'paid') return 'Active';
   if (v === 'pending') return 'Pending';
   if (v === 'reject' || v === 'rejected') return 'Rejected';
   if (v === 'cancelled' || v === 'canceled') return 'Cancelled';

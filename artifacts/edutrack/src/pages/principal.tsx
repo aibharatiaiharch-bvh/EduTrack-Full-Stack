@@ -296,8 +296,9 @@ type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "latecance
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
   const color =
-    s === "active" ? "bg-green-100 text-green-800" :
-    s === "pending" ? "bg-amber-100 text-amber-800" :
+    s === "active"   ? "bg-green-100 text-green-800" :
+    s === "paid"     ? "bg-green-100 text-green-800" :
+    s === "pending"  ? "bg-amber-100 text-amber-800" :
     s === "approved" ? "bg-blue-100 text-blue-800" :
     s === "rejected" ? "bg-red-100 text-red-800" :
     "bg-gray-100 text-gray-700";
@@ -335,7 +336,7 @@ function EnrollmentRequestsTab() {
 
   useAutoRefresh(load);
 
-  async function act(row: any, action: "approve" | "reject") {
+  async function act(row: any, action: "approve" | "reject" | "mark-paid") {
     setActing(row._row);
     try {
       await apiFetch(`/enrollment-requests/${row._row}/${action}`, { method: "POST", body: JSON.stringify({}) });
@@ -344,8 +345,45 @@ function EnrollmentRequestsTab() {
     setActing(null);
   }
 
-  const pending = rows.filter(r => (r["Status"] || "").toLowerCase() === "pending");
-  const done = rows.filter(r => (r["Status"] || "").toLowerCase() !== "pending");
+  const pending  = rows.filter(r => (r["Status"] || "").toLowerCase() === "pending");
+  const approved = rows.filter(r => (r["Status"] || "").toLowerCase() === "approved");
+  const done     = rows.filter(r => ["paid", "rejected"].includes((r["Status"] || "").toLowerCase()));
+
+  function RequestCard({ row, actions }: { row: any; actions: React.ReactNode }) {
+    return (
+      <Card key={row._row}>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</p>
+              <p className="text-sm text-muted-foreground">{row["Parent Email"] || row["Email"] || ""}</p>
+              {row["Classes Interested"] && (
+                <p className="text-sm mt-1">Interested in: <span className="font-medium">{row["Classes Interested"]}</span></p>
+              )}
+            </div>
+            <StatusBadge status={row["Status"] || "Pending"} />
+          </div>
+          <button
+            className="text-xs text-muted-foreground flex items-center gap-1"
+            onClick={() => setExpanded(expanded === row._row ? null : row._row)}
+          >
+            {expanded === row._row ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {expanded === row._row ? "Hide details" : "Show details"}
+          </button>
+          {expanded === row._row && (
+            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
+              {Object.entries(row)
+                .filter(([k]) => !["_row", "Status"].includes(k) && row[k])
+                .map(([k, v]) => (
+                  <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
+                ))}
+            </div>
+          )}
+          <div className="flex gap-2 pt-1">{actions}</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div>
@@ -354,54 +392,43 @@ function EnrollmentRequestsTab() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && rows.length === 0 && <p className="text-sm text-muted-foreground">No enrollment requests found.</p>}
 
+      {/* Step 1 — New requests awaiting review */}
       {pending.length > 0 && (
         <div className="space-y-3 mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Awaiting Review</p>
           {pending.map((row) => (
-            <Card key={row._row}>
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</p>
-                    <p className="text-sm text-muted-foreground">{row["Parent Email"] || row["Email"] || ""}</p>
-                    {row["Classes Interested"] && (
-                      <p className="text-sm mt-1">Interested in: <span className="font-medium">{row["Classes Interested"]}</span></p>
-                    )}
-                  </div>
-                  <StatusBadge status={row["Status"] || "Pending"} />
-                </div>
-                <button
-                  className="text-xs text-muted-foreground flex items-center gap-1"
-                  onClick={() => setExpanded(expanded === row._row ? null : row._row)}
-                >
-                  {expanded === row._row ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  {expanded === row._row ? "Hide details" : "Show details"}
-                </button>
-                {expanded === row._row && (
-                  <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
-                    {Object.entries(row)
-                      .filter(([k]) => !["_row", "Status"].includes(k) && row[k])
-                      .map(([k, v]) => (
-                        <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
-                      ))}
-                  </div>
-                )}
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" className="gap-1" disabled={acting === row._row} onClick={() => act(row, "approve")}>
-                    <CheckCircle className="w-3 h-3" /> Approve
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={acting === row._row} onClick={() => act(row, "reject")}>
-                    <XCircle className="w-3 h-3" /> Reject
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <RequestCard key={row._row} row={row} actions={
+              <>
+                <Button size="sm" className="gap-1" disabled={acting === row._row} onClick={() => act(row, "approve")}>
+                  <CheckCircle className="w-3 h-3" /> Approve
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={acting === row._row} onClick={() => act(row, "reject")}>
+                  <XCircle className="w-3 h-3" /> Reject
+                </Button>
+              </>
+            } />
           ))}
         </div>
       )}
 
+      {/* Step 2 — Approved, awaiting payment */}
+      {approved.length > 0 && (
+        <div className="space-y-3 mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">Approved — Awaiting Payment</p>
+          {approved.map((row) => (
+            <RequestCard key={row._row} row={row} actions={
+              <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={acting === row._row} onClick={() => act(row, "mark-paid")}>
+                <CheckCircle className="w-3 h-3" /> Mark as Paid
+              </Button>
+            } />
+          ))}
+        </div>
+      )}
+
+      {/* Step 3 — Paid or rejected */}
       {done.length > 0 && (
         <div>
-          <p className="text-sm font-medium text-muted-foreground mb-2">Previously actioned</p>
+          <p className="text-sm font-medium text-muted-foreground mb-2">Completed</p>
           <div className="space-y-2">
             {done.map((row) => (
               <div key={row._row} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 text-sm">

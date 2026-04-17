@@ -143,7 +143,7 @@ router.post('/push/send-reminders', async (req, res): Promise<void> => {
 
       // Find active enrollments for this class
       const activeEnrollments = enrollments.filter(
-        e => e['ClassID'] === classId && (e['Status'] || '').toLowerCase() === 'approved'
+        e => e['ClassID'] === classId && ['approved','paid'].includes((e['Status'] || '').toLowerCase())
       );
 
       const notifyUserIds = new Set<string>();

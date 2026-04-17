@@ -20,7 +20,7 @@ async function readRows(spreadsheetId: string, tab: string): Promise<{ _row: num
   });
 }
 
-const ACTIVE_STATUSES = new Set(['active', 'approved', 'enrolled']);
+const ACTIVE_STATUSES = new Set(['active', 'approved', 'enrolled', 'paid']);
 
 // GET /api/tutors/me?email=X&sheetId=Y
 // Returns tutor profile, grouped classes with students, stats, and today's schedule
