@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
@@ -245,97 +245,100 @@ function ClassesTab() {
               <p className="text-sm text-muted-foreground">No classes match your search.</p>
             )}
 
-            <div className="space-y-3">
-              {filtered.map((s) => {
-          const subjectId = s["SubjectID"] || s.SubjectID || "";
-          const isOpen    = reassigning === subjectId;
-          const isSaving  = saving === subjectId;
-          const didSucceed = success === subjectId;
-          const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
-          const currentEnrolled = s.currentEnrolled ?? 0;
-
-          return (
-            <Card key={subjectId} className={isOpen ? "border-amber-400" : ""}>
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{s.Name || s["Name"]}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {s.Type} · {currentEnrolled} enrolled
-                    </p>
-                    {(s.Days || s.Time) && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {[s.Days, s.Time].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Teacher: <span className="font-medium text-foreground">{currentTeacher}</span>
-                    </p>
-                  </div>
-                  {didSucceed && !isOpen && (
-                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> Reassigned
-                    </span>
-                  )}
-                </div>
-
-                {!isOpen && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1 text-amber-700 border-amber-300 hover:bg-amber-50"
-                    onClick={() => { setReassigning(subjectId); setSuccess(null); }}
-                  >
-                    <AlertTriangle className="w-3 h-3" /> Emergency Reassign
-                  </Button>
-                )}
-
-                {isOpen && (
-                  <div className="space-y-3 pt-1 border-t">
-                    <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                      This will update the class and all active enrollments immediately.
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium mb-1 block">Assign new teacher</label>
-                      <select
-                        className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                        value={selected[subjectId] || ""}
-                        onChange={e => setSelected(sv => ({ ...sv, [subjectId]: e.target.value }))}
-                      >
-                        <option value="">Select a tutor…</option>
-                        {tutors.map(t => (
-                          <option key={t.UserID} value={t.UserID} disabled={t.UserID === s["TeacherID"]}>
-                            {t.Name}{t.UserID === s["TeacherID"] ? " (current)" : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={!selected[subjectId] || isSaving}
-                        onClick={() => doReassign(subjectId)}
-                        className="gap-1"
-                      >
-                        <CheckCircle className="w-3 h-3" />
-                        {isSaving ? "Saving…" : `Confirm — reassign ${currentEnrolled} enrolment${currentEnrolled !== 1 ? "s" : ""}`}
-                      </Button>
-                      <Button
-                        size="sm" variant="outline"
-                        onClick={() => { setReassigning(null); setSelected(sv => { const n = { ...sv }; delete n[subjectId]; return n; }); }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-              })}
+            <div className="rounded-md border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2.5">Class</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Type</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Schedule</th>
+                    <th className="text-left font-medium px-3 py-2.5">Enrolled</th>
+                    <th className="px-3 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filtered.map((s) => {
+                    const subjectId = s["SubjectID"] || s.SubjectID || "";
+                    const isOpen = reassigning === subjectId;
+                    const isSaving = saving === subjectId;
+                    const didSucceed = success === subjectId;
+                    const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
+                    const currentEnrolled = s.currentEnrolled ?? 0;
+                    return (
+                      <Fragment key={subjectId}>
+                        <tr className={`hover:bg-muted/20 ${isOpen ? "bg-amber-50/60" : ""}`}>
+                          <td className="px-3 py-2.5 font-medium">
+                            <span>{s.Name || s["Name"]}</span>
+                            {didSucceed && !isOpen && (
+                              <span className="ml-2 text-xs text-green-600 font-normal inline-flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Reassigned
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">
+                            {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled}</td>
+                          <td className="px-3 py-2.5 text-right">
+                            {!isOpen ? (
+                              <Button
+                                size="sm" variant="outline"
+                                className="text-xs gap-1 text-amber-700 border-amber-300 hover:bg-amber-50 h-7"
+                                onClick={() => { setReassigning(subjectId); setSuccess(null); }}
+                              >
+                                <AlertTriangle className="w-3 h-3" /> Reassign
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm" variant="outline" className="h-7 text-xs"
+                                onClick={() => { setReassigning(null); setSelected(sv => { const n = { ...sv }; delete n[subjectId]; return n; }); }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="bg-amber-50/30">
+                            <td colSpan={6} className="px-4 py-3">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 shrink-0">
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                                  Updates class and all active enrollments immediately.
+                                </div>
+                                <select
+                                  className="flex-1 border rounded-md px-3 py-2 text-sm bg-background"
+                                  value={selected[subjectId] || ""}
+                                  onChange={e => setSelected(sv => ({ ...sv, [subjectId]: e.target.value }))}
+                                >
+                                  <option value="">Select a tutor…</option>
+                                  {tutors.map(t => (
+                                    <option key={t.UserID} value={t.UserID} disabled={t.UserID === s["TeacherID"]}>
+                                      {t.Name}{t.UserID === s["TeacherID"] ? " (current)" : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                                <Button
+                                  size="sm"
+                                  disabled={!selected[subjectId] || isSaving}
+                                  onClick={() => doReassign(subjectId)}
+                                  className="gap-1 shrink-0"
+                                >
+                                  <CheckCircle className="w-3 h-3" />
+                                  {isSaving ? "Saving…" : `Confirm (${currentEnrolled} enrolment${currentEnrolled !== 1 ? "s" : ""})`}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </>
         );
@@ -807,76 +810,107 @@ function StudentsTab() {
               total={students.length} filtered={filtered.length}
             />
             {paged.length === 0 && <p className="text-sm text-muted-foreground">No students match your search.</p>}
-            <div className="space-y-2">
-              {paged.map((s) => {
-                const isExpanded = expandedStudent === s.userId;
-                const classes    = studentClasses[s.userId] || [];
-          return (
-            <div key={s.userId} className="rounded-lg border text-sm">
-              <div className="p-3 flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">{s.name}</p>
-                  {s.email && <p className="text-muted-foreground text-xs">{s.email}</p>}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <StatusBadge status={s.status} />
-                  <button
-                    className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
-                    onClick={() => {
-                      if (!isExpanded) {
-                        setExpandedStudent(s.userId);
-                        if (!studentClasses[s.userId]) loadStudentClasses(s.userId);
-                      } else {
-                        setExpandedStudent(null);
-                      }
-                    }}
-                  >
-                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    Classes
-                  </button>
-                  <Button
-                    size="sm" variant="outline"
-                    disabled={acting === s.userId}
-                    onClick={() => toggleStatus(s)}
-                    className="text-xs"
-                  >
-                    {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                  </Button>
-                </div>
+            {paged.length > 0 && (
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left font-medium px-3 py-2.5">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5">Status</th>
+                      <th className="text-left font-medium px-3 py-2.5">Classes</th>
+                      <th className="px-3 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {paged.map((s) => {
+                      const isExpanded = expandedStudent === s.userId;
+                      const classes    = studentClasses[s.userId] || [];
+                      return (
+                        <Fragment key={s.userId}>
+                          <tr className="hover:bg-muted/20">
+                            <td className="px-3 py-2.5 font-medium">{s.name}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.email || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{s.currentGrade || "—"}</td>
+                            <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
+                            <td className="px-3 py-2.5">
+                              <button
+                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                  if (!isExpanded) {
+                                    setExpandedStudent(s.userId);
+                                    if (!studentClasses[s.userId]) loadStudentClasses(s.userId);
+                                  } else {
+                                    setExpandedStudent(null);
+                                  }
+                                }}
+                              >
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                View
+                              </button>
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <Button
+                                size="sm" variant="outline"
+                                disabled={acting === s.userId}
+                                onClick={() => toggleStatus(s)}
+                                className="text-xs h-7"
+                              >
+                                {s.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                              </Button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="bg-muted/30">
+                              <td colSpan={6} className="px-4 py-3">
+                                {classLoading === s.userId && (
+                                  <p className="text-xs text-muted-foreground">Loading classes…</p>
+                                )}
+                                {classLoading !== s.userId && classes.length === 0 && (
+                                  <p className="text-xs text-muted-foreground">No active enrollments.</p>
+                                )}
+                                {classes.length > 0 && (
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-muted-foreground border-b">
+                                        <th className="text-left font-medium pb-1.5">Class</th>
+                                        <th className="text-left font-medium pb-1.5 hidden sm:table-cell">Date</th>
+                                        <th className="pb-1.5" />
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                      {classes.map((enr: any) => (
+                                        <tr key={enr.EnrollmentID || enr._row}>
+                                          <td className="py-1.5 font-medium">{enr["Class Name"] || enr.ClassID}</td>
+                                          <td className="py-1.5 text-muted-foreground hidden sm:table-cell">
+                                            {(enr["Class Date"] && enr["Class Date"] !== "TBD") ? enr["Class Date"] : "—"}
+                                          </td>
+                                          <td className="py-1.5 text-right">
+                                            <Button
+                                              size="sm" variant="outline"
+                                              disabled={cancellingRow === enr._row}
+                                              onClick={() => cancelEnrollment(s.userId, enr._row)}
+                                              className="h-6 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                            >
+                                              {cancellingRow === enr._row ? "…" : "Cancel"}
+                                            </Button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              {isExpanded && (
-                <div className="border-t bg-muted/30 px-3 py-2 space-y-2">
-                  {classLoading === s.userId && (
-                    <p className="text-xs text-muted-foreground">Loading classes…</p>
-                  )}
-                  {classLoading !== s.userId && classes.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No active enrollments.</p>
-                  )}
-                  {classes.map((enr: any) => (
-                    <div key={enr.EnrollmentID || enr._row} className="flex items-center justify-between gap-2 text-xs">
-                      <div>
-                        <span className="font-medium">{enr["Class Name"] || enr.ClassID}</span>
-                        {(enr["Class Date"] && enr["Class Date"] !== "TBD") && (
-                          <span className="text-muted-foreground ml-2">{enr["Class Date"]}</span>
-                        )}
-                      </div>
-                      <Button
-                        size="sm" variant="outline"
-                        disabled={cancellingRow === enr._row}
-                        onClick={() => cancelEnrollment(s.userId, enr._row)}
-                        className="text-xs h-6 px-2 text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        {cancellingRow === enr._row ? "…" : "Cancel"}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-              );
-            })}
-            </div>
+            )}
             <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
           </>
         );
