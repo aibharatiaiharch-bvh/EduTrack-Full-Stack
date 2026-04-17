@@ -36,15 +36,24 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
   `;
 }
 
-// GET /api/enrollment-requests — returns all rows from Enrollments tab, enriched with unpacked notes
+// Statuses that mean the row is an active/completed enrollment — NOT a pending request
+const ACTIVE_ENROLLMENT_STATUSES = new Set(["active", "paid", "rejected", "fee waived", "fee confirmed", "enrolled", "cancelled"]);
+
+// GET /api/enrollment-requests — returns only pending/awaiting-approval rows from Enrollments tab
 router.get("/enrollment-requests", async (req, res) => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: "Missing sheetId" }); return; }
   try {
     const rows = await readTabRows(sheetId, SHEET_TABS.enrollments);
 
+    // Filter to only rows that are actual requests (Pending, Approved, or no status yet)
+    const requestRows = rows.filter(row => {
+      const status = (row["Status"] || "").toLowerCase().trim();
+      return !ACTIVE_ENROLLMENT_STATUSES.has(status);
+    });
+
     // Enrich rows: unpack Notes JSON (or legacy EnrolledAt JSON) into named fields
-    const enriched = rows.map(row => {
+    const enriched = requestRows.map(row => {
       const extra = tryParseJson(row["Notes"] || "") || tryParseJson(row["EnrolledAt"] || "");
 
       // Build a human-readable "Requested On" date from available sources
