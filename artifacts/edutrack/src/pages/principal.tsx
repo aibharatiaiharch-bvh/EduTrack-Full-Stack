@@ -51,6 +51,8 @@ function ClassesTab() {
   const [addSubmitting, setAddSubmitting] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   async function load() {
     setLoading(true); setError("");
@@ -196,8 +198,55 @@ function ClassesTab() {
         <p className="text-sm text-muted-foreground">No active classes found.</p>
       )}
 
-      <div className="space-y-3">
-        {subjects.map((s) => {
+      {!loading && subjects.length > 0 && (() => {
+        const types = ["all", ...Array.from(new Set(subjects.map(s => s.Type).filter(Boolean))).sort()];
+        const q = search.toLowerCase();
+        const filtered = subjects.filter(s => {
+          const matchSearch = !q ||
+            (s.Name || "").toLowerCase().includes(q) ||
+            (s.TeacherName || s.Teachers || "").toLowerCase().includes(q) ||
+            (s.Days || "").toLowerCase().includes(q);
+          const matchType = typeFilter === "all" || s.Type === typeFilter;
+          return matchSearch && matchType;
+        });
+        return (
+          <>
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search by name, teacher or day…"
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
+              <div className="flex gap-1 flex-wrap shrink-0">
+                {types.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTypeFilter(t)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
+                      typeFilter === t
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover:bg-muted"
+                    }`}
+                  >
+                    {t === "all" ? "All types" : t}
+                  </button>
+                ))}
+              </div>
+              {(search || typeFilter !== "all") && (
+                <p className="text-xs text-muted-foreground self-center shrink-0">{filtered.length} of {subjects.length}</p>
+              )}
+            </div>
+
+            {filtered.length === 0 && (
+              <p className="text-sm text-muted-foreground">No classes match your search.</p>
+            )}
+
+            <div className="space-y-3">
+              {filtered.map((s) => {
           const subjectId = s["SubjectID"] || s.SubjectID || "";
           const isOpen    = reassigning === subjectId;
           const isSaving  = saving === subjectId;
@@ -286,8 +335,11 @@ function ClassesTab() {
               </CardContent>
             </Card>
           );
-        })}
-      </div>
+              })}
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
