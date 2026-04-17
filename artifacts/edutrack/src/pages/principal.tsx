@@ -536,36 +536,52 @@ function RequestsTab() {
                   const noClass = row._src === "enrollment" && !(row["ClassID"] || "").trim();
                   const isAssigning = assigningRow === row._row && row._src === "enrollment";
 
-                  // Build detail string
                   let details: React.ReactNode = null;
+                  // Resolve a SubjectID → display name using loaded subjects
+                  const subjectName = (id: string) => {
+                    const s = subjects.find(s => s["SubjectID"] === id);
+                    return s ? s["Name"] : id;
+                  };
+                  // Resolve Classes Interested: may be a name or an ID
+                  const classDisplay = (() => {
+                    const ci = row["Classes Interested"];
+                    if (!ci) return "";
+                    // If it looks like a SubjectID, look it up; otherwise use as-is
+                    const resolved = subjects.find(s => s["SubjectID"] === ci);
+                    return resolved ? resolved["Name"] : ci;
+                  })();
+                  // Assigned class name (from ClassID column)
+                  const assignedClass = row["ClassID"] ? subjectName(row["ClassID"]) : "";
+
                   if (row._src === "enrollment") {
-                    const parts: string[] = [];
-                    if (row["Classes Interested"]) parts.push(`Classes: ${row["Classes Interested"]}`);
-                    if (row["Grade"])              parts.push(`Grade: ${row["Grade"]}`);
-                    if (row["School"])             parts.push(`School: ${row["School"]}`);
-                    if (row["Requested On"])       parts.push(`Requested: ${row["Requested On"]}`);
-                    if (row["Phone"])              parts.push(`Phone: ${row["Phone"]}`);
+                    const chips: string[] = [];
+                    if (classDisplay || assignedClass) chips.push(classDisplay || assignedClass);
+                    if (row["Grade"])  chips.push(`Yr ${row["Grade"]}`);
+                    if (row["School"]) chips.push(row["School"]);
                     details = (
-                      <div className="space-y-0.5">
-                        {parts.map((p, i) => <div key={i} className="text-xs text-muted-foreground">{p}</div>)}
+                      <div className="text-xs text-muted-foreground">
+                        <span>{chips.join(" · ") || "—"}</span>
+                        {row["Requested On"] && (
+                          <span className="ml-2 text-muted-foreground/70">{row["Requested On"]}</span>
+                        )}
                         {noClass && (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-orange-600 font-medium">
-                            <AlertTriangle className="w-3 h-3" /> No class assigned
+                          <span className="ml-2 inline-flex items-center gap-0.5 text-orange-600 font-medium">
+                            <AlertTriangle className="w-3 h-3" /> No class
                           </span>
                         )}
                       </div>
                     );
                   } else {
-                    const parts: string[] = [];
-                    if (row["Class Name"] || row["ClassID"]) parts.push(`Class: ${row["Class Name"] || row["ClassID"]}`);
-                    if (row["Student Email"])                 parts.push(row["Student Email"]);
+                    const classLabel = row["Class Name"] || (row["ClassID"] ? subjectName(row["ClassID"]) : "");
+                    let cancelDate = "";
                     if (row["EnrolledAt"]) {
-                      try { parts.push(`Cancelled: ${new Date(row["EnrolledAt"]).toLocaleDateString("en-AU")}`); } catch {}
+                      try { cancelDate = new Date(row["EnrolledAt"]).toLocaleDateString("en-AU"); } catch {}
                     }
+                    const chips: string[] = [];
+                    if (classLabel)  chips.push(classLabel);
+                    if (cancelDate)  chips.push(`Cancelled ${cancelDate}`);
                     details = (
-                      <div className="space-y-0.5">
-                        {parts.map((p, i) => <div key={i} className="text-xs text-muted-foreground">{p}</div>)}
-                      </div>
+                      <div className="text-xs text-muted-foreground">{chips.join(" · ") || "—"}</div>
                     );
                   }
 
@@ -573,20 +589,17 @@ function RequestsTab() {
                     <Fragment key={key}>
                       <tr className={`hover:bg-muted/20 ${isDone ? "opacity-60" : ""}`}>
                         {/* Type */}
-                        <td className="px-3 py-2.5 align-top">
+                        <td className="px-3 py-2.5 align-middle">
                           <RequestTypeBadge type={row._src === "enrollment" ? "New Enrollment" : "Fee Waiver"} />
                         </td>
-                        {/* Student */}
-                        <td className="px-3 py-2.5 align-top">
-                          <div className="font-medium">{row["Student Name"] || row["Name"] || row["UserID"] || "Unknown"}</div>
-                          {(row["Parent Email"] || row["Email"] || row["Student Email"]) && (
-                            <div className="text-xs text-muted-foreground">{row["Parent Email"] || row["Email"] || row["Student Email"]}</div>
-                          )}
+                        {/* Student — name only, no parent ID */}
+                        <td className="px-3 py-2.5 align-middle">
+                          <div className="font-medium leading-tight">{row["Student Name"] || row["Name"] || row["UserID"] || "Unknown"}</div>
                           {/* Details inline on small screens */}
-                          <div className="md:hidden mt-1">{details}</div>
+                          <div className="md:hidden mt-0.5">{details}</div>
                         </td>
                         {/* Details (desktop) */}
-                        <td className="px-3 py-2.5 align-top hidden md:table-cell">{details}</td>
+                        <td className="px-3 py-2.5 align-middle hidden md:table-cell">{details}</td>
                         {/* Status */}
                         <td className="px-3 py-2.5 align-top">
                           <StatusBadge status={row["Status"] || (row._src === "enrollment" ? "Pending" : "Late Cancellation")} />
