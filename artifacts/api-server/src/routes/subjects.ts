@@ -67,20 +67,32 @@ router.get('/subjects/with-capacity', async (req, res): Promise<void> => {
       const defaultCap = isGroup ? 8 : 999;
       const maxCap    = parseInt(s['MaxCapacity'] || String(defaultCap), 10) || defaultCap;
       const classId   = s['SubjectID'] || '';
-      const enrolled  = enrollmentRows.filter(e => e['ClassID'] === classId).length;
+      const classEnrollments = enrollmentRows.filter(e => e['ClassID'] === classId);
+      const enrolled  = classEnrollments.length;
 
       // Resolve teacher display name from TeacherID → Users tab
       const teacherId = s['TeacherID'] || '';
       const teacher   = userMap.get(teacherId);
       const teacherName = teacher?.name || teacherId;
 
+      // Build comma-separated list of enrolled student first names
+      const enrolledNames = classEnrollments
+        .map(e => {
+          const u = userMap.get(e['UserID'] || '');
+          const fullName = u?.name || e['StudentName'] || '';
+          return fullName.trim().split(/\s+/)[0] || '';
+        })
+        .filter(Boolean)
+        .join(', ');
+
       return {
         ...s,
-        Teachers:      teacherName,
-        TeacherName:   teacherName,
-        MaxCapacity:   maxCap,
+        Teachers:        teacherName,
+        TeacherName:     teacherName,
+        MaxCapacity:     maxCap,
         currentEnrolled: enrolled,
-        isFull:        enrolled >= maxCap,
+        isFull:          enrolled >= maxCap,
+        enrolledNames,
       };
     });
 

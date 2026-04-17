@@ -252,8 +252,9 @@ function ClassesTab() {
                     <th className="text-left font-medium px-3 py-2.5">Class</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Type</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Schedule</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Schedule</th>
                     <th className="text-left font-medium px-3 py-2.5">Enrolled</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Students</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                 </thead>
@@ -278,10 +279,13 @@ function ClassesTab() {
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">
+                          <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
                             {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
+                            {s.enrolledNames || "—"}
+                          </td>
                           <td className="px-3 py-2.5 text-right">
                             {!isOpen ? (
                               <Button
@@ -303,7 +307,7 @@ function ClassesTab() {
                         </tr>
                         {isOpen && (
                           <tr className="bg-amber-50/30">
-                            <td colSpan={6} className="px-4 py-3">
+                            <td colSpan={7} className="px-4 py-3">
                               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 shrink-0">
                                   <AlertTriangle className="w-3 h-3 shrink-0" />
@@ -1072,32 +1076,43 @@ function TutorsTab() {
               total={tutors.length} filtered={filtered.length}
             />
             {paged.length === 0 && <p className="text-sm text-muted-foreground">No tutors match your search.</p>}
-            <div className="space-y-2">
-              {paged.map((t) => (
-                <div key={t.UserID} className="p-3 rounded-lg border text-sm space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{t.Name}</p>
-                      <p className="text-muted-foreground">{t.Email}</p>
-                      {t.Subjects && <p className="text-xs">Subjects: {t.Subjects}</p>}
-                      {t.Specialty && <p className="text-xs">Specialty: {t.Specialty}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <StatusBadge status={t.Status} />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={acting === t.UserID}
-                        onClick={() => toggleStatus(t)}
-                        className="text-xs"
-                      >
-                        {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {paged.length > 0 && (
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left font-medium px-3 py-2.5">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Subjects</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Specialty</th>
+                      <th className="text-left font-medium px-3 py-2.5">Status</th>
+                      <th className="px-3 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {paged.map((t) => (
+                      <tr key={t.UserID} className="hover:bg-muted/20">
+                        <td className="px-3 py-2.5 font-medium">{t.Name}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{t.Email || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{t.Subjects || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
+                        <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
+                        <td className="px-3 py-2.5 text-right">
+                          <Button
+                            size="sm" variant="outline"
+                            disabled={acting === t.UserID}
+                            onClick={() => toggleStatus(t)}
+                            className="text-xs h-7"
+                          >
+                            {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
           </>
         );
