@@ -591,7 +591,7 @@ function RequestsTab() {
                                 )}
                                 {status === "approved" && (
                                   <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "mark-paid")}>
-                                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> App Paid
                                   </Button>
                                 )}
                               </>
