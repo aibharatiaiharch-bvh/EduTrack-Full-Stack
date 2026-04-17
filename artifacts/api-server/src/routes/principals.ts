@@ -672,4 +672,121 @@ router.post('/principals/reconcile-active', async (req, res) => {
   }
 });
 
+// ─── GET /api/principals/find-duplicates ─────────────────────────────────────
+// Scans Users, Students, Teachers, Parents tabs for rows sharing the same ID
+router.get('/principals/find-duplicates', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const [users, studentRows, teacherRows, parentRows] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+      readTabRows(sheetId, SHEET_TABS.teachers),
+      readTabRows(sheetId, SHEET_TABS.parents),
+    ]);
+
+    function findDupes(rows: any[], field: string, label: string) {
+      const seen = new Map<string, number[]>();
+      for (const row of rows) {
+        const id = (row[field] || '').trim();
+        if (!id) continue;
+        if (!seen.has(id)) seen.set(id, []);
+        seen.get(id)!.push(row._row);
+      }
+      return [...seen.entries()]
+        .filter(([, rowNums]) => rowNums.length > 1)
+        .map(([id, rowNums]) => ({ tab: label, id, rows: rowNums }));
+    }
+
+    const userRows = users.map(u => ({ ...u, _row: (u as any)._row }));
+    const all = [
+      ...findDupes(userRows, 'userId', 'Users'),
+      ...findDupes(studentRows, 'UserID', 'Students'),
+      ...findDupes(teacherRows, 'UserID', 'Teachers'),
+      ...findDupes(parentRows, 'UserID', 'Parents'),
+    ];
+
+    res.json({ ok: true, total: all.length, duplicates: all });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/principals/remove-duplicates ───────────────────────────────────
+// Deletes duplicate rows in each tab, keeping the FIRST occurrence.
+// Rows are deleted from highest to lowest to preserve row numbers during deletion.
+router.post('/principals/remove-duplicates', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const [users, studentRows, teacherRows, parentRows] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+      readTabRows(sheetId, SHEET_TABS.teachers),
+      readTabRows(sheetId, SHEET_TABS.parents),
+    ]);
+
+    function dupeRowsToDelete(rows: any[], field: string, tabTitle: string) {
+      const seen = new Set<string>();
+      const toDelete: { tabTitle: string; row: number }[] = [];
+      for (const row of rows) {
+        const id = (row[field] || '').trim();
+        if (!id) continue;
+        if (seen.has(id)) {
+          toDelete.push({ tabTitle, row: row._row });
+        } else {
+          seen.add(id);
+        }
+      }
+      return toDelete;
+    }
+
+    const userRows = users.map(u => ({ ...u, _row: (u as any)._row }));
+    const toDelete = [
+      ...dupeRowsToDelete(userRows, 'userId', SHEET_TABS.users),
+      ...dupeRowsToDelete(studentRows, 'UserID', SHEET_TABS.students),
+      ...dupeRowsToDelete(teacherRows, 'UserID', SHEET_TABS.teachers),
+      ...dupeRowsToDelete(parentRows, 'UserID', SHEET_TABS.parents),
+    ];
+
+    if (toDelete.length === 0) {
+      res.json({ ok: true, deleted: 0, message: 'No duplicate rows found.' });
+      return;
+    }
+
+    // Get tab GIDs (Google's internal sheet IDs for batchUpdate)
+    const sheets = await getUncachableGoogleSheetClient();
+    const meta   = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+    const gidMap = new Map<string, number>();
+    for (const sh of (meta.data.sheets || [])) {
+      const title = sh.properties?.title || '';
+      const gid   = sh.properties?.sheetId;
+      if (gid !== undefined) gidMap.set(title, gid);
+    }
+
+    // Delete highest row numbers first so earlier row numbers stay valid
+    const sorted = [...toDelete].sort((a, b) => b.row - a.row);
+    let deleted = 0;
+    for (const { tabTitle, row } of sorted) {
+      const gid = gidMap.get(tabTitle);
+      if (gid === undefined) continue;
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: sheetId,
+        requestBody: {
+          requests: [{
+            deleteDimension: {
+              range: { sheetId: gid, dimension: 'ROWS', startIndex: row - 1, endIndex: row },
+            },
+          }],
+        },
+      });
+      deleted++;
+    }
+
+    res.json({ ok: true, deleted, message: `Removed ${deleted} duplicate row(s).` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

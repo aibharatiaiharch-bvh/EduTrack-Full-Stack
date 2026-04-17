@@ -1094,6 +1094,90 @@ function BackupCard() {
   );
 }
 
+function DuplicatesCard() {
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
+
+  const sid = sheetId();
+
+  async function scan() {
+    if (!sid) { setError("No Sheet ID configured."); return; }
+    setLoading(true); setMsg(""); setError(""); setResult(null);
+    try {
+      const res = await fetch(apiUrl(`/principals/find-duplicates?sheetId=${encodeURIComponent(sid)}`));
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Scan failed");
+      setResult(data);
+    } catch (e: any) { setError(e.message); }
+    setLoading(false);
+  }
+
+  async function removeDupes() {
+    if (!sid) return;
+    setRemoving(true); setMsg(""); setError("");
+    try {
+      const res = await fetch(apiUrl("/principals/remove-duplicates"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId: sid }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setMsg(data.message || `Removed ${data.deleted} row(s).`);
+      setResult(null);
+    } catch (e: any) { setError(e.message); }
+    setRemoving(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-500" /> Duplicate ID Cleaner
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Scans Users, Students, Teachers, and Parents tabs for rows that share the same ID. Keeps the first occurrence and deletes the rest.
+        </p>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        {msg && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{msg}</p>}
+
+        {result && (
+          <div className="rounded-md border text-xs divide-y">
+            {result.total === 0 ? (
+              <p className="px-3 py-2 text-green-600 font-medium">No duplicates found — all clean!</p>
+            ) : (
+              result.duplicates.map((d: any, i: number) => (
+                <div key={i} className="px-3 py-2 flex items-center justify-between gap-2">
+                  <span className="font-mono text-muted-foreground">{d.id}</span>
+                  <span className="text-foreground font-medium">{d.tab}</span>
+                  <span className="text-amber-600">rows {d.rows.join(", ")}</span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" onClick={scan} disabled={loading || removing} className="gap-1.5 text-xs">
+            <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Scanning…" : "Scan for Duplicates"}
+          </Button>
+          {result && result.total > 0 && (
+            <Button size="sm" onClick={removeDupes} disabled={removing} className="gap-1.5 text-xs bg-red-600 hover:bg-red-700 text-white">
+              {removing ? "Removing…" : `Remove ${result.total} Duplicate(s)`}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ToolsTab() {
   const [manualId, setManualId] = useState("");
 
@@ -1194,6 +1278,8 @@ function ToolsTab() {
         desc="Clears and re-fills every tab with sample data. Use this to reset the sheet to a clean demo state."
         action={() => runTool("/sheets/seed", "Demo data seeded ✓")}
       />
+
+      <DuplicatesCard />
 
       <div className="flex items-center gap-3 py-1">
         <div className="flex-1 h-px bg-border" />

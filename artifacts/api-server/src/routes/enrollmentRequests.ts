@@ -221,6 +221,23 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
   }
 });
 
+// PATCH /api/enrollment-requests/:row/assign-class
+// Lets the principal set or change the ClassID on an enrollment row
+router.patch("/enrollment-requests/:row/assign-class", async (req, res) => {
+  const sheetId = getSheetId(req);
+  const rowNum = parseInt(req.params.row, 10);
+  if (!sheetId || isNaN(rowNum)) { res.status(400).json({ error: "Missing sheetId or row" }); return; }
+  const { classId } = req.body as { classId?: string };
+  if (!classId) { res.status(400).json({ error: "classId is required" }); return; }
+  try {
+    const col = colLetter("enrollments", "ClassID");
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${col}${rowNum}`, classId);
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/enrollment-requests/:row/reject
 router.post("/enrollment-requests/:row/reject", async (req, res) => {
   const sheetId = getSheetId(req);

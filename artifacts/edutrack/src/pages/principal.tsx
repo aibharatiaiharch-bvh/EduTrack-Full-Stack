@@ -378,20 +378,49 @@ function SectionHeader({ title, onRefresh, loading }: { title: string; onRefresh
 
 function EnrollmentRequestsTab() {
   const [rows, setRows] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<number | null>(null);
   const [acting, setActing] = useState<number | null>(null);
+  const [assigningRow, setAssigningRow] = useState<number | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string>("");
+  const [assignSaving, setAssignSaving] = useState(false);
+  const [assignError, setAssignError] = useState("");
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("/enrollment-requests");
-      if (Array.isArray(data)) setRows(data);
+      const [enrollData, subjectData] = await Promise.all([
+        apiFetch("/enrollment-requests"),
+        apiFetch("/subjects?status=active"),
+      ]);
+      if (Array.isArray(enrollData)) setRows(enrollData);
       else setError("Could not load requests.");
+      if (Array.isArray(subjectData)) setSubjects(subjectData);
     } catch { setError("Connection error."); }
     setLoading(false);
+  }
+
+  async function assignClass(rowNum: number) {
+    if (!selectedClass) return;
+    setAssignSaving(true);
+    setAssignError("");
+    try {
+      const data = await apiFetch(`/enrollment-requests/${rowNum}/assign-class`, {
+        method: "PATCH",
+        body: JSON.stringify({ classId: selectedClass }),
+      });
+      if (data.ok) {
+        setAssigningRow(null);
+        setSelectedClass("");
+        await load();
+      } else {
+        setAssignError(data.error || "Failed to assign class.");
+      }
+    } catch { setAssignError("Connection error."); }
+    setAssignSaving(false);
   }
 
   useAutoRefresh(load);
@@ -461,6 +490,54 @@ function EnrollmentRequestsTab() {
               </div>
             )}
           </div>
+
+          {/* Class assignment — shown when no class is set yet */}
+          {!row["ClassID"] && (
+            <div className="rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 space-y-2">
+              <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> No class assigned yet
+              </p>
+              {assigningRow === row._row ? (
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    value={selectedClass}
+                    onChange={e => setSelectedClass(e.target.value)}
+                    className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background"
+                  >
+                    <option value="">Select a class…</option>
+                    {subjects.map(s => (
+                      <option key={s.SubjectID || s["SubjectID"]} value={s.SubjectID || s["SubjectID"]}>
+                        {s.Name || s["Name"]} ({s.Type})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" disabled={!selectedClass || assignSaving} onClick={() => assignClass(row._row)} className="gap-1">
+                      <CheckCircle className="w-3 h-3" />{assignSaving ? "Saving…" : "Assign"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setAssigningRow(null); setSelectedClass(""); setAssignError(""); }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => { setAssigningRow(row._row); setAssignError(""); }}>
+                  <Plus className="w-3 h-3" /> Assign a Class
+                </Button>
+              )}
+              {assigningRow === row._row && assignError && (
+                <p className="text-xs text-red-500">{assignError}</p>
+              )}
+            </div>
+          )}
+          {row["ClassID"] && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Class ID:</span> {row["ClassID"]}
+              <button className="ml-1 text-primary hover:underline text-xs"
+                onClick={() => { setAssigningRow(row._row); setSelectedClass(""); setAssignError(""); }}>
+                Change
+              </button>
+            </div>
+          )}
 
           {/* Expandable extra details */}
           {extras.length > 0 && (
