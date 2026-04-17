@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle, Clock, DollarSign, Plus, CheckCircle2, Upload,
+  BookOpen, AlertTriangle, DollarSign, Plus, CheckCircle2, Upload,
   Search, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
@@ -351,7 +351,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "latecancels" | "upload";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "upload";
 
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
@@ -376,31 +376,69 @@ function SectionHeader({ title, onRefresh, loading }: { title: string; onRefresh
   );
 }
 
-function EnrollmentRequestsTab() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState<number | null>(null);
-  const [acting, setActing] = useState<number | null>(null);
-  const [assigningRow, setAssigningRow] = useState<number | null>(null);
+// ─── Type badge for request type ───────────────────────────────────────────
+function RequestTypeBadge({ type }: { type: string }) {
+  const map: Record<string, string> = {
+    "New Enrollment": "bg-blue-100 text-blue-800 border-blue-200",
+    "Fee Waiver":     "bg-amber-100 text-amber-800 border-amber-200",
+    "Completed":      "bg-gray-100 text-gray-600 border-gray-200",
+  };
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${map[type] ?? "bg-gray-100 text-gray-600 border-gray-200"}`}>
+      {type}
+    </span>
+  );
+}
+
+function RequestsTab() {
+  const [enrollRows, setEnrollRows] = useState<any[]>([]);
+  const [lateRows, setLateRows]     = useState<any[]>([]);
+  const [subjects, setSubjects]     = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState("");
+  const [expanded, setExpanded]     = useState<string | null>(null);
+  const [acting, setActing]         = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<"all" | "enrollment" | "fee-waiver" | "completed">("all");
+  const [assigningRow, setAssigningRow]   = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>("");
-  const [assignSaving, setAssignSaving] = useState(false);
-  const [assignError, setAssignError] = useState("");
+  const [assignSaving, setAssignSaving]   = useState(false);
+  const [assignError, setAssignError]     = useState("");
 
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const [enrollData, subjectData] = await Promise.all([
+      const [enrollData, lateData, subjectData] = await Promise.all([
         apiFetch("/enrollment-requests"),
+        apiFetch("/enrollments?status=Late%20Cancellation"),
         apiFetch("/subjects?status=active"),
       ]);
-      if (Array.isArray(enrollData)) setRows(enrollData);
-      else setError("Could not load requests.");
+      if (Array.isArray(enrollData)) setEnrollRows(enrollData);
+      else setError("Could not load enrollment requests.");
+      if (Array.isArray(lateData)) setLateRows(lateData);
       if (Array.isArray(subjectData)) setSubjects(subjectData);
     } catch { setError("Connection error."); }
     setLoading(false);
+  }
+
+  useAutoRefresh(load);
+
+  async function actEnroll(row: any, action: "approve" | "reject" | "mark-paid") {
+    setActing(`e-${row._row}`);
+    try {
+      await apiFetch(`/enrollment-requests/${row._row}/${action}`, { method: "POST", body: JSON.stringify({}) });
+      await load();
+    } catch {}
+    setActing(null);
+  }
+
+  async function actLate(row: any, action: "Fee Waived" | "Fee Confirmed") {
+    setActing(`l-${row._row}`);
+    try {
+      await apiFetch(`/enrollments/${row._row}/override`, { method: "POST", body: JSON.stringify({ action }) });
+      await load();
+    } catch {}
+    setActing(null);
   }
 
   async function assignClass(rowNum: number) {
@@ -412,92 +450,81 @@ function EnrollmentRequestsTab() {
         method: "PATCH",
         body: JSON.stringify({ classId: selectedClass }),
       });
-      if (data.ok) {
-        setAssigningRow(null);
-        setSelectedClass("");
-        await load();
-      } else {
-        setAssignError(data.error || "Failed to assign class.");
-      }
+      if (data.ok) { setAssigningRow(null); setSelectedClass(""); await load(); }
+      else setAssignError(data.error || "Failed to assign class.");
     } catch { setAssignError("Connection error."); }
     setAssignSaving(false);
   }
 
-  useAutoRefresh(load);
+  // Classify enrollment rows
+  const enrollPending  = enrollRows.filter(r => (r["Status"] || "").toLowerCase() === "pending");
+  const enrollApproved = enrollRows.filter(r => (r["Status"] || "").toLowerCase() === "approved");
+  const enrollDone     = enrollRows.filter(r => ["paid", "rejected"].includes((r["Status"] || "").toLowerCase()));
+  const latePending    = lateRows.filter(r => (r["Status"] || "").toLowerCase() === "late cancellation");
+  const lateResolved   = lateRows.filter(r => ["fee waived", "fee confirmed"].includes((r["Status"] || "").toLowerCase()));
 
-  async function act(row: any, action: "approve" | "reject" | "mark-paid") {
-    setActing(row._row);
-    try {
-      await apiFetch(`/enrollment-requests/${row._row}/${action}`, { method: "POST", body: JSON.stringify({}) });
-      await load();
-    } catch { /* ignore */ }
-    setActing(null);
-  }
+  const totalActive = enrollPending.length + enrollApproved.length + latePending.length;
 
-  const pending  = rows.filter(r => (r["Status"] || "").toLowerCase() === "pending");
-  const approved = rows.filter(r => (r["Status"] || "").toLowerCase() === "approved");
-  const done     = rows.filter(r => ["paid", "rejected"].includes((r["Status"] || "").toLowerCase()));
+  // Filter display based on typeFilter
+  const showEnroll   = typeFilter === "all" || typeFilter === "enrollment";
+  const showFeeWaive = typeFilter === "all" || typeFilter === "fee-waiver";
+  const showDone     = typeFilter === "all" || typeFilter === "completed";
 
-  function RequestCard({ row, actions }: { row: any; actions: React.ReactNode }) {
+  // Enrolment request card
+  function EnrollCard({ row }: { row: any }) {
+    const key = `e-${row._row}`;
+    const isActing = acting === `e-${row._row}`;
+    const noClass  = !(row["ClassID"] || "").trim();
+    const isAssigning = assigningRow === row._row;
     const HIDDEN = ["_row", "Status", "Student Name", "Name", "Parent Email", "Email",
-                    "Classes Interested", "Grade", "School", "Requested On", "Phone"];
-    const extras = Object.entries(row).filter(([k, v]) => !HIDDEN.includes(k) && v && String(v).trim());
+                    "ClassID", "Classes Interested", "Grade", "School", "Requested On", "Phone",
+                    "UserID", "EnrollmentID", "ParentID", "TeacherID", "Teacher Name",
+                    "TeacherEmail", "Zoom Link", "Class Type", "ClassDate", "ClassTime",
+                    "EnrolledAt", "Notes", "Previously Enrolled", "Reference", "Extra Notes"];
+    const extras = Object.entries(row).filter(([k, v]) => !HIDDEN.includes(k) && v && String(v).trim() && !k.startsWith("_"));
+    const status = (row["Status"] || "Pending").toLowerCase();
+    const expandKey = key;
 
     return (
-      <Card key={row._row}>
+      <Card key={key}>
         <CardContent className="pt-4 space-y-3">
-          {/* Header row */}
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className="font-medium text-base">{row["Student Name"] || row["Name"] || "Unknown"}</p>
-              {(row["Parent Email"] || row["Email"]) && (
-                <p className="text-sm text-muted-foreground">{row["Parent Email"] || row["Email"]}</p>
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</p>
+              <RequestTypeBadge type="New Enrollment" />
+              {noClass && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-orange-100 text-orange-700 border-orange-200 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> Needs Class
+                </span>
               )}
             </div>
             <StatusBadge status={row["Status"] || "Pending"} />
           </div>
 
-          {/* Key details grid — always visible */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+          {/* Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            {(row["Parent Email"] || row["Email"]) && (
+              <div className="sm:col-span-2 flex gap-1.5 text-muted-foreground">
+                {row["Parent Email"] || row["Email"]}
+              </div>
+            )}
             {row["Classes Interested"] && (
               <div className="sm:col-span-2 flex gap-1.5">
                 <span className="text-muted-foreground shrink-0">Classes:</span>
                 <span className="font-medium">{row["Classes Interested"]}</span>
               </div>
             )}
-            {row["Grade"] && (
-              <div className="flex gap-1.5">
-                <span className="text-muted-foreground shrink-0">Grade:</span>
-                <span>{row["Grade"]}</span>
-              </div>
-            )}
-            {row["School"] && (
-              <div className="flex gap-1.5">
-                <span className="text-muted-foreground shrink-0">School:</span>
-                <span>{row["School"]}</span>
-              </div>
-            )}
-            {row["Phone"] && (
-              <div className="flex gap-1.5">
-                <span className="text-muted-foreground shrink-0">Phone:</span>
-                <span>{row["Phone"]}</span>
-              </div>
-            )}
-            {row["Requested On"] && (
-              <div className="flex gap-1.5">
-                <span className="text-muted-foreground shrink-0">Requested:</span>
-                <span>{row["Requested On"]}</span>
-              </div>
-            )}
+            {row["Grade"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Grade:</span><span>{row["Grade"]}</span></div>}
+            {row["School"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">School:</span><span>{row["School"]}</span></div>}
+            {row["Phone"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Phone:</span><span>{row["Phone"]}</span></div>}
+            {row["Requested On"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Requested:</span><span>{row["Requested On"]}</span></div>}
           </div>
 
-          {/* Class assignment — shown when no class is set yet */}
-          {!row["ClassID"] && (
-            <div className="rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 space-y-2">
-              <p className="text-xs text-amber-700 font-medium flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> No class assigned yet
-              </p>
-              {assigningRow === row._row ? (
+          {/* Assign class panel */}
+          {noClass && (
+            <div className="rounded-md border border-orange-200 bg-orange-50/50 px-3 py-2 space-y-2">
+              {isAssigning ? (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <select
                     value={selectedClass}
@@ -506,8 +533,8 @@ function EnrollmentRequestsTab() {
                   >
                     <option value="">Select a class…</option>
                     {subjects.map(s => (
-                      <option key={s.SubjectID || s["SubjectID"]} value={s.SubjectID || s["SubjectID"]}>
-                        {s.Name || s["Name"]} ({s.Type})
+                      <option key={s["SubjectID"]} value={s["SubjectID"]}>
+                        {s["Name"]} ({s["Type"]})
                       </option>
                     ))}
                   </select>
@@ -519,37 +546,33 @@ function EnrollmentRequestsTab() {
                   </div>
                 </div>
               ) : (
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100"
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-orange-300 text-orange-700 hover:bg-orange-100"
                   onClick={() => { setAssigningRow(row._row); setAssignError(""); }}>
                   <Plus className="w-3 h-3" /> Assign a Class
                 </Button>
               )}
-              {assigningRow === row._row && assignError && (
-                <p className="text-xs text-red-500">{assignError}</p>
-              )}
+              {isAssigning && assignError && <p className="text-xs text-red-500">{assignError}</p>}
             </div>
           )}
-          {row["ClassID"] && (
+          {!noClass && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Class ID:</span> {row["ClassID"]}
-              <button className="ml-1 text-primary hover:underline text-xs"
+              <span className="font-medium text-foreground">Class:</span> {row["ClassID"]}
+              <button className="text-primary hover:underline"
                 onClick={() => { setAssigningRow(row._row); setSelectedClass(""); setAssignError(""); }}>
                 Change
               </button>
             </div>
           )}
 
-          {/* Expandable extra details */}
+          {/* More details toggle */}
           {extras.length > 0 && (
             <>
-              <button
-                className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
-                onClick={() => setExpanded(expanded === row._row ? null : row._row)}
-              >
-                {expanded === row._row ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                {expanded === row._row ? "Hide extra details" : "More details"}
+              <button className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
+                onClick={() => setExpanded(expanded === expandKey ? null : expandKey)}>
+                {expanded === expandKey ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {expanded === expandKey ? "Hide details" : "More details"}
               </button>
-              {expanded === row._row && (
+              {expanded === expandKey && (
                 <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
                   {extras.map(([k, v]) => (
                     <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
@@ -559,66 +582,169 @@ function EnrollmentRequestsTab() {
             </>
           )}
 
-          <div className="flex gap-2 pt-1">{actions}</div>
+          {/* Actions */}
+          <div className="flex gap-2 pt-1 flex-wrap">
+            {status === "pending" && (
+              <>
+                <Button size="sm" className="gap-1" disabled={isActing} onClick={() => actEnroll(row, "approve")}>
+                  <CheckCircle className="w-3 h-3" /> Approve
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={isActing} onClick={() => actEnroll(row, "reject")}>
+                  <XCircle className="w-3 h-3" /> Reject
+                </Button>
+              </>
+            )}
+            {status === "approved" && (
+              <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={isActing} onClick={() => actEnroll(row, "mark-paid")}>
+                <CheckCircle2 className="w-3 h-3" /> Mark as Paid
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
   }
 
+  // Fee waiver card
+  function FeeWaiverCard({ row }: { row: any }) {
+    const isActing = acting === `l-${row._row}`;
+    const status = (row["Status"] || "").toLowerCase();
+    const isDone = status === "fee waived" || status === "fee confirmed";
+    return (
+      <Card className={isDone ? "opacity-60" : "border-amber-200"}>
+        <CardContent className="pt-4 space-y-3">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium">{row["Student Name"] || row["UserID"] || "Unknown"}</p>
+              <RequestTypeBadge type="Fee Waiver" />
+            </div>
+            <StatusBadge status={row["Status"] || "Late Cancellation"} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            {(row["Class Name"] || row["ClassID"]) && (
+              <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Class:</span><span>{row["Class Name"] || row["ClassID"]}</span></div>
+            )}
+            {row["Student Email"] && (
+              <div className="flex gap-1.5 text-muted-foreground">{row["Student Email"]}</div>
+            )}
+            {row["EnrolledAt"] && (
+              <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Cancelled:</span><span>{new Date(row["EnrolledAt"]).toLocaleDateString("en-AU")}</span></div>
+            )}
+          </div>
+          {!isDone && (
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="gap-1 border-green-300 text-green-700 hover:bg-green-50" disabled={isActing} onClick={() => actLate(row, "Fee Waived")}>
+                <CheckCircle className="w-3 h-3" /> Fee Waived
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1 border-red-300 text-red-700 hover:bg-red-50" disabled={isActing} onClick={() => actLate(row, "Fee Confirmed")}>
+                <DollarSign className="w-3 h-3" /> Fee Confirmed
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isEmpty = enrollRows.length === 0 && lateRows.length === 0;
+
   return (
     <div>
-      <SectionHeader title={`Enrollment Requests (${pending.length} pending)`} onRefresh={load} loading={loading} />
+      <SectionHeader title={`Requests (${totalActive} need action)`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
-      {!loading && rows.length === 0 && <p className="text-sm text-muted-foreground">No enrollment requests found.</p>}
+      {!loading && isEmpty && <p className="text-sm text-muted-foreground">No requests found.</p>}
 
-      {/* Step 1 — New requests awaiting review */}
-      {pending.length > 0 && (
-        <div className="space-y-3 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Awaiting Review</p>
-          {pending.map((row) => (
-            <RequestCard key={row._row} row={row} actions={
-              <>
-                <Button size="sm" className="gap-1" disabled={acting === row._row} onClick={() => act(row, "approve")}>
-                  <CheckCircle className="w-3 h-3" /> Approve
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={acting === row._row} onClick={() => act(row, "reject")}>
-                  <XCircle className="w-3 h-3" /> Reject
-                </Button>
-              </>
-            } />
+      {/* Type filter tabs */}
+      {!loading && !isEmpty && (
+        <div className="flex gap-1 mb-5 border-b pb-0 flex-wrap">
+          {([
+            { id: "all",         label: `All (${totalActive + enrollDone.length + lateResolved.length})` },
+            { id: "enrollment",  label: `New Enrollment (${enrollPending.length + enrollApproved.length})` },
+            { id: "fee-waiver",  label: `Fee Waiver (${latePending.length})` },
+            { id: "completed",   label: `Completed (${enrollDone.length + lateResolved.length})` },
+          ] as const).map(t => (
+            <button key={t.id} onClick={() => setTypeFilter(t.id)}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap -mb-px ${
+                typeFilter === t.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}>
+              {t.label}
+            </button>
           ))}
         </div>
       )}
 
-      {/* Step 2 — Approved, awaiting payment */}
-      {approved.length > 0 && (
-        <div className="space-y-3 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-600">Approved — Awaiting Payment</p>
-          {approved.map((row) => (
-            <RequestCard key={row._row} row={row} actions={
-              <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={acting === row._row} onClick={() => act(row, "mark-paid")}>
-                <CheckCircle className="w-3 h-3" /> Mark as Paid
-              </Button>
-            } />
-          ))}
-        </div>
-      )}
+      <div className="space-y-6">
+        {/* ── New Enrollment: Pending ── */}
+        {showEnroll && enrollPending.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Awaiting Review</p>
+            <div className="space-y-3">
+              {enrollPending.map(row => <EnrollCard key={row._row} row={row} />)}
+            </div>
+          </section>
+        )}
 
-      {/* Step 3 — Paid or rejected */}
-      {done.length > 0 && (
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-2">Completed</p>
-          <div className="space-y-2">
-            {done.map((row) => (
-              <div key={row._row} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 text-sm">
-                <span>{row["Student Name"] || row["Name"] || "Unknown"}</span>
-                <StatusBadge status={row["Status"]} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        {/* ── New Enrollment: Approved ── */}
+        {showEnroll && enrollApproved.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-3">Approved — Awaiting Payment</p>
+            <div className="space-y-3">
+              {enrollApproved.map(row => <EnrollCard key={row._row} row={row} />)}
+            </div>
+          </section>
+        )}
+
+        {/* ── Fee Waivers: Pending ── */}
+        {showFeeWaive && latePending.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-3">Fee Waiver Requests</p>
+            <div className="space-y-3">
+              {latePending.map(row => <FeeWaiverCard key={row._row} row={row} />)}
+            </div>
+          </section>
+        )}
+
+        {/* ── Completed ── */}
+        {showDone && (enrollDone.length > 0 || lateResolved.length > 0) && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Completed</p>
+            <div className="rounded-md border overflow-hidden divide-y text-sm">
+              {enrollDone.map(row => (
+                <div key={`e-${row._row}`} className="flex items-center justify-between px-3 py-2.5 bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</span>
+                    <RequestTypeBadge type="New Enrollment" />
+                  </div>
+                  <StatusBadge status={row["Status"]} />
+                </div>
+              ))}
+              {lateResolved.map(row => (
+                <div key={`l-${row._row}`} className="flex items-center justify-between px-3 py-2.5 bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{row["Student Name"] || row["UserID"] || "Unknown"}</span>
+                    <RequestTypeBadge type="Fee Waiver" />
+                  </div>
+                  <StatusBadge status={row["Status"]} />
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Empty state for active filter */}
+        {!loading && !isEmpty && typeFilter !== "all" && (
+          (() => {
+            const noContent =
+              (typeFilter === "enrollment"  && enrollPending.length === 0 && enrollApproved.length === 0) ||
+              (typeFilter === "fee-waiver"  && latePending.length === 0) ||
+              (typeFilter === "completed"   && enrollDone.length === 0 && lateResolved.length === 0);
+            return noContent ? <p className="text-sm text-muted-foreground">Nothing in this category.</p> : null;
+          })()
+        )}
+      </div>
     </div>
   );
 }
@@ -1320,132 +1446,9 @@ function UsersTab() {
   );
 }
 
-function LateCancellationsTab() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [acting, setActing] = useState<number | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await apiFetch("/enrollments?status=Late%20Cancellation");
-      if (Array.isArray(data)) setRows(data);
-      else setError("Could not load late cancellations.");
-    } catch { setError("Connection error."); }
-    setLoading(false);
-  }
-
-  useAutoRefresh(load);
-
-  async function override(row: any, action: "Fee Waived" | "Fee Confirmed") {
-    setActing(row._row);
-    try {
-      await apiFetch(`/enrollments/${row._row}/override`, {
-        method: "POST",
-        body: JSON.stringify({ action }),
-      });
-      await load();
-    } catch {}
-    setActing(null);
-  }
-
-  const lateCancels = rows.filter(r => (r["Status"] || "").toLowerCase() === "late cancellation");
-  const resolved = rows.filter(r => ["fee waived", "fee confirmed"].includes((r["Status"] || "").toLowerCase()));
-
-  return (
-    <div>
-      <SectionHeader title={`Late Cancellations (${lateCancels.length} pending review)`} onRefresh={load} loading={loading} />
-      {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
-
-      {lateCancels.length === 0 && !loading && (
-        <div className="py-10 text-center text-muted-foreground text-sm">
-          <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          No late cancellations pending review.
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {lateCancels.map(r => {
-          const notes = (() => { try { return JSON.parse(r["ClassID"] || "{}"); } catch { return {}; } })();
-          return (
-            <Card key={r._row} className="border-amber-200 bg-amber-50/40">
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-start gap-3 justify-between">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-sm">{r["Student Name"] || r["UserID"] || "Unknown student"}</p>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium border border-amber-200">
-                        Late Cancellation
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Class:</span> {r["Class Name"] || r["ClassID"] || "—"}
-                    </p>
-                    {r["Student Email"] && (
-                      <p className="text-xs text-muted-foreground">{r["Student Email"]}</p>
-                    )}
-                    {r["EnrolledAt"] && (
-                      <p className="text-xs text-muted-foreground">
-                        Cancelled: {new Date(r["EnrolledAt"]).toLocaleDateString("en-AU")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-green-300 text-green-700 hover:bg-green-50"
-                      disabled={acting === r._row}
-                      onClick={() => override(r, "Fee Waived")}
-                    >
-                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                      Fee Waived
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-300 text-red-700 hover:bg-red-50"
-                      disabled={acting === r._row}
-                      onClick={() => override(r, "Fee Confirmed")}
-                    >
-                      <DollarSign className="h-3.5 w-3.5 mr-1" />
-                      Fee Confirmed
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {resolved.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">Resolved ({resolved.length})</h3>
-          <div className="space-y-2">
-            {resolved.map(r => (
-              <div key={r._row} className="flex items-center justify-between p-3 rounded-lg border bg-card text-sm">
-                <div>
-                  <span className="font-medium">{r["Student Name"] || r["UserID"] || "—"}</span>
-                  <span className="text-muted-foreground mx-2">·</span>
-                  <span className="text-muted-foreground">{r["Class Name"] || r["ClassID"] || "—"}</span>
-                </div>
-                <StatusBadge status={r["Status"]} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "requests",    label: "Requests",          icon: <ClipboardList className="w-4 h-4" /> },
-  { id: "latecancels", label: "Late Cancellations", icon: <Clock className="w-4 h-4" /> },
-  { id: "students",    label: "Students",           icon: <Users className="w-4 h-4" /> },
+  { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
+  { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
@@ -1500,8 +1503,7 @@ export default function PrincipalDashboard() {
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         <NotificationPrompt />
-        {tab === "requests"    && <EnrollmentRequestsTab />}
-        {tab === "latecancels" && <LateCancellationsTab />}
+        {tab === "requests"    && <RequestsTab />}
         {tab === "students"    && <StudentsTab />}
         {tab === "tutors"      && <TutorsTab />}
         {tab === "classes"     && <ClassesTab />}
