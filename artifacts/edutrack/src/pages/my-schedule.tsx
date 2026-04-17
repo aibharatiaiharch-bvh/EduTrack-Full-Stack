@@ -20,6 +20,7 @@ type EnrollmentRow = {
   "Class Time": string;
   "Parent Email": string;
   "Status": string;
+  "Fee": string;
   "Override Action": string;
   "Teacher": string;
   "Teacher Email": string;
@@ -47,11 +48,11 @@ type SubjectRow = {
 };
 
 function statusColor(status: string) {
-  if (status === "Active") return "default";
-  if (status === "Cancelled") return "secondary";
-  if (status === "Late Cancellation") return "destructive";
-  if (status === "Fee Waived") return "secondary";
-  if (status === "Fee Confirmed") return "destructive";
+  if (status === "Active")   return "default";
+  if (status === "Inactive") return "secondary";
+  // legacy backward compat
+  if (status === "Cancelled" || status === "Fee Waived") return "secondary";
+  if (status === "Late Cancellation" || status === "Fee Confirmed") return "destructive";
   return "outline";
 }
 
@@ -306,8 +307,11 @@ function ClassCard({ cls, muted }: { cls: EnrollmentRow; muted?: boolean }) {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Badge variant={statusColor(cls["Status"])}>{cls["Status"]}</Badge>
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <Badge variant={statusColor(cls["Status"])}>{cls["Status"] || "Active"}</Badge>
+            {cls["Status"] === "Inactive" && cls["Fee"] && cls["Fee"] !== "Not Applicable" && (
+              <span className="text-xs text-muted-foreground">Fee: {cls["Fee"]}</span>
+            )}
           </div>
         </div>
       </CardContent>

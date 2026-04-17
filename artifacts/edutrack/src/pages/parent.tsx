@@ -34,16 +34,17 @@ type Enrollment = {
   "Class Time": string;
   "Parent Email": string;
   "Status": string;
+  "Fee": string;
   "Override Action": string;
 };
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "Active") return "default";
-  if (status === "Cancelled") return "secondary";
-  if (status === "Late Cancellation") return "destructive";
-  if (status === "Fee Waived") return "secondary";
-  if (status === "Fee Confirmed") return "destructive";
-  if (status === "Pending") return "outline";
+  if (status === "Active")   return "default";
+  if (status === "Inactive") return "secondary";
+  // legacy values (backward compat)
+  if (status === "Cancelled" || status === "Fee Waived") return "secondary";
+  if (status === "Late Cancellation" || status === "Fee Confirmed") return "destructive";
+  if (status === "Pending")  return "outline";
   if (status === "Rejected") return "destructive";
   return "outline";
 }
@@ -306,9 +307,16 @@ export default function ParentView() {
                         {[enrollment["Class Date"], enrollment["Class Time"]].filter(Boolean).join(" · ") || "—"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant(enrollment["Status"])} className="capitalize">
-                          {enrollment["Status"]}
-                        </Badge>
+                        <div className="flex flex-col gap-0.5">
+                          <Badge variant={statusVariant(enrollment["Status"])} className="capitalize w-fit">
+                            {enrollment["Status"] || "Active"}
+                          </Badge>
+                          {enrollment["Status"] === "Inactive" && enrollment["Fee"] && enrollment["Fee"] !== "Not Applicable" && (
+                            <span className="text-xs text-muted-foreground">
+                              Fee: {enrollment["Fee"]}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {enrollment["Status"] === "Active" && selectedParent && (

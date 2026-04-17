@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle, DollarSign, Plus, CheckCircle2, Upload,
+  BookOpen, AlertTriangle, Plus, CheckCircle2, Upload,
   Search, ChevronLeft, ChevronRight, CalendarDays,
 } from "lucide-react";
 
@@ -407,7 +407,7 @@ function RequestsTab() {
     try {
       const [enrollData, lateData, subjectData] = await Promise.all([
         apiFetch("/enrollment-requests"),
-        apiFetch("/enrollments?status=Late%20Cancellation"),
+        apiFetch("/enrollments?status=inactive&fee=not+waived"),
         apiFetch("/subjects?status=active"),
       ]);
       if (Array.isArray(enrollData)) setEnrollRows(enrollData);
@@ -429,10 +429,10 @@ function RequestsTab() {
     setActing(null);
   }
 
-  async function actLate(row: any, action: "Fee Waived" | "Fee Confirmed") {
+  async function actLate(row: any) {
     setActing(`l-${row._row}`);
     try {
-      await apiFetch(`/enrollments/${row._row}/override`, { method: "POST", body: JSON.stringify({ action }) });
+      await apiFetch(`/enrollments/${row._row}/waive-fee`, { method: "POST", body: JSON.stringify({}) });
       await load();
     } catch {}
     setActing(null);
@@ -451,16 +451,22 @@ function RequestsTab() {
     setAssignSaving(false);
   }
 
-  const DONE_STATUSES = ["active", "rejected", "fee waived", "fee confirmed"];
   const allRows = [
     ...enrollRows.map(r => ({ ...r, _src: "enrollment" as const })),
     ...lateRows.map(r => ({ ...r, _src: "fee-waiver" as const })),
   ];
 
-  // Only show rows that still need action — completed requests live in their respective records
-  const filtered = allRows.filter(r =>
-    !DONE_STATUSES.includes((r["Status"] || "").toLowerCase())
-  );
+  function isRowDone(row: typeof allRows[0]): boolean {
+    if (row._src === "enrollment") {
+      const s = (row["Status"] || "").toLowerCase();
+      return s === "active" || s === "rejected";
+    }
+    // fee-waiver rows: done when fee is waived
+    return (row["Fee"] || "").toLowerCase() === "waived";
+  }
+
+  // Only show rows that still need action
+  const filtered = allRows.filter(r => !isRowDone(r));
 
   const isEmpty = filtered.length === 0;
 
@@ -494,7 +500,7 @@ function RequestsTab() {
                 {filtered.map(row => {
                   const key = `${row._src}-${row._row}`;
                   const status = (row["Status"] || "").toLowerCase();
-                  const isDone = DONE_STATUSES.includes(status);
+                  const isDone = isRowDone(row);
                   const isActingNow = acting === (row._src === "enrollment" ? `e-${row._row}` : `l-${row._row}`);
                   const noClass = row._src === "enrollment" && !(row["ClassID"] || "").trim();
                   const isAssigning = assigningRow === row._row && row._src === "enrollment";
@@ -565,7 +571,14 @@ function RequestsTab() {
                         <td className="px-3 py-2.5 align-middle hidden md:table-cell">{details}</td>
                         {/* Status */}
                         <td className="px-3 py-2.5 align-top">
-                          <StatusBadge status={row["Status"] || (row._src === "enrollment" ? "Pending" : "Late Cancellation")} />
+                          {row._src === "enrollment" ? (
+                            <StatusBadge status={row["Status"] || "Pending"} />
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <StatusBadge status="Inactive" />
+                              <span className="text-xs text-amber-700 font-medium">Fee: Not Waived</span>
+                            </div>
+                          )}
                         </td>
                         {/* Actions — stacked vertically on mobile, horizontal on sm+ */}
                         <td className="px-3 py-3 align-middle">
@@ -597,14 +610,9 @@ function RequestsTab() {
                               </>
                             )}
                             {row._src === "fee-waiver" && !isDone && (
-                              <>
-                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actLate(row, "Fee Waived")}>
-                                  <CheckCircle className="w-3.5 h-3.5" /> Waive
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 border-red-300 text-red-700 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actLate(row, "Fee Confirmed")}>
-                                  <DollarSign className="w-3.5 h-3.5" /> Confirm Fee
-                                </Button>
-                              </>
+                              <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actLate(row)}>
+                                <CheckCircle className="w-3.5 h-3.5" /> Waive Fee
+                              </Button>
                             )}
                           </div>
                         </td>

@@ -136,10 +136,11 @@ export const SHEET_HEADERS = {
   // TRANSACTIONS — UserIDs for all FKs; class date/time stored as session data
   // Status: Active | Inactive  (default Active)
   // Fee:    Not Applicable | Not Waived | Waived  (default Not Applicable; only set when Inactive)
+  // NOTE: Fee is intentionally at the END so adding it never shifts existing column data.
   enrollments: [
-    'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'Fee', 'EnrolledAt',
+    'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'EnrolledAt',
     'TeacherID', 'Teacher Name', 'TeacherEmail', 'Zoom Link', 'Class Type',
-    'ClassDate', 'ClassTime', 'Notes',
+    'ClassDate', 'ClassTime', 'Notes', 'Fee',
   ],
 
   // Announcements — standalone, no user FK needed

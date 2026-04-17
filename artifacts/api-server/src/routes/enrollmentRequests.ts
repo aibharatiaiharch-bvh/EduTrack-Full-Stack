@@ -36,9 +36,14 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
   `;
 }
 
-// Statuses that mean the row is an active/completed enrollment — NOT a pending request
-// Pending and Approved rows stay visible in the Requests queue until payment is confirmed.
-const ACTIVE_ENROLLMENT_STATUSES = new Set(["active", "paid", "rejected", "fee waived", "fee confirmed", "enrolled", "cancelled", "late cancellation"]);
+// Status values that mean this row is a settled class enrollment, NOT a pending request.
+// Only "Pending" and "Approved" rows stay visible in the Requests queue.
+const ACTIVE_ENROLLMENT_STATUSES = new Set([
+  "active", "inactive", "rejected",
+  // legacy single-column values (migrated rows)
+  "paid", "enrolled", "cancelled", "canceled",
+  "late cancellation", "fee waived", "fee confirmed",
+]);
 
 // GET /api/enrollment-requests — returns only pending/awaiting-approval rows from Enrollments tab
 router.get("/enrollment-requests", async (req, res) => {
