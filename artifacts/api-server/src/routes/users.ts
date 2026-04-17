@@ -61,12 +61,14 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
     const user = users.find(u => u.userId === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
-    // 1. Append snapshot to Archive tab
+    // 1. Append snapshot to Archive tab (best-effort — skip if tab doesn't exist yet)
     const now = new Date().toISOString();
     const archiveId = `ARC-${Date.now()}`;
-    await appendRow(sheetId, SHEET_TABS.archive, [
-      archiveId, user.userId, user.email, user.role, user.name, user.status, now,
-    ]);
+    try {
+      await appendRow(sheetId, SHEET_TABS.archive, [
+        archiveId, user.userId, user.email, user.role, user.name, user.status, now,
+      ]);
+    } catch { /* Archive tab may not exist — deactivation still proceeds */ }
 
     // 2. Set Status=Inactive in Users tab (master) + update audit column
     const statusCol = colLetter('users', 'Status');

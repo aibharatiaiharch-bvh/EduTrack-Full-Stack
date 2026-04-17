@@ -798,6 +798,11 @@ function StudentsTab() {
   const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
   const [classLoading,    setClassLoading]    = useState<string | null>(null);
   const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
+  const [joiningStudent,  setJoiningStudent]  = useState<string | null>(null);
+  const [joinSubjectId,   setJoinSubjectId]   = useState("");
+  const [joinSaving,      setJoinSaving]      = useState(false);
+  const [joinError,       setJoinError]       = useState("");
+  const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
@@ -830,6 +835,30 @@ function StudentsTab() {
     setCancellingRow(null);
   }
 
+  async function joinClass(userId: string) {
+    if (!joinSubjectId) return;
+    setJoinSaving(true); setJoinError("");
+    try {
+      const sub = subjectObjects.find(s => s["SubjectID"] === joinSubjectId);
+      const data = await apiFetch("/enrollments/join", {
+        method: "POST",
+        body: JSON.stringify({
+          studentUserId: userId,
+          subjectId: joinSubjectId,
+          subjectName: sub?.["Name"] || "",
+        }),
+      });
+      if (data.ok || data.enrollmentId) {
+        setJoiningStudent(null);
+        setJoinSubjectId("");
+        await loadStudentClasses(userId);
+      } else {
+        setJoinError(data.error || "Failed to add to class.");
+      }
+    } catch { setJoinError("Connection error."); }
+    setJoinSaving(false);
+  }
+
   async function load() {
     setLoading(true);
     setError("");
@@ -840,7 +869,10 @@ function StudentsTab() {
       ]);
       if (Array.isArray(userData)) setStudents(userData.filter((u: any) => u.role === "student"));
       else setError("Could not load students.");
-      if (Array.isArray(subjectData)) setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
+      if (Array.isArray(subjectData)) {
+        setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
+        setSubjectObjects(subjectData);
+      }
     } catch { setError("Connection error."); }
     setLoading(false);
   }
@@ -1055,6 +1087,43 @@ function StudentsTab() {
                                     </tbody>
                                   </table>
                                 )}
+
+                                {/* Add to Class */}
+                                <div className="mt-3 pt-2 border-t border-border/50">
+                                  {joiningStudent !== s.userId ? (
+                                    <button
+                                      onClick={() => { setJoiningStudent(s.userId); setJoinSubjectId(""); setJoinError(""); }}
+                                      className="text-xs px-2.5 py-1.5 rounded-md border border-primary/30 text-primary hover:bg-primary/5 font-medium flex items-center gap-1"
+                                    >
+                                      <Plus className="w-3 h-3" /> Add to Class
+                                    </button>
+                                  ) : (
+                                    <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                                      <select
+                                        value={joinSubjectId}
+                                        onChange={e => setJoinSubjectId(e.target.value)}
+                                        className="flex-1 border rounded-md px-2 py-1.5 text-xs bg-background min-w-0"
+                                        aria-label="Select class to add student to"
+                                      >
+                                        <option value="">Select a class…</option>
+                                        {subjectObjects.map(sub => (
+                                          <option key={sub["SubjectID"]} value={sub["SubjectID"]}>
+                                            {sub["Name"]} ({sub["Type"] || "Group"})
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="flex gap-1.5 shrink-0">
+                                        <Button size="sm" className="h-7 text-xs" disabled={!joinSubjectId || joinSaving} onClick={() => joinClass(s.userId)}>
+                                          {joinSaving ? "Adding…" : "Confirm"}
+                                        </Button>
+                                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setJoiningStudent(null); setJoinSubjectId(""); setJoinError(""); }}>
+                                          Cancel
+                                        </Button>
+                                      </div>
+                                      {joinError && <p className="text-xs text-red-500">{joinError}</p>}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           )}

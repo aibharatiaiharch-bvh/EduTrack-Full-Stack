@@ -113,6 +113,7 @@ export const SHEET_TABS = {
   announcements: 'Announcements',
   pushSubscriptions: 'PushSubscriptions',
   attendance: 'Attendance',
+  archive: 'Archive',
 };
 
 // ─── SCHEMA (Users = master, all others use IDs) ────────────────────────────
@@ -144,6 +145,9 @@ export const SHEET_HEADERS = {
 
   // Attendance — per-session records (SessionDate = YYYY-MM-DD of the actual class day)
   attendance: ['AttendanceID', 'ClassID', 'UserID', 'SessionDate', 'Status', 'Notes', 'MarkedBy', 'MarkedAt'],
+
+  // Archive — snapshots of deactivated/deleted user records
+  archive: ['ArchiveID', 'UserID', 'Email', 'Role', 'Name', 'Status', 'ArchivedAt'],
 };
 
 /** Return the A1 column letter for a named field within a tab's header row. */
