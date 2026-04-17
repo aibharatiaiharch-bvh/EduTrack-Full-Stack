@@ -396,17 +396,16 @@ function RequestsTab() {
   const [subjects, setSubjects]     = useState<any[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
-  const [expanded, setExpanded]     = useState<string | null>(null);
   const [acting, setActing]         = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "enrollment" | "fee-waiver" | "completed">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "enrollment" | "fee-waiver">("all");
+  const [showCompleted, setShowCompleted] = useState(false);
   const [assigningRow, setAssigningRow]   = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [assignSaving, setAssignSaving]   = useState(false);
   const [assignError, setAssignError]     = useState("");
 
   async function load() {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const [enrollData, lateData, subjectData] = await Promise.all([
         apiFetch("/enrollment-requests"),
@@ -443,12 +442,10 @@ function RequestsTab() {
 
   async function assignClass(rowNum: number) {
     if (!selectedClass) return;
-    setAssignSaving(true);
-    setAssignError("");
+    setAssignSaving(true); setAssignError("");
     try {
       const data = await apiFetch(`/enrollment-requests/${rowNum}/assign-class`, {
-        method: "PATCH",
-        body: JSON.stringify({ classId: selectedClass }),
+        method: "PATCH", body: JSON.stringify({ classId: selectedClass }),
       });
       if (data.ok) { setAssigningRow(null); setSelectedClass(""); await load(); }
       else setAssignError(data.error || "Failed to assign class.");
@@ -456,295 +453,227 @@ function RequestsTab() {
     setAssignSaving(false);
   }
 
-  // Classify enrollment rows
-  const enrollPending  = enrollRows.filter(r => (r["Status"] || "").toLowerCase() === "pending");
-  const enrollApproved = enrollRows.filter(r => (r["Status"] || "").toLowerCase() === "approved");
-  const enrollDone     = enrollRows.filter(r => ["paid", "rejected"].includes((r["Status"] || "").toLowerCase()));
-  const latePending    = lateRows.filter(r => (r["Status"] || "").toLowerCase() === "late cancellation");
-  const lateResolved   = lateRows.filter(r => ["fee waived", "fee confirmed"].includes((r["Status"] || "").toLowerCase()));
+  // Tag every row with _src and _type for unified table
+  const DONE_STATUSES = ["paid", "rejected", "fee waived", "fee confirmed"];
+  const allRows = [
+    ...enrollRows.map(r => ({ ...r, _src: "enrollment" as const })),
+    ...lateRows.map(r => ({ ...r, _src: "fee-waiver" as const })),
+  ];
 
-  const totalActive = enrollPending.length + enrollApproved.length + latePending.length;
+  const filtered = allRows.filter(r => {
+    const status = (r["Status"] || "").toLowerCase();
+    const isDone = DONE_STATUSES.includes(status);
+    if (!showCompleted && isDone) return false;
+    if (typeFilter !== "all" && r._src !== typeFilter) return false;
+    return true;
+  });
 
-  // Filter display based on typeFilter
-  const showEnroll   = typeFilter === "all" || typeFilter === "enrollment";
-  const showFeeWaive = typeFilter === "all" || typeFilter === "fee-waiver";
-  const showDone     = typeFilter === "all" || typeFilter === "completed";
+  const activeCount = allRows.filter(r => !DONE_STATUSES.includes((r["Status"] || "").toLowerCase())).length;
+  const completedCount = allRows.filter(r => DONE_STATUSES.includes((r["Status"] || "").toLowerCase())).length;
 
-  // Enrolment request card
-  function EnrollCard({ row }: { row: any }) {
-    const key = `e-${row._row}`;
-    const isActing = acting === `e-${row._row}`;
-    const noClass  = !(row["ClassID"] || "").trim();
-    const isAssigning = assigningRow === row._row;
-    const HIDDEN = ["_row", "Status", "Student Name", "Name", "Parent Email", "Email",
-                    "ClassID", "Classes Interested", "Grade", "School", "Requested On", "Phone",
-                    "UserID", "EnrollmentID", "ParentID", "TeacherID", "Teacher Name",
-                    "TeacherEmail", "Zoom Link", "Class Type", "ClassDate", "ClassTime",
-                    "EnrolledAt", "Notes", "Previously Enrolled", "Reference", "Extra Notes"];
-    const extras = Object.entries(row).filter(([k, v]) => !HIDDEN.includes(k) && v && String(v).trim() && !k.startsWith("_"));
-    const status = (row["Status"] || "Pending").toLowerCase();
-    const expandKey = key;
-
-    return (
-      <Card key={key}>
-        <CardContent className="pt-4 space-y-3">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</p>
-              <RequestTypeBadge type="New Enrollment" />
-              {noClass && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-orange-100 text-orange-700 border-orange-200 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Needs Class
-                </span>
-              )}
-            </div>
-            <StatusBadge status={row["Status"] || "Pending"} />
-          </div>
-
-          {/* Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            {(row["Parent Email"] || row["Email"]) && (
-              <div className="sm:col-span-2 flex gap-1.5 text-muted-foreground">
-                {row["Parent Email"] || row["Email"]}
-              </div>
-            )}
-            {row["Classes Interested"] && (
-              <div className="sm:col-span-2 flex gap-1.5">
-                <span className="text-muted-foreground shrink-0">Classes:</span>
-                <span className="font-medium">{row["Classes Interested"]}</span>
-              </div>
-            )}
-            {row["Grade"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Grade:</span><span>{row["Grade"]}</span></div>}
-            {row["School"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">School:</span><span>{row["School"]}</span></div>}
-            {row["Phone"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Phone:</span><span>{row["Phone"]}</span></div>}
-            {row["Requested On"] && <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Requested:</span><span>{row["Requested On"]}</span></div>}
-          </div>
-
-          {/* Assign class panel */}
-          {noClass && (
-            <div className="rounded-md border border-orange-200 bg-orange-50/50 px-3 py-2 space-y-2">
-              {isAssigning ? (
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <select
-                    value={selectedClass}
-                    onChange={e => setSelectedClass(e.target.value)}
-                    className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background"
-                  >
-                    <option value="">Select a class…</option>
-                    {subjects.map(s => (
-                      <option key={s["SubjectID"]} value={s["SubjectID"]}>
-                        {s["Name"]} ({s["Type"]})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" disabled={!selectedClass || assignSaving} onClick={() => assignClass(row._row)} className="gap-1">
-                      <CheckCircle className="w-3 h-3" />{assignSaving ? "Saving…" : "Assign"}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => { setAssigningRow(null); setSelectedClass(""); setAssignError(""); }}>Cancel</Button>
-                  </div>
-                </div>
-              ) : (
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-orange-300 text-orange-700 hover:bg-orange-100"
-                  onClick={() => { setAssigningRow(row._row); setAssignError(""); }}>
-                  <Plus className="w-3 h-3" /> Assign a Class
-                </Button>
-              )}
-              {isAssigning && assignError && <p className="text-xs text-red-500">{assignError}</p>}
-            </div>
-          )}
-          {!noClass && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Class:</span> {row["ClassID"]}
-              <button className="text-primary hover:underline"
-                onClick={() => { setAssigningRow(row._row); setSelectedClass(""); setAssignError(""); }}>
-                Change
-              </button>
-            </div>
-          )}
-
-          {/* More details toggle */}
-          {extras.length > 0 && (
-            <>
-              <button className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
-                onClick={() => setExpanded(expanded === expandKey ? null : expandKey)}>
-                {expanded === expandKey ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                {expanded === expandKey ? "Hide details" : "More details"}
-              </button>
-              {expanded === expandKey && (
-                <div className="text-sm text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
-                  {extras.map(([k, v]) => (
-                    <div key={k}><span className="font-medium text-foreground">{k}:</span> {String(v)}</div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2 pt-1 flex-wrap">
-            {status === "pending" && (
-              <>
-                <Button size="sm" className="gap-1" disabled={isActing} onClick={() => actEnroll(row, "approve")}>
-                  <CheckCircle className="w-3 h-3" /> Approve
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={isActing} onClick={() => actEnroll(row, "reject")}>
-                  <XCircle className="w-3 h-3" /> Reject
-                </Button>
-              </>
-            )}
-            {status === "approved" && (
-              <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={isActing} onClick={() => actEnroll(row, "mark-paid")}>
-                <CheckCircle2 className="w-3 h-3" /> Mark as Paid
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Fee waiver card
-  function FeeWaiverCard({ row }: { row: any }) {
-    const isActing = acting === `l-${row._row}`;
-    const status = (row["Status"] || "").toLowerCase();
-    const isDone = status === "fee waived" || status === "fee confirmed";
-    return (
-      <Card className={isDone ? "opacity-60" : "border-amber-200"}>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex items-start justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-medium">{row["Student Name"] || row["UserID"] || "Unknown"}</p>
-              <RequestTypeBadge type="Fee Waiver" />
-            </div>
-            <StatusBadge status={row["Status"] || "Late Cancellation"} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            {(row["Class Name"] || row["ClassID"]) && (
-              <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Class:</span><span>{row["Class Name"] || row["ClassID"]}</span></div>
-            )}
-            {row["Student Email"] && (
-              <div className="flex gap-1.5 text-muted-foreground">{row["Student Email"]}</div>
-            )}
-            {row["EnrolledAt"] && (
-              <div className="flex gap-1.5"><span className="text-muted-foreground shrink-0">Cancelled:</span><span>{new Date(row["EnrolledAt"]).toLocaleDateString("en-AU")}</span></div>
-            )}
-          </div>
-          {!isDone && (
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="gap-1 border-green-300 text-green-700 hover:bg-green-50" disabled={isActing} onClick={() => actLate(row, "Fee Waived")}>
-                <CheckCircle className="w-3 h-3" /> Fee Waived
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1 border-red-300 text-red-700 hover:bg-red-50" disabled={isActing} onClick={() => actLate(row, "Fee Confirmed")}>
-                <DollarSign className="w-3 h-3" /> Fee Confirmed
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const isEmpty = enrollRows.length === 0 && lateRows.length === 0;
+  const isEmpty = allRows.length === 0;
 
   return (
     <div>
-      <SectionHeader title={`Requests (${totalActive} need action)`} onRefresh={load} loading={loading} />
+      <SectionHeader title={`Requests (${activeCount} need action)`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       {!loading && isEmpty && <p className="text-sm text-muted-foreground">No requests found.</p>}
 
-      {/* Type filter tabs */}
       {!loading && !isEmpty && (
-        <div className="flex gap-1 mb-5 border-b pb-0 flex-wrap">
-          {([
-            { id: "all",         label: `All (${totalActive + enrollDone.length + lateResolved.length})` },
-            { id: "enrollment",  label: `New Enrollment (${enrollPending.length + enrollApproved.length})` },
-            { id: "fee-waiver",  label: `Fee Waiver (${latePending.length})` },
-            { id: "completed",   label: `Completed (${enrollDone.length + lateResolved.length})` },
-          ] as const).map(t => (
-            <button key={t.id} onClick={() => setTypeFilter(t.id)}
-              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap -mb-px ${
-                typeFilter === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}>
-              {t.label}
+        <>
+          {/* Filter bar */}
+          <div className="flex flex-wrap gap-2 mb-4 items-center justify-between">
+            <div className="flex gap-1">
+              {([
+                { id: "all",          label: "All types" },
+                { id: "enrollment",   label: "New Enrollment" },
+                { id: "fee-waiver",   label: "Fee Waiver" },
+              ] as const).map(t => (
+                <button key={t.id} onClick={() => setTypeFilter(t.id)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                    typeFilter === t.id
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowCompleted(v => !v)}
+              className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                showCompleted
+                  ? "bg-muted text-foreground border-border"
+                  : "text-muted-foreground border-border hover:bg-muted"
+              }`}
+            >
+              {showCompleted ? "Hide" : "Show"} completed ({completedCount})
             </button>
-          ))}
-        </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-md border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Type</th>
+                  <th className="text-left font-medium px-3 py-2.5">Student</th>
+                  <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Details</th>
+                  <th className="text-left font-medium px-3 py-2.5">Status</th>
+                  <th className="text-left font-medium px-3 py-2.5">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.length === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground text-sm">No requests match this filter.</td></tr>
+                )}
+                {filtered.map(row => {
+                  const key = `${row._src}-${row._row}`;
+                  const status = (row["Status"] || "").toLowerCase();
+                  const isDone = DONE_STATUSES.includes(status);
+                  const isActingNow = acting === (row._src === "enrollment" ? `e-${row._row}` : `l-${row._row}`);
+                  const noClass = row._src === "enrollment" && !(row["ClassID"] || "").trim();
+                  const isAssigning = assigningRow === row._row && row._src === "enrollment";
+
+                  // Build detail string
+                  let details: React.ReactNode = null;
+                  if (row._src === "enrollment") {
+                    const parts: string[] = [];
+                    if (row["Classes Interested"]) parts.push(`Classes: ${row["Classes Interested"]}`);
+                    if (row["Grade"])              parts.push(`Grade: ${row["Grade"]}`);
+                    if (row["School"])             parts.push(`School: ${row["School"]}`);
+                    if (row["Requested On"])       parts.push(`Requested: ${row["Requested On"]}`);
+                    if (row["Phone"])              parts.push(`Phone: ${row["Phone"]}`);
+                    details = (
+                      <div className="space-y-0.5">
+                        {parts.map((p, i) => <div key={i} className="text-xs text-muted-foreground">{p}</div>)}
+                        {noClass && (
+                          <span className="inline-flex items-center gap-0.5 text-xs text-orange-600 font-medium">
+                            <AlertTriangle className="w-3 h-3" /> No class assigned
+                          </span>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    const parts: string[] = [];
+                    if (row["Class Name"] || row["ClassID"]) parts.push(`Class: ${row["Class Name"] || row["ClassID"]}`);
+                    if (row["Student Email"])                 parts.push(row["Student Email"]);
+                    if (row["EnrolledAt"]) {
+                      try { parts.push(`Cancelled: ${new Date(row["EnrolledAt"]).toLocaleDateString("en-AU")}`); } catch {}
+                    }
+                    details = (
+                      <div className="space-y-0.5">
+                        {parts.map((p, i) => <div key={i} className="text-xs text-muted-foreground">{p}</div>)}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Fragment key={key}>
+                      <tr className={`hover:bg-muted/20 ${isDone ? "opacity-60" : ""}`}>
+                        {/* Type */}
+                        <td className="px-3 py-2.5 align-top">
+                          <RequestTypeBadge type={row._src === "enrollment" ? "New Enrollment" : "Fee Waiver"} />
+                        </td>
+                        {/* Student */}
+                        <td className="px-3 py-2.5 align-top">
+                          <div className="font-medium">{row["Student Name"] || row["Name"] || row["UserID"] || "Unknown"}</div>
+                          {(row["Parent Email"] || row["Email"] || row["Student Email"]) && (
+                            <div className="text-xs text-muted-foreground">{row["Parent Email"] || row["Email"] || row["Student Email"]}</div>
+                          )}
+                          {/* Details inline on small screens */}
+                          <div className="md:hidden mt-1">{details}</div>
+                        </td>
+                        {/* Details (desktop) */}
+                        <td className="px-3 py-2.5 align-top hidden md:table-cell">{details}</td>
+                        {/* Status */}
+                        <td className="px-3 py-2.5 align-top">
+                          <StatusBadge status={row["Status"] || (row._src === "enrollment" ? "Pending" : "Late Cancellation")} />
+                        </td>
+                        {/* Actions */}
+                        <td className="px-3 py-2.5 align-top">
+                          <div className="flex flex-wrap gap-1.5">
+                            {row._src === "enrollment" && !isDone && (
+                              <>
+                                {noClass && (
+                                  <button
+                                    onClick={() => { setAssigningRow(isAssigning ? null : row._row); setSelectedClass(""); setAssignError(""); setExpandedRow(isAssigning ? null : key); }}
+                                    className="text-xs px-2 py-1 rounded border border-orange-300 text-orange-700 hover:bg-orange-50 font-medium flex items-center gap-0.5">
+                                    <Plus className="w-3 h-3" /> Assign Class
+                                  </button>
+                                )}
+                                {status === "pending" && (
+                                  <>
+                                    <Button size="sm" className="h-7 text-xs gap-1" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
+                                      <CheckCircle className="w-3 h-3" /> Approve
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
+                                      <XCircle className="w-3 h-3" /> Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {status === "approved" && (
+                                  <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={isActingNow} onClick={() => actEnroll(row, "mark-paid")}>
+                                    <CheckCircle2 className="w-3 h-3" /> Mark Paid
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            {row._src === "fee-waiver" && !isDone && (
+                              <>
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50" disabled={isActingNow} onClick={() => actLate(row, "Fee Waived")}>
+                                  <CheckCircle className="w-3 h-3" /> Waive
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-red-300 text-red-700 hover:bg-red-50" disabled={isActingNow} onClick={() => actLate(row, "Fee Confirmed")}>
+                                  <DollarSign className="w-3 h-3" /> Confirm Fee
+                                </Button>
+                              </>
+                            )}
+                            {isDone && <span className="text-xs text-muted-foreground italic">—</span>}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Assign-class sub-row */}
+                      {isAssigning && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-3 bg-orange-50/60 border-t border-orange-100">
+                            <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                              <span className="text-xs font-medium text-orange-700 shrink-0">Assign a class:</span>
+                              <select
+                                value={selectedClass}
+                                onChange={e => setSelectedClass(e.target.value)}
+                                className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background min-w-0"
+                              >
+                                <option value="">Select a class…</option>
+                                {subjects.map(s => (
+                                  <option key={s["SubjectID"]} value={s["SubjectID"]}>
+                                    {s["Name"]} ({s["Type"]})
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex gap-2 shrink-0">
+                                <Button size="sm" className="h-7 text-xs gap-1" disabled={!selectedClass || assignSaving} onClick={() => assignClass(row._row)}>
+                                  <CheckCircle className="w-3 h-3" />{assignSaving ? "Saving…" : "Assign"}
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAssigningRow(null); setSelectedClass(""); setAssignError(""); }}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                            {assignError && <p className="text-xs text-red-500 mt-1">{assignError}</p>}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
-
-      <div className="space-y-6">
-        {/* ── New Enrollment: Pending ── */}
-        {showEnroll && enrollPending.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Awaiting Review</p>
-            <div className="space-y-3">
-              {enrollPending.map(row => <EnrollCard key={row._row} row={row} />)}
-            </div>
-          </section>
-        )}
-
-        {/* ── New Enrollment: Approved ── */}
-        {showEnroll && enrollApproved.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-3">Approved — Awaiting Payment</p>
-            <div className="space-y-3">
-              {enrollApproved.map(row => <EnrollCard key={row._row} row={row} />)}
-            </div>
-          </section>
-        )}
-
-        {/* ── Fee Waivers: Pending ── */}
-        {showFeeWaive && latePending.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 mb-3">Fee Waiver Requests</p>
-            <div className="space-y-3">
-              {latePending.map(row => <FeeWaiverCard key={row._row} row={row} />)}
-            </div>
-          </section>
-        )}
-
-        {/* ── Completed ── */}
-        {showDone && (enrollDone.length > 0 || lateResolved.length > 0) && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Completed</p>
-            <div className="rounded-md border overflow-hidden divide-y text-sm">
-              {enrollDone.map(row => (
-                <div key={`e-${row._row}`} className="flex items-center justify-between px-3 py-2.5 bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{row["Student Name"] || row["Name"] || "Unknown"}</span>
-                    <RequestTypeBadge type="New Enrollment" />
-                  </div>
-                  <StatusBadge status={row["Status"]} />
-                </div>
-              ))}
-              {lateResolved.map(row => (
-                <div key={`l-${row._row}`} className="flex items-center justify-between px-3 py-2.5 bg-muted/20">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{row["Student Name"] || row["UserID"] || "Unknown"}</span>
-                    <RequestTypeBadge type="Fee Waiver" />
-                  </div>
-                  <StatusBadge status={row["Status"]} />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Empty state for active filter */}
-        {!loading && !isEmpty && typeFilter !== "all" && (
-          (() => {
-            const noContent =
-              (typeFilter === "enrollment"  && enrollPending.length === 0 && enrollApproved.length === 0) ||
-              (typeFilter === "fee-waiver"  && latePending.length === 0) ||
-              (typeFilter === "completed"   && enrollDone.length === 0 && lateResolved.length === 0);
-            return noContent ? <p className="text-sm text-muted-foreground">Nothing in this category.</p> : null;
-          })()
-        )}
-      </div>
     </div>
   );
 }
