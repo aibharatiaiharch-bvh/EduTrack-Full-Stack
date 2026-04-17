@@ -1,6 +1,7 @@
 import { Router, type IRouter } from 'express';
 import { sendDailyBackup } from '../lib/backup.js';
 import { isEmailConfigured } from '../lib/email.js';
+import { isBackupEnabled, setBackupEnabled } from '../lib/scheduler.js';
 
 const router: IRouter = Router();
 
@@ -9,13 +10,24 @@ function getSheetId(req: any): string {
     process.env.DEFAULT_SHEET_ID || '';
 }
 
-// GET /api/backup/status — check config without sending
+function getRecipients(): string[] {
+  return [
+    process.env.DEVELOPER_EMAIL,
+    process.env.PRINCIPAL_EMAIL,
+    process.env.BACKUP_RECIPIENT,
+  ].filter((e): e is string => !!e && e.includes('@'));
+}
+
+// GET /api/backup/status
 router.get('/backup/status', (_req, res): void => {
   const configured = isEmailConfigured();
+  const recipients = [...new Set(getRecipients())];
   res.json({
+    enabled: isBackupEnabled(),
     emailConfigured: configured,
-    recipient: process.env.BACKUP_RECIPIENT || process.env.PRINCIPAL_EMAIL || null,
+    recipients,
     schedule: process.env.BACKUP_CRON || '0 7 * * *',
+    scheduleHuman: 'Daily at 7:00 AM',
     sheetId: process.env.DEFAULT_SHEET_ID || null,
     missing: [
       !process.env.SMTP_HOST && 'SMTP_HOST',
@@ -23,6 +35,14 @@ router.get('/backup/status', (_req, res): void => {
       !process.env.SMTP_PASS && 'SMTP_PASS',
     ].filter(Boolean),
   });
+});
+
+// POST /api/backup/toggle — enable or disable the scheduled backup
+router.post('/backup/toggle', (req, res): void => {
+  const { enabled } = req.body ?? {};
+  const next = typeof enabled === 'boolean' ? enabled : !isBackupEnabled();
+  setBackupEnabled(next);
+  res.json({ ok: true, enabled: next });
 });
 
 // POST /api/backup/send — manual trigger

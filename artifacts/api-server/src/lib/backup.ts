@@ -23,11 +23,15 @@ function formatDate(d: Date): string {
 }
 
 export async function sendDailyBackup(spreadsheetId: string): Promise<{ tabsSent: string[]; recipient: string }> {
-  const recipient =
-    process.env.BACKUP_RECIPIENT ||
-    process.env.PRINCIPAL_EMAIL;
+  const allRecipients = [
+    process.env.BACKUP_RECIPIENT,
+    process.env.DEVELOPER_EMAIL,
+    process.env.PRINCIPAL_EMAIL,
+  ].filter((e): e is string => !!e && e.includes('@'));
 
-  if (!recipient) throw new Error('No recipient — set BACKUP_RECIPIENT or PRINCIPAL_EMAIL.');
+  const uniqueRecipients = [...new Set(allRecipients)];
+  if (uniqueRecipients.length === 0) throw new Error('No recipient — set DEVELOPER_EMAIL, PRINCIPAL_EMAIL or BACKUP_RECIPIENT.');
+  const recipient = uniqueRecipients.join(', ');
   if (!spreadsheetId) throw new Error('No Sheet ID configured.');
 
   const sheets = await getUncachableGoogleSheetClient();
@@ -133,7 +137,7 @@ export async function sendDailyBackup(spreadsheetId: string): Promise<{ tabsSent
 </html>`;
 
   await sendEmail({
-    to: recipient,
+    to: uniqueRecipients,
     subject: `EduTrack Daily Backup — ${now.toISOString().slice(0, 10)}`,
     html,
     attachments,

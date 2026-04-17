@@ -3,6 +3,11 @@ import { sendDailyBackup } from './backup.js';
 import { isEmailConfigured } from './email.js';
 import { logger } from './logger.js';
 
+let backupEnabled = true;
+
+export function isBackupEnabled(): boolean { return backupEnabled; }
+export function setBackupEnabled(val: boolean): void { backupEnabled = val; }
+
 export function startScheduler(): void {
   const schedule = process.env.BACKUP_CRON || '0 7 * * *';
   const sheetId  = process.env.DEFAULT_SHEET_ID || '';
@@ -23,6 +28,10 @@ export function startScheduler(): void {
   }
 
   cron.schedule(schedule, async () => {
+    if (!backupEnabled) {
+      logger.info('Daily backup skipped — disabled via developer tools');
+      return;
+    }
     logger.info('Running daily backup...');
     try {
       const result = await sendDailyBackup(sheetId);
@@ -32,5 +41,11 @@ export function startScheduler(): void {
     }
   });
 
-  logger.info({ schedule, recipient: process.env.BACKUP_RECIPIENT || process.env.PRINCIPAL_EMAIL }, 'Daily backup scheduled');
+  const recipients = [
+    process.env.DEVELOPER_EMAIL,
+    process.env.PRINCIPAL_EMAIL,
+    process.env.BACKUP_RECIPIENT,
+  ].filter((e): e is string => !!e && e.includes('@'));
+
+  logger.info({ schedule, recipients: [...new Set(recipients)] }, 'Daily backup scheduled');
 }

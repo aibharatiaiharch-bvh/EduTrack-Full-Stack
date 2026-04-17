@@ -12,7 +12,7 @@ import {
   GraduationCap, LogOut, Users, Shield, Database, Wrench,
   CheckCircle2, XCircle, RefreshCw, ExternalLink, ChevronRight,
   BookOpen, UserCheck, ClipboardList, UserPlus, Eye, Loader2,
-  AlertTriangle, Activity, GitBranch, Plus, Upload,
+  AlertTriangle, Activity, GitBranch, Plus, Upload, Bell, BellOff, Send,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -940,6 +940,100 @@ function AddSubjectCard() {
   );
 }
 
+function BackupCard() {
+  const [status, setStatus] = useState<any>(null);
+  const [toggling, setToggling] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState("");
+
+  async function load() {
+    try {
+      const res = await fetch(apiUrl("/backup/status"));
+      setStatus(await res.json());
+    } catch {}
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggle() {
+    setToggling(true);
+    try {
+      const res = await fetch(apiUrl("/backup/toggle"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !status?.enabled }),
+      });
+      const data = await res.json();
+      setStatus((s: any) => ({ ...s, enabled: data.enabled }));
+    } catch {}
+    setToggling(false);
+  }
+
+  async function sendNow() {
+    setSending(true);
+    setSendResult("");
+    try {
+      const sid = sheetId();
+      const res = await fetch(apiUrl("/backup/send"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheetId: sid }),
+      });
+      const data = await res.json();
+      setSendResult(data.ok ? `Sent to ${data.recipient} ✓` : (data.error || "Failed"));
+    } catch (e: any) {
+      setSendResult(e.message || "Failed");
+    }
+    setSending(false);
+  }
+
+  const enabled = status?.enabled ?? true;
+  const emailOk = status?.emailConfigured;
+  const recipients: string[] = status?.recipients || [];
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium flex items-center gap-1.5">
+            {enabled ? <Bell className="w-3.5 h-3.5 text-green-600" /> : <BellOff className="w-3.5 h-3.5 text-muted-foreground" />}
+            Daily Backup Email
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {emailOk
+              ? `Runs ${status?.scheduleHuman || "daily at 7:00 AM"} — sends CSV export to:`
+              : "Email not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS to enable."}
+          </p>
+          {emailOk && recipients.length > 0 && (
+            <p className="text-xs font-mono text-foreground">{recipients.join(", ")}</p>
+          )}
+          {sendResult && (
+            <p className={`text-xs mt-1 ${sendResult.includes("✓") ? "text-green-600" : "text-red-600"}`}>{sendResult}</p>
+          )}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {emailOk && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={sendNow} disabled={sending}>
+              {sending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              Send Now
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={enabled ? "outline" : "default"}
+            className={`gap-1.5 text-xs ${enabled ? "text-red-600 border-red-200 hover:bg-red-50" : ""}`}
+            onClick={toggle}
+            disabled={toggling || !emailOk}
+          >
+            {toggling ? <Loader2 className="w-3 h-3 animate-spin" /> : enabled ? <BellOff className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
+            {enabled ? "Disable" : "Enable"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ToolsTab() {
   const [manualId, setManualId] = useState("");
 
@@ -1040,6 +1134,14 @@ function ToolsTab() {
         desc="Clears and re-fills every tab with sample data. Use this to reset the sheet to a clean demo state."
         action={() => runTool("/sheets/seed", "Demo data seeded ✓")}
       />
+
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground font-medium px-1">Backup &amp; notifications</span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      <BackupCard />
 
     </div>
   );
