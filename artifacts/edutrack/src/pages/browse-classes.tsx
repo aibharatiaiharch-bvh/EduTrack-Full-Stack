@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck } from "lucide-react";
+import { BookOpen, Users, User, AlertTriangle, Calendar, MapPin, UserCheck, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const SHEET_KEY = "edutrack_sheet_id";
 const ROLE_KEY = "edutrack_user_role";
@@ -58,6 +59,9 @@ export default function BrowseClasses() {
   const [manualName, setManualName] = useState("");
   const [manualEmail, setManualEmail] = useState("");
   const [principalStudents, setPrincipalStudents] = useState<ClassStudents>({});
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [capacityFilter, setCapacityFilter] = useState("all");
 
   const { data: classes, isLoading, error } = useQuery<SubjectWithCapacity[]>({
     queryKey: ["subjects-capacity", sheetId],
@@ -203,19 +207,87 @@ export default function BrowseClasses() {
                 <p className="font-medium">No active classes found</p>
                 <p className="text-sm">Add subjects in the Principal Dashboard to see them here.</p>
               </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border bg-card">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr className="text-left">
-                      <th className="px-4 py-3 font-medium">Class</th>
-                      <th className="px-4 py-3 font-medium">Details</th>
-                      <th className="px-4 py-3 font-medium">Capacity</th>
-                      <th className="px-4 py-3 font-medium">Join</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {classes.map(cls => {
+            ) : (() => {
+              const types = ["all", ...Array.from(new Set(classes.map(c => c.Type).filter(Boolean))).sort()];
+              const q = search.toLowerCase();
+              const filtered = classes.filter(c => {
+                const matchSearch = !q || c.Name?.toLowerCase().includes(q) || c.Teachers?.toLowerCase().includes(q) || c.Days?.toLowerCase().includes(q);
+                const matchType = typeFilter === "all" || c.Type === typeFilter;
+                const matchCap = capacityFilter === "all" || (capacityFilter === "available" ? !c.isFull : c.isFull);
+                return matchSearch && matchType && matchCap;
+              });
+              const hasFilters = search || typeFilter !== "all" || capacityFilter !== "all";
+              return (
+                <>
+                  {/* Filter bar */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                      <Input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Search by class name or teacher…"
+                        className="pl-8 h-9 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-1 flex-wrap">
+                      {types.map(t => (
+                        <button
+                          key={t}
+                          onClick={() => setTypeFilter(t)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                            typeFilter === t
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:bg-muted"
+                          }`}
+                        >
+                          {t === "all" ? "All types" : t}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {(["all", "available", "full"] as const).map(f => (
+                        <button
+                          key={f}
+                          onClick={() => setCapacityFilter(f)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                            capacityFilter === f
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-muted-foreground border-border hover:bg-muted"
+                          }`}
+                        >
+                          {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                    {hasFilters && (
+                      <button
+                        onClick={() => { setSearch(""); setTypeFilter("all"); setCapacityFilter("all"); }}
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-dashed shrink-0"
+                      >
+                        <X className="w-3 h-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {filtered.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed rounded-xl text-muted-foreground">
+                      <p className="font-medium">No classes match your filters</p>
+                      <button onClick={() => { setSearch(""); setTypeFilter("all"); setCapacityFilter("all"); }} className="text-sm underline mt-1">Clear filters</button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border bg-card">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr className="text-left">
+                            <th className="px-4 py-3 font-medium">Class</th>
+                            <th className="px-4 py-3 font-medium">Details</th>
+                            <th className="px-4 py-3 font-medium">Capacity</th>
+                            <th className="px-4 py-3 font-medium">Join</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map(cls => {
                       const isJoining = joiningRow === cls._row;
                       const canJoin = !cls.isFull || isPrincipal;
                       const spotsLeft = cls.MaxCapacity - cls.currentEnrolled;
@@ -281,11 +353,14 @@ export default function BrowseClasses() {
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>
