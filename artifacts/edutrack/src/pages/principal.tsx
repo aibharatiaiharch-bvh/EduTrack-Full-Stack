@@ -604,42 +604,42 @@ function RequestsTab() {
                         <td className="px-3 py-2.5 align-top">
                           <StatusBadge status={row["Status"] || (row._src === "enrollment" ? "Pending" : "Late Cancellation")} />
                         </td>
-                        {/* Actions */}
-                        <td className="px-3 py-2.5 align-top">
-                          <div className="flex flex-wrap gap-1.5">
+                        {/* Actions — stacked vertically on mobile, horizontal on sm+ */}
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                             {row._src === "enrollment" && !isDone && (
                               <>
                                 {noClass && (
                                   <button
-                                    onClick={() => { setAssigningRow(isAssigning ? null : row._row); setSelectedClass(""); setAssignError(""); setExpandedRow(isAssigning ? null : key); }}
-                                    className="text-xs px-2 py-1 rounded border border-orange-300 text-orange-700 hover:bg-orange-50 font-medium flex items-center gap-0.5">
-                                    <Plus className="w-3 h-3" /> Assign Class
+                                    onClick={() => { setAssigningRow(isAssigning ? null : row._row); setSelectedClass(""); setAssignError(""); }}
+                                    className="text-xs px-3 py-2 rounded-md border border-orange-300 text-orange-700 hover:bg-orange-50 font-medium flex items-center justify-center gap-1 min-h-[36px] w-full sm:w-auto">
+                                    <Plus className="w-3.5 h-3.5" /> Assign Class
                                   </button>
                                 )}
                                 {status === "pending" && (
                                   <>
-                                    <Button size="sm" className="h-7 text-xs gap-1" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
-                                      <CheckCircle className="w-3 h-3" /> Approve
+                                    <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
+                                      <CheckCircle className="w-3.5 h-3.5" /> Approve
                                     </Button>
-                                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
-                                      <XCircle className="w-3 h-3" /> Reject
+                                    <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
+                                      <XCircle className="w-3.5 h-3.5" /> Reject
                                     </Button>
                                   </>
                                 )}
                                 {status === "approved" && (
-                                  <Button size="sm" className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white" disabled={isActingNow} onClick={() => actEnroll(row, "mark-paid")}>
-                                    <CheckCircle2 className="w-3 h-3" /> Mark Paid
+                                  <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "mark-paid")}>
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
                                   </Button>
                                 )}
                               </>
                             )}
                             {row._src === "fee-waiver" && !isDone && (
                               <>
-                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50" disabled={isActingNow} onClick={() => actLate(row, "Fee Waived")}>
-                                  <CheckCircle className="w-3 h-3" /> Waive
+                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 border-green-300 text-green-700 hover:bg-green-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actLate(row, "Fee Waived")}>
+                                  <CheckCircle className="w-3.5 h-3.5" /> Waive
                                 </Button>
-                                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-red-300 text-red-700 hover:bg-red-50" disabled={isActingNow} onClick={() => actLate(row, "Fee Confirmed")}>
-                                  <DollarSign className="w-3 h-3" /> Confirm Fee
+                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 border-red-300 text-red-700 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actLate(row, "Fee Confirmed")}>
+                                  <DollarSign className="w-3.5 h-3.5" /> Confirm Fee
                                 </Button>
                               </>
                             )}
