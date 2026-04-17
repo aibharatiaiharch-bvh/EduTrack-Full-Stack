@@ -397,7 +397,7 @@ function RequestsTab() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState("");
   const [acting, setActing]         = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<"all" | "enrollment" | "fee-waiver">("all");
+  const [typeFilter, setTypeFilter] = useState<"pending" | "all" | "enrollment" | "fee-waiver">("pending");
   const [showCompleted, setShowCompleted] = useState(false);
   const [assigningRow, setAssigningRow]   = useState<number | null>(null);
   const [selectedClass, setSelectedClass] = useState<string>("");
@@ -463,6 +463,7 @@ function RequestsTab() {
   const filtered = allRows.filter(r => {
     const status = (r["Status"] || "").toLowerCase();
     const isDone = DONE_STATUSES.includes(status);
+    if (typeFilter === "pending") return !isDone;
     if (!showCompleted && isDone) return false;
     if (typeFilter !== "all" && r._src !== typeFilter) return false;
     return true;
@@ -486,7 +487,8 @@ function RequestsTab() {
           <div className="flex flex-wrap gap-2 mb-4 items-center justify-between">
             <div className="flex gap-1">
               {([
-                { id: "all",          label: "All types" },
+                { id: "pending",      label: "Pending" },
+                { id: "all",          label: "All" },
                 { id: "enrollment",   label: "New Enrollment" },
                 { id: "fee-waiver",   label: "Fee Waiver" },
               ] as const).map(t => (
@@ -500,16 +502,18 @@ function RequestsTab() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setShowCompleted(v => !v)}
-              className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
-                showCompleted
-                  ? "bg-muted text-foreground border-border"
-                  : "text-muted-foreground border-border hover:bg-muted"
-              }`}
-            >
-              {showCompleted ? "Hide" : "Show"} completed ({completedCount})
-            </button>
+            {typeFilter !== "pending" && (
+              <button
+                onClick={() => setShowCompleted(v => !v)}
+                className={`text-xs px-3 py-1.5 rounded-md border transition-colors ${
+                  showCompleted
+                    ? "bg-muted text-foreground border-border"
+                    : "text-muted-foreground border-border hover:bg-muted"
+                }`}
+              >
+                {showCompleted ? "Hide" : "Show"} completed ({completedCount})
+              </button>
+            )}
           </div>
 
           {/* Table */}
@@ -526,7 +530,9 @@ function RequestsTab() {
               </thead>
               <tbody className="divide-y">
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground text-sm">No requests match this filter.</td></tr>
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground text-sm">
+                    {typeFilter === "pending" ? "No pending requests — all caught up!" : "No requests match this filter."}
+                  </td></tr>
                 )}
                 {filtered.map(row => {
                   const key = `${row._src}-${row._row}`;
