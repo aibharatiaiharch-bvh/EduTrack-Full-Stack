@@ -13,11 +13,12 @@ function getServiceAccountAuth() {
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
   if (!email || !privateKey) return null;
 
-  // Normalise key: literal \n → real newline, strip Windows CR, trim whitespace
+  // Normalise key: strip surrounding quotes, fix newlines, trim whitespace
   privateKey = privateKey
-    .replace(/\\n/g, '\n')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
+    .replace(/^["']|["']$/g, '')  // strip wrapping quotes if any
+    .replace(/\\n/g, '\n')        // literal \n → real newline
+    .replace(/\r\n/g, '\n')       // Windows line endings
+    .replace(/\r/g, '\n')         // old Mac line endings
     .trim();
 
   return new google.auth.JWT({
