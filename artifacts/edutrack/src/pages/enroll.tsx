@@ -110,7 +110,7 @@ export default function EnrollPage() {
     }
 
     if (requestType === "student") {
-      if (!studentForm.studentName.trim() || !studentForm.parentEmail.trim() || !studentForm.parentPhone.trim()) {
+      if (!studentForm.studentName.trim()) {
         setError("Please complete the required fields marked with *.");
         return;
       }
@@ -341,12 +341,12 @@ export default function EnrollPage() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="parentEmail">Parent Email <span className="text-destructive">*</span></Label>
-                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" required />
+                      <Label htmlFor="parentEmail">Parent Email</Label>
+                      <Input id="parentEmail" type="email" value={studentForm.parentEmail} onChange={e => setStudent("parentEmail", e.target.value)} placeholder="e.g. sarah@email.com" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="parentPhone">Phone <span className="text-destructive">*</span></Label>
-                      <Input id="parentPhone" type="tel" value={studentForm.parentPhone} onChange={e => setStudent("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" required />
+                      <Label htmlFor="parentPhone">Phone</Label>
+                      <Input id="parentPhone" type="tel" value={studentForm.parentPhone} onChange={e => setStudent("parentPhone", e.target.value)} placeholder="e.g. 0412 345 678" />
                     </div>
                   </div>
                 </CardContent>
