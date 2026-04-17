@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readTabRows, readUsersTab, updateCell, colLetter, SHEET_TABS } from "../lib/googleSheets";
+import { readTabRows, readUsersTab, updateCell, colLetter, SHEET_TABS, appendRow, generateUserId, generateTabId } from "../lib/googleSheets";
 import { sendEmail, isEmailConfigured } from "../lib/email";
 
 const router = Router();
@@ -77,33 +77,91 @@ router.post("/enrollment-requests/:row/approve", async (req, res) => {
     const enrollCol = colLetter("enrollments", "Status");
     await updateCell(sheetId, `${SHEET_TABS.enrollments}!${enrollCol}${rowNum}`, "Approved");
 
-    // 2. Read the UserID from this enrollment row and activate them in Users tab
-    const enrollRows = await readTabRows(sheetId, SHEET_TABS.enrollments);
+    // 2. Read this enrollment row and all users
+    const [enrollRows, users] = await Promise.all([
+      readTabRows(sheetId, SHEET_TABS.enrollments),
+      readUsersTab(sheetId),
+    ]);
     const enrollRow = enrollRows.find(r => r._row === rowNum);
-    const userId = enrollRow?.["UserID"] || "";
+    const extra = enrollRow ? (tryParseJson(enrollRow["Notes"] || "") || tryParseJson(enrollRow["EnrolledAt"] || "")) : {};
 
-    if (userId) {
-      const users = await readUsersTab(sheetId);
-      const user = users.find(u => u.userId === userId);
-      if (user && (user as any)._row) {
+    const studentUserId  = enrollRow?.["UserID"] || "";
+    const studentName    = enrollRow?.["Student Name"] || extra.studentName || extra.applicantName || "";
+    const studentEmail   = extra.studentEmail || "";
+    const parentEmail    = (extra.parentEmail || extra.applicantEmail || enrollRow?.["ParentID"] || "").toLowerCase().trim();
+    const parentPhone    = extra.parentPhone || extra.phone || "";
+    const classes        = enrollRow?.["ClassID"] || extra.classesInterested || extra.subjects || "";
+    const currentSchool  = extra.currentSchool || "";
+    const currentGrade   = extra.currentGrade || "";
+    const now            = new Date().toISOString();
+
+    // 3. Activate the student in Users tab
+    if (studentUserId) {
+      const studentUser = users.find(u => u.userId === studentUserId);
+      if (studentUser && (studentUser as any)._row) {
         const userStatusCol = colLetter("users", "Status");
-        await updateCell(sheetId, `${SHEET_TABS.users}!${userStatusCol}${(user as any)._row}`, "Active");
+        await updateCell(sheetId, `${SHEET_TABS.users}!${userStatusCol}${(studentUser as any)._row}`, "Active");
       }
     }
 
-    // 3. Send welcome email if SMTP is configured
-    if (isEmailConfigured() && enrollRow) {
-      const extra = tryParseJson(enrollRow["Notes"] || "") || tryParseJson(enrollRow["EnrolledAt"] || "");
-      const studentName   = enrollRow["Student Name"] || extra.studentName || extra.applicantName || "Student";
-      const studentEmail  = extra.studentEmail || "";
-      const parentEmail   = extra.parentEmail  || extra.applicantEmail || enrollRow["ParentID"] || "";
-      const classes       = enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "";
-      const principalName = process.env.PRINCIPAL_NAME || "The Principal";
-      const principalEmail = process.env.PRINCIPAL_EMAIL || "";
+    // 4. Ensure student has a row in the Students extension tab
+    if (studentUserId && studentName) {
+      const studentRows = await readTabRows(sheetId, SHEET_TABS.students);
+      const existingStudent = studentRows.find(r => r["UserID"] === studentUserId || r["StudentID"] === studentUserId);
+      if (!existingStudent) {
+        // Find parent ID (look up or will be created below)
+        const parentUser = users.find(u => u.email === parentEmail && u.role === "parent");
+        const parentId   = parentUser?.userId || "";
+        await appendRow(sheetId, SHEET_TABS.students, [
+          studentUserId, studentUserId, studentName, parentId, classes,
+          "", "", currentSchool, currentGrade, "No",
+        ]);
+      }
+    }
 
+    // 5. Ensure parent user exists in Users tab
+    let parentUserId = "";
+    if (parentEmail) {
+      const existingParent = users.find(u => u.email === parentEmail && u.role === "parent");
+      if (existingParent) {
+        parentUserId = existingParent.userId;
+      } else {
+        // Create parent user
+        parentUserId = await generateUserId("parent", sheetId);
+        await appendRow(sheetId, SHEET_TABS.users, [
+          parentUserId, parentEmail, "parent", "Parent", "Active", now, now,
+        ]);
+      }
+    }
+
+    // 6. Ensure parent has a row in the Parents extension tab
+    if (parentUserId && studentName) {
+      const parentRows = await readTabRows(sheetId, SHEET_TABS.parents);
+      const existingParentRow = parentRows.find(r => r["UserID"] === parentUserId || r["ParentID"] === parentUserId);
+      if (existingParentRow) {
+        // Append student name to Children column if not already there
+        const currentChildren = existingParentRow["Children"] || "";
+        const names = currentChildren ? currentChildren.split(";").map((n: string) => n.trim()) : [];
+        if (!names.includes(studentName)) {
+          names.push(studentName);
+          const childrenCol = colLetter("parents", "Children");
+          await updateCell(sheetId, `${SHEET_TABS.parents}!${childrenCol}${existingParentRow._row}`, names.join("; "));
+        }
+      } else {
+        // Create new parent row in Parents tab
+        const parentTabId = await generateTabId("PAR", sheetId, SHEET_TABS.parents);
+        await appendRow(sheetId, SHEET_TABS.parents, [
+          parentTabId, parentUserId, "Parent", studentName, parentPhone, "",
+        ]);
+      }
+    }
+
+    // 7. Send welcome email if SMTP is configured
+    if (isEmailConfigured() && enrollRow) {
+      const principalName  = process.env.PRINCIPAL_NAME || "The Principal";
+      const principalEmail = process.env.PRINCIPAL_EMAIL || "";
       const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
       const uniqueRecipients = [...new Set(recipients)];
-
       if (uniqueRecipients.length > 0) {
         try {
           await sendEmail({
@@ -113,7 +171,6 @@ router.post("/enrollment-requests/:row/approve", async (req, res) => {
             html: buildWelcomeEmail(studentName, classes, principalName),
           });
         } catch (emailErr: any) {
-          // Log but don't fail the approval if email fails
           console.error("Welcome email failed:", emailErr.message);
         }
       }
