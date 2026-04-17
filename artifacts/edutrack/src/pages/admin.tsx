@@ -571,11 +571,11 @@ const SHEET_PREVIEW = [
   },
   {
     tab: "Enrollments",
-    headers: ["EnrollmentID", "UserID", "Student Name", "ClassID", "ParentID", "Status", "EnrolledAt", "TeacherID", "Teacher Name", "TeacherEmail", "Zoom Link", "Class Type", "ClassDate", "ClassTime"],
+    headers: ["EnrollmentID", "UserID", "Student Name", "ClassID", "ParentID", "Status", "EnrolledAt", "TeacherID", "Teacher Name", "TeacherEmail", "Zoom Link", "Class Type", "ClassDate", "ClassTime", "Fee"],
     samples: [
-      ["ENR-001", "STU-001", "Emma Johnson", "SUB-001", "PAR-001", "Active",            "…", "TCH-001", "Dr. Sarah Chen",   "s.chen@edutrack.edu",   "…", "Individual", "+7 days", "10:00 AM"],
-      ["ENR-006", "STU-003", "Olivia Brown", "SUB-007", "PAR-003", "Pending",           "…", "TCH-003", "Ms. Rachel Kim",   "r.kim@edutrack.edu",    "…", "Group",      "+10 days","03:00 PM"],
-      ["ENR-014", "STU-001", "Emma Johnson", "SUB-002", "PAR-001", "Late Cancellation", "…", "TCH-001", "Dr. Sarah Chen",   "s.chen@edutrack.edu",   "…", "Group",      "-1 day",  "09:00 AM"],
+      ["ENR-001", "STU-001", "Emma Johnson", "SUB-001", "PAR-001", "Active",   "…", "TCH-001", "Dr. Sarah Chen", "s.chen@edutrack.edu", "…", "Individual", "+7 days",  "10:00 AM", "Not Applicable"],
+      ["ENR-006", "STU-003", "Olivia Brown", "SUB-002", "PAR-003", "Active",   "…", "TCH-001", "Dr. Sarah Chen", "s.chen@edutrack.edu", "…", "Group",      "+10 days", "09:00 AM", "Not Applicable"],
+      ["ENR-014", "STU-001", "Emma Johnson", "SUB-004", "PAR-001", "Inactive", "…", "TCH-002", "Ms. Rachel Kim",  "r.kim@edutrack.edu",  "…", "Group",      "-1 day",   "11:00 AM", "Not Waived"],
     ],
   },
   {

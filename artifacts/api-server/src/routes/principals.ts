@@ -789,4 +789,41 @@ router.post('/principals/remove-duplicates', async (req, res): Promise<void> => 
   }
 });
 
+// ─── GET /api/principals/students ───────────────────────────────────────────
+// Returns all students from Users tab, enriched with extension-tab fields
+// (currentGrade, currentSchool, phone, parentId) from the Students tab.
+router.get('/principals/students', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+  try {
+    const [users, studentRows] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+    ]);
+
+    const students = users.filter(u => u.role === 'student');
+    const enriched = students.map(u => {
+      const ext = studentRows.find(r => r['UserID'] === u.userId || r['StudentID'] === u.userId);
+      return {
+        _row:          u._row,
+        userId:        u.userId,
+        email:         u.email,
+        role:          u.role,
+        name:          u.name,
+        status:        u.status,
+        createdAt:     u.createdAt,
+        updatedAt:     u.updatedAt,
+        currentGrade:  ext?.['CurrentGrade'] || ext?.['currentGrade'] || '',
+        currentSchool: ext?.['CurrentSchool'] || ext?.['currentSchool'] || '',
+        phone:         ext?.['Phone'] || '',
+        parentId:      ext?.['ParentID'] || '',
+      };
+    });
+
+    res.json(enriched);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

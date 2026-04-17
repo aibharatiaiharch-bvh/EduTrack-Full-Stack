@@ -282,7 +282,7 @@ function ClassesTab() {
                           <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
                             {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
                           </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled} / {s.MaxCapacity ?? "∞"}</td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
                             {s.enrolledNames || "—"}
                           </td>
@@ -873,10 +873,10 @@ function StudentsTab() {
     setError("");
     try {
       const [userData, subjectData] = await Promise.all([
-        apiFetch("/users"),
+        apiFetch("/principals/students"),
         apiFetch("/subjects?status=active"),
       ]);
-      if (Array.isArray(userData)) setStudents(userData.filter((u: any) => u.role === "student"));
+      if (Array.isArray(userData)) setStudents(userData);
       else setError("Could not load students.");
       if (Array.isArray(subjectData)) {
         setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
@@ -1160,20 +1160,9 @@ function TutorsTab() {
   const [form, setForm] = useState({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [acting, setActing] = useState<string | null>(null);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
-
-  async function toggleStatus(t: any) {
-    setActing(t.UserID);
-    const endpoint = t.Status?.toLowerCase() === "active" ? "/users/deactivate" : "/users/reactivate";
-    try {
-      await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: t.UserID }) });
-      await load();
-    } catch { /* ignore */ }
-    setActing(null);
-  }
 
   async function load() {
     setLoading(true);
@@ -1271,7 +1260,6 @@ function TutorsTab() {
                       <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Subjects</th>
                       <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Specialty</th>
                       <th className="text-left font-medium px-3 py-2.5">Status</th>
-                      <th className="px-3 py-2.5" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1282,16 +1270,6 @@ function TutorsTab() {
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{t.Subjects || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
                         <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
-                        <td className="px-3 py-2.5 text-right">
-                          <Button
-                            size="sm" variant="outline"
-                            disabled={acting === t.UserID}
-                            onClick={() => toggleStatus(t)}
-                            className="text-xs h-7"
-                          >
-                            {t.Status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                          </Button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
