@@ -135,7 +135,17 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         extra: notes || '',
       });
       await appendRow(sheetId, SHEET_TABS.enrollments, [
-        reqId, userId, 'new-class', classesInterested || '', 'Pending', now, packedNotes,
+        reqId,                   // EnrollmentID
+        userId,                  // UserID
+        submitterName,           // Student Name
+        classesInterested || '', // ClassID (classes interested)
+        submitterEmail,          // ParentID (contact email)
+        'Pending',               // Status
+        now,                     // EnrolledAt
+        '', '', '', '',          // TeacherID, Teacher Name, TeacherEmail, Zoom Link
+        'new-class',             // Class Type
+        '', '',                  // ClassDate, ClassTime
+        packedNotes,             // Notes
       ]);
       res.json({ success: true }); return;
     }
@@ -164,7 +174,17 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         extra: notes || '',
       });
       await appendRow(sheetId, SHEET_TABS.enrollments, [
-        reqId, userId, 'tutor', '', 'Pending', now, packedNotes,
+        reqId,                   // EnrollmentID
+        userId,                  // UserID
+        applicantName,           // Student Name (applicant name)
+        classesInterested || '', // ClassID (subjects interested)
+        applicantEmail,          // ParentID (contact email)
+        'Pending',               // Status
+        now,                     // EnrolledAt
+        '', '', '', '',          // TeacherID, Teacher Name, TeacherEmail, Zoom Link
+        'tutor',                 // Class Type
+        '', '',                  // ClassDate, ClassTime
+        packedNotes,             // Notes
       ]);
       res.json({ success: true }); return;
     }
@@ -207,7 +227,17 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         submissionDate: now,
       });
       await appendRow(sheetId, SHEET_TABS.enrollments, [
-        reqId, userId, 'student', '', 'Pending', now, packedNotes,
+        reqId,                   // EnrollmentID
+        userId,                  // UserID
+        studentNameClean,        // Student Name
+        classesInterested || '', // ClassID (classes interested)
+        parentEmailClean,        // ParentID (parent email)
+        'Pending',               // Status
+        now,                     // EnrolledAt
+        '', '', '', '',          // TeacherID, Teacher Name, TeacherEmail, Zoom Link
+        'student',               // Class Type
+        '', '',                  // ClassDate, ClassTime
+        packedNotes,             // Notes
       ]);
       res.json({ success: true }); return;
     }

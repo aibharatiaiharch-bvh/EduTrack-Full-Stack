@@ -135,7 +135,7 @@ export const SHEET_HEADERS = {
   enrollments: [
     'EnrollmentID', 'UserID', 'Student Name', 'ClassID', 'ParentID', 'Status', 'EnrolledAt',
     'TeacherID', 'Teacher Name', 'TeacherEmail', 'Zoom Link', 'Class Type',
-    'ClassDate', 'ClassTime',
+    'ClassDate', 'ClassTime', 'Notes',
   ],
 
   // Announcements — standalone, no user FK needed

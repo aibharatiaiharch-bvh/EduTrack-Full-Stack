@@ -7,13 +7,35 @@ function getSheetId(req: any): string {
   return req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || "";
 }
 
-// GET /api/enrollment-requests — returns all rows from Enrollments tab
+function tryParseJson(val: string): Record<string, string> {
+  try { return val.startsWith("{") ? JSON.parse(val) : {}; } catch { return {}; }
+}
+
+// GET /api/enrollment-requests — returns all rows from Enrollments tab, enriched with unpacked notes
 router.get("/enrollment-requests", async (req, res) => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: "Missing sheetId" }); return; }
   try {
     const rows = await readTabRows(sheetId, SHEET_TABS.enrollments);
-    res.json(rows);
+
+    // Enrich rows: unpack Notes JSON (or legacy EnrolledAt JSON) into named fields
+    const enriched = rows.map(row => {
+      const extra = tryParseJson(row["Notes"] || "") || tryParseJson(row["EnrolledAt"] || "");
+      return {
+        ...row,
+        "Student Name":       row["Student Name"] || extra.studentName || extra.applicantName || extra.requesterName || "",
+        "Parent Email":       row["Parent Email"] || extra.parentEmail || extra.applicantEmail || extra.requesterEmail || row["ParentID"] || "",
+        "Classes Interested": row["Classes Interested"] || extra.classesInterested || extra.classWanted || extra.subjects || row["ClassID"] || "",
+        "Phone":              extra.parentPhone || extra.phone || "",
+        "School":             extra.currentSchool || "",
+        "Grade":              extra.currentGrade || "",
+        "Previously Enrolled": extra.previouslyEnrolled || "",
+        "Reference":          extra.reference || "",
+        "Extra Notes":        extra.extra || "",
+      };
+    });
+
+    res.json(enriched);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
