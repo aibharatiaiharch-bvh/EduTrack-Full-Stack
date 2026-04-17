@@ -193,8 +193,8 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       const studentNameClean = (studentName || '').trim();
       const studentEmailClean = (studentEmail || '').toLowerCase().trim();
       const parentEmailClean = (parentEmail || '').toLowerCase().trim();
-      if (!studentNameClean || !parentEmailClean) {
-        res.status(400).json({ error: 'Student name and parent email are required' }); return;
+      if (!studentNameClean) {
+        res.status(400).json({ error: 'Student name is required' }); return;
       }
       const users = await readUsersTab(sheetId);
       let studentUser = users.find(u => u.email === studentEmailClean || u.email === parentEmailClean);
@@ -270,8 +270,8 @@ router.post('/roles/enroll-bulk', async (req, res): Promise<void> => {
     const studentEmailClean = (s.studentEmail || '').toLowerCase().trim();
     const parentEmailClean = (s.parentEmail || '').toLowerCase().trim();
 
-    if (!studentNameClean || !parentEmailClean) {
-      results.push({ row: i + 1, name: studentNameClean || `Row ${i + 1}`, ok: false, error: 'Student name and parent email are required' });
+    if (!studentNameClean) {
+      results.push({ row: i + 1, name: `Row ${i + 1}`, ok: false, error: 'Student name is required' });
       continue;
     }
 
