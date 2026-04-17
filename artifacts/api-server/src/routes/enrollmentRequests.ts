@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { readTabRows, updateCell, colLetter, SHEET_TABS } from "../lib/googleSheets";
+import { readTabRows, readUsersTab, updateCell, colLetter, SHEET_TABS } from "../lib/googleSheets";
 
 const router = Router();
 
@@ -49,8 +49,24 @@ router.post("/enrollment-requests/:row/approve", async (req, res) => {
     res.status(400).json({ error: "Missing sheetId or row" }); return;
   }
   try {
-    const col = colLetter("enrollments", "Status");
-    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${col}${rowNum}`, "Approved");
+    // 1. Mark the enrollment request as Approved
+    const enrollCol = colLetter("enrollments", "Status");
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${enrollCol}${rowNum}`, "Approved");
+
+    // 2. Read the UserID from this enrollment row and activate them in Users tab
+    const enrollRows = await readTabRows(sheetId, SHEET_TABS.enrollments);
+    const enrollRow = enrollRows.find(r => r._row === rowNum);
+    const userId = enrollRow?.["UserID"] || "";
+
+    if (userId) {
+      const users = await readUsersTab(sheetId);
+      const user = users.find(u => u.userId === userId);
+      if (user && (user as any)._row) {
+        const userStatusCol = colLetter("users", "Status");
+        await updateCell(sheetId, `${SHEET_TABS.users}!${userStatusCol}${(user as any)._row}`, "Active");
+      }
+    }
+
     res.json({ ok: true, action: "approved" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
