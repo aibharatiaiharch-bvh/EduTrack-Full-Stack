@@ -579,7 +579,7 @@ function RequestsTab() {
                                     <Plus className="w-3.5 h-3.5" /> Assign Class
                                   </button>
                                 )}
-                                {status === "pending" && (
+                                {status !== "approved" && (
                                   <>
                                     <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
                                       <CheckCircle className="w-3.5 h-3.5" /> Approve
@@ -606,7 +606,6 @@ function RequestsTab() {
                                 </Button>
                               </>
                             )}
-                            {isDone && <span className="text-xs text-muted-foreground italic">—</span>}
                           </div>
                         </td>
                       </tr>
