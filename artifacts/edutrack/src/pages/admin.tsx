@@ -290,31 +290,8 @@ function NavigateTab() {
     setLocation(path);
   }
 
-  const portals = [
-    {
-      label: "Principal Dashboard",
-      path: "/principal",
-      icon: <ClipboardList className="h-8 w-8" />,
-      color: "bg-violet-100 text-violet-700",
-      desc: "6 tabs — enrollment requests, late cancellations, students, tutors, classes, users",
-    },
-    {
-      label: "Enrollment Form",
-      path: "/enroll",
-      icon: <UserPlus className="h-8 w-8" />,
-      color: "bg-amber-100 text-amber-700",
-      desc: "Public form — no login required. Student & tutor application flow",
-    },
-  ];
-
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground mb-1">
-          As a developer your session bypasses all role checks — you can navigate to any portal directly.
-        </p>
-      </div>
-
       <div>
         <label className="text-sm font-medium mb-1.5 block">Sheet ID to use when navigating</label>
         <div className="flex gap-2">
@@ -328,23 +305,6 @@ function NavigateTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {portals.map(p => (
-          <button key={p.path} onClick={() => goAs(p.path)}
-            className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left">
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${p.color}`}>
-              {p.icon}
-            </div>
-            <div className="w-full">
-              <p className="font-semibold text-foreground text-center">{p.label}</p>
-              <p className="text-xs text-muted-foreground mt-1 text-center">{p.desc}</p>
-            </div>
-            <div className="flex items-center gap-1 text-xs text-primary font-medium">
-              <Eye className="h-3.5 w-3.5" /> View as this role
-            </div>
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
