@@ -17,6 +17,7 @@ import attendanceRouter from "./attendance";
 import backupRouter from "./backup";
 import settingsRouter from "./settings";
 import githubSyncStatusRouter from "./githubSyncStatus";
+import analysisRouter from "./analysis";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(attendanceRouter);
 router.use(backupRouter);
 router.use(settingsRouter);
 router.use(githubSyncStatusRouter);
+router.use(analysisRouter);
 
 export default router;

@@ -13,7 +13,7 @@ import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
   BookOpen, AlertTriangle, Plus, CheckCircle2, Upload,
-  Search, ChevronLeft, ChevronRight, CalendarDays,
+  Search, ChevronLeft, ChevronRight, CalendarDays, BarChart2,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -351,7 +351,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "attendance" | "upload";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "attendance" | "upload" | "analysis";
 
 
 function StatusBadge({ status }: { status: string }) {
@@ -1604,12 +1604,203 @@ function AttendanceTab() {
   );
 }
 
+// ─── Analysis Tab ─────────────────────────────────────────────────────────────
+
+type AnalysisData = {
+  totals: { subjects: number; teachers: number; students: number; hoursPerWeek: number };
+  bySubject: { subjectId: string; name: string; type: string; teacherName: string; days: string[]; sessionsPerWeek: number; durationHours: number; hoursPerWeek: number; students: number; maxCapacity: number; fillPct: number }[];
+  byTeacher: { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[] }[];
+  byWeekday: { day: string; classCount: number; students: number; hoursTotal: number }[];
+};
+
+function MiniBar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {
+  return (
+    <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+      <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
+    </div>
+  );
+}
+
+function AnalysisTab() {
+  const [data, setData] = useState<AnalysisData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    const sid = sheetId();
+    if (!sid) { setError("No sheet linked."); setLoading(false); return; }
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(apiUrl(`/analysis?sheetId=${encodeURIComponent(sid)}`));
+      const json = await res.json();
+      if (json.error) { setError(json.error); } else { setData(json); }
+    } catch { setError("Could not load analysis data."); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 text-muted-foreground">
+      <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading analysis…
+    </div>
+  );
+  if (error) return <p className="text-red-500 text-sm py-6">{error}</p>;
+  if (!data) return null;
+
+  const { totals, bySubject, byTeacher, byWeekday } = data;
+  const maxStudents = Math.max(...bySubject.map(s => s.students), 1);
+  const maxTeacherStudents = Math.max(...byTeacher.map(t => t.students), 1);
+  const maxDayStudents = Math.max(...byWeekday.map(d => d.students), 1);
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Business Analysis</h2>
+        <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+        </Button>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[
+          { label: "Active Classes",  value: totals.subjects,     color: "text-blue-700",   bg: "bg-blue-50" },
+          { label: "Teachers",        value: totals.teachers,     color: "text-violet-700", bg: "bg-violet-50" },
+          { label: "Total Students",  value: totals.students,     color: "text-green-700",  bg: "bg-green-50" },
+          { label: "Hrs / Week",      value: totals.hoursPerWeek, color: "text-amber-700",  bg: "bg-amber-50" },
+        ].map(c => (
+          <Card key={c.label} className={`${c.bg} border-0`}>
+            <CardContent className="pt-4 pb-3">
+              <p className={`text-2xl font-bold ${c.color}`}>{c.value}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{c.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* By Subject */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Subject</h3>
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-left">Subject</th>
+                <th className="px-3 py-2.5 text-left">Type</th>
+                <th className="px-3 py-2.5 text-left">Teacher</th>
+                <th className="px-3 py-2.5 text-center">Days/Wk</th>
+                <th className="px-3 py-2.5 text-center">Hrs/Wk</th>
+                <th className="px-3 py-2.5 text-center">Students</th>
+                <th className="px-3 py-2.5 text-left min-w-[100px]">Fill</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bySubject.map((s, i) => (
+                <tr key={s.subjectId} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <td className="px-3 py-2.5 font-medium">{s.name}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.type.toLowerCase() === "group" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                      {s.type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{s.teacherName}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{s.sessionsPerWeek}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{s.hoursPerWeek}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="font-bold">{s.students}</span>
+                      <MiniBar pct={(s.students / maxStudents) * 100} color="bg-green-500" />
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {s.maxCapacity > 0 ? (
+                      <div>
+                        <span className="text-xs text-muted-foreground">{s.students}/{s.maxCapacity} ({s.fillPct}%)</span>
+                        <MiniBar pct={s.fillPct} color={s.fillPct >= 90 ? "bg-red-500" : s.fillPct >= 70 ? "bg-amber-500" : "bg-green-500"} />
+                      </div>
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* By Teacher */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Teacher</h3>
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-left">Teacher</th>
+                <th className="px-3 py-2.5 text-center">Classes</th>
+                <th className="px-3 py-2.5 text-center">Students</th>
+                <th className="px-3 py-2.5 text-center">Hrs/Wk</th>
+                <th className="px-3 py-2.5 text-left min-w-[120px]">Load</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byTeacher.map((t, i) => (
+                <tr key={t.teacherName} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <td className="px-3 py-2.5 font-medium">{t.teacherName}</td>
+                  <td className="px-3 py-2.5 text-center">{t.classCount}</td>
+                  <td className="px-3 py-2.5 text-center font-bold">{t.students}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{t.hoursPerWeek}</td>
+                  <td className="px-3 py-2.5">
+                    <MiniBar pct={(t.students / maxTeacherStudents) * 100} color="bg-violet-500" />
+                    <p className="text-xs text-muted-foreground mt-0.5">{t.classes.join(", ")}</p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* By Weekday */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Weekday</h3>
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-left">Day</th>
+                <th className="px-3 py-2.5 text-center">Classes</th>
+                <th className="px-3 py-2.5 text-center">Students</th>
+                <th className="px-3 py-2.5 text-center">Hours</th>
+                <th className="px-3 py-2.5 text-left min-w-[140px]">Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byWeekday.map((d, i) => (
+                <tr key={d.day} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <td className="px-3 py-2.5 font-semibold">{d.day}</td>
+                  <td className="px-3 py-2.5 text-center">{d.classCount}</td>
+                  <td className="px-3 py-2.5 text-center font-bold">{d.students}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{d.hoursTotal}</td>
+                  <td className="px-3 py-2.5">
+                    <MiniBar pct={(d.students / maxDayStudents) * 100} color="bg-amber-500" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
   { id: "attendance",  label: "Attendance",         icon: <CalendarDays className="w-4 h-4" /> },
+  { id: "analysis",   label: "Analysis",           icon: <BarChart2 className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
   { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
 ];
@@ -1667,6 +1858,7 @@ export default function PrincipalDashboard() {
         {tab === "tutors"      && <TutorsTab />}
         {tab === "classes"     && <ClassesTab />}
         {tab === "attendance"  && <AttendanceTab />}
+        {tab === "analysis"    && <AnalysisTab />}
         {tab === "users"       && <UsersTab />}
         {tab === "upload"      && <BulkUploadCard />}
       </main>
