@@ -29,7 +29,6 @@ function dayMatchesSubject(dayName: string, daysField: string): boolean {
 }
 
 // GET /api/schedule/calendar?sheetId=X&weeks=2
-// Returns next 1–4 weeks of class slots derived from the Subjects tab, with live enrollment counts.
 router.get('/schedule/calendar', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
@@ -45,22 +44,36 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
 
     const activeSubjects = subjects.filter(s => (s['Status'] || '').toLowerCase() === 'active');
 
-    // Build teacher lookup: name → email, zoomLink
-    const teacherByName: Record<string, { email: string; zoomLink: string }> = {};
+    // Build teacher lookup by TeacherID → { name, email, zoomLink }
+    const teacherById: Record<string, { name: string; email: string; zoomLink: string }> = {};
+    // Also build by name (lowercase) as fallback
+    const teacherByName: Record<string, { name: string; email: string; zoomLink: string }> = {};
     for (const t of teachers) {
+      const tid = (t['TeacherID'] || '').trim();
       const name = (t['Name'] || '').trim();
-      if (name) teacherByName[name.toLowerCase()] = { email: t['Email'] || '', zoomLink: t['Zoom Link'] || '' };
+      const entry = { name, email: t['Email'] || '', zoomLink: t['Zoom Link'] || '' };
+      if (tid) teacherById[tid] = entry;
+      if (name) teacherByName[name.toLowerCase()] = entry;
     }
 
-    // Build per-class time lookup from enrollments (use first occurrence)
-    const classTimes: Record<string, string> = {};
+    // Count active enrollments per SubjectID (status Active, ignoring date)
+    // The Enrollments tab uses ClassID to link to Subjects.SubjectID
+    // Status values that count as enrolled: Active (default), anything not Inactive/Cancelled
+    const enrolledBySubject: Record<string, { count: number; students: string[] }> = {};
     for (const e of enrollments) {
-      const cn = (e['Class Name'] || '').toLowerCase();
-      if (cn && e['Class Time'] && !classTimes[cn]) classTimes[cn] = e['Class Time'];
+      const classId = (e['ClassID'] || '').trim();
+      const status = (e['Status'] || 'active').toLowerCase().trim();
+      // Only count active enrollments
+      if (!classId || status === 'inactive' || status === 'cancelled' || status === 'late cancellation') continue;
+      if (!enrolledBySubject[classId]) enrolledBySubject[classId] = { count: 0, students: [] };
+      enrolledBySubject[classId].count++;
+      const studentName = (e['Student Name'] || '').trim();
+      if (studentName) enrolledBySubject[classId].students.push(studentName);
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const days: Array<{
       date: string; dateISO: string; dayName: string;
       slots: Array<{
@@ -81,30 +94,32 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
       const daySubjects = activeSubjects.filter(s => dayMatchesSubject(dayName, s['Days'] || ''));
 
       const slots = daySubjects.map(s => {
+        const subjectId = (s['SubjectID'] || '').trim();
         const maxCap = Math.max(parseInt(s['MaxCapacity'] || '8', 10) || 8, 1);
-        const classNameLower = (s['Name'] || '').toLowerCase();
 
-        const enrolledRows = enrollments.filter(e =>
-          (e['Class Name'] || '').toLowerCase() === classNameLower &&
-          e['Class Date'] === dateStr &&
-          !['cancelled', 'late cancellation'].includes((e['Status'] || '').toLowerCase())
-        );
+        // Look up teacher by TeacherID first, fall back to name field
+        const tid = (s['TeacherID'] || '').trim();
+        const tNameFallback = (s['Teachers'] || s['Teacher'] || s['TeacherName'] || '').trim();
+        const teacherInfo =
+          (tid && teacherById[tid]) ||
+          (tNameFallback && teacherByName[tNameFallback.toLowerCase()]) ||
+          { name: tNameFallback, email: '', zoomLink: '' };
 
-        const teacherInfo = teacherByName[(s['Teachers'] || '').trim().toLowerCase()] || { email: '', zoomLink: '' };
+        const enrollment = enrolledBySubject[subjectId] || { count: 0, students: [] };
 
         return {
-          subjectId: s['SubjectID'] || '',
+          subjectId,
           className: s['Name'] || '',
           type: s['Type'] || 'Group',
-          teacherName: s['Teachers'] || '',
+          teacherName: teacherInfo.name,
           teacherEmail: teacherInfo.email,
           zoomLink: teacherInfo.zoomLink,
           room: s['Room'] || '',
-          time: classTimes[classNameLower] || s['Time'] || '',
+          time: s['Time'] || '',
           maxCapacity: maxCap,
-          enrolled: enrolledRows.length,
-          isFull: enrolledRows.length >= maxCap,
-          students: enrolledRows.map(e => e['Student Name']).filter(Boolean),
+          enrolled: enrollment.count,
+          isFull: enrollment.count >= maxCap,
+          students: enrollment.students,
         };
       });
 
@@ -113,12 +128,13 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
       }
     }
 
-    // Also return all enrollments grouped by teacher for the teacher schedule view
+    // Teacher schedule view: group active enrollments by TeacherID/TeacherName
     const byTeacher: Record<string, { teacherName: string; teacherEmail: string; enrollments: any[] }> = {};
     for (const e of enrollments) {
-      const tName = (e['Teacher'] || 'Unassigned').trim();
-      const tEmail = (e['Teacher Email'] || '').toLowerCase().trim();
-      if (!byTeacher[tName]) byTeacher[tName] = { teacherName: tName, teacherEmail: tEmail, enrollments: [] };
+      const tid = (e['TeacherID'] || '').trim();
+      const tInfo = (tid && teacherById[tid]) || { name: e['Teacher Name'] || 'Unassigned', email: e['TeacherEmail'] || '', zoomLink: '' };
+      const tName = tInfo.name || 'Unassigned';
+      if (!byTeacher[tName]) byTeacher[tName] = { teacherName: tName, teacherEmail: tInfo.email, enrollments: [] };
       byTeacher[tName].enrollments.push(e);
     }
     const teacherSchedules = Object.values(byTeacher).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
