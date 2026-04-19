@@ -55,7 +55,7 @@ export default function ClassCalendar() {
       <div className="p-4 md:p-8 space-y-6 max-w-7xl">
         <header className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Class Calendar</h1>
-          <p className="text-muted-foreground">Example matrix by weekday with teacher and student count.</p>
+          <p className="text-muted-foreground">Grouped by class type with compact sample schedules.</p>
         </header>
 
         {[["Individual", individualClasses], ["Group", groupClasses]].map(([label, rows]) => (
