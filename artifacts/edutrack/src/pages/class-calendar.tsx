@@ -109,23 +109,21 @@ export default function ClassCalendar() {
                       return (
                         <td key={day} className="px-2 py-2 min-w-[125px] align-top">
                           {active ? (
-                            <div className="space-y-1.5 rounded-md border bg-card p-2">
+                            <div className={`h-full min-h-[60px] rounded-md border p-2 ${seat.className}`}>
                               <div className="flex items-center justify-between gap-1">
-                                <span className="text-[11px] font-medium flex items-center gap-1">
+                                <span className="text-[11px] font-semibold flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
                                   {row.time}
                                 </span>
-                                <Badge variant="outline" className={`text-[10px] ${seat.className}`}>{seat.label}</Badge>
                               </div>
-                              <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <div className="text-[11px] font-medium flex items-center gap-1 mt-0.5">
                                 <UserRound className="h-3 w-3" />
                                 {row.teacher}
                               </div>
-                              <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <div className="text-[11px] flex items-center gap-1">
                                 <Users className="h-3 w-3" />
-                                {row.students} student{row.students === 1 ? "" : "s"}
+                                {row.students}/8
                               </div>
-                              <div className="text-[11px] text-muted-foreground">{row.note}</div>
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
@@ -151,9 +149,9 @@ export default function ClassCalendar() {
               </CardHeader>
               <CardContent className="space-y-1 text-xs pt-0 pb-2.5">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] ${statusForSeats(row.students, row.type).className}`}>
+                  <div className={`rounded px-2 py-1 text-[10px] font-semibold ${statusForSeats(row.students, row.type).className}`}>
                     {row.students}/8
-                  </Badge>
+                  </div>
                   <span className="truncate text-muted-foreground">{row.teacher}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
