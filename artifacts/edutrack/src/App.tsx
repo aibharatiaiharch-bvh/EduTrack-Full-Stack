@@ -12,6 +12,7 @@ import AdminPortal from "@/pages/admin";
 import PrincipalDashboard from "@/pages/principal";
 import StudentDashboard from "@/pages/student";
 import TutorDashboard from "@/pages/teacher-dashboard";
+import ClassCalendar from "@/pages/class-calendar";
 import EnrollPage from "@/pages/enroll";
 import NotFound from "@/pages/not-found";
 
@@ -67,6 +68,7 @@ function AppRoutes() {
           <Route path="/tutor">
             <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
           </Route>
+          <Route path="/calendar" component={ClassCalendar} />
           <Route path="/enroll" component={EnrollPage} />
           <Route component={NotFound} />
         </Switch>
