@@ -170,9 +170,25 @@ function CalendarGrid({ rows, title, canSeeStudents }: { rows: SubjectRow[]; tit
 }
 
 function CalendarContent() {
-  const sheetId = localStorage.getItem("edutrack_sheet_id") || "";
   const role = localStorage.getItem("edutrack_user_role") || "";
   const canSeeStudents = role === "principal" || role === "developer" || role === "admin";
+
+  // Fetch the sheet ID from the API if not already cached in localStorage
+  const { data: configData, isLoading: configLoading } = useQuery({
+    queryKey: ["config"],
+    queryFn: async () => {
+      const res = await fetch(apiUrl("/config"));
+      if (!res.ok) throw new Error("config unavailable");
+      const d = await res.json();
+      if (d.sheetId) localStorage.setItem("edutrack_sheet_id", d.sheetId);
+      return d as { sheetId: string };
+    },
+    // Only fetch if we don't already have it
+    enabled: !localStorage.getItem("edutrack_sheet_id"),
+    staleTime: Infinity,
+  });
+
+  const sheetId = localStorage.getItem("edutrack_sheet_id") || configData?.sheetId || "";
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["calendar", sheetId],
@@ -186,18 +202,7 @@ function CalendarContent() {
     staleTime: 2 * 60 * 1000,
   });
 
-  if (!sheetId) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center px-4">
-        <AlertCircle className="h-8 w-8 text-muted-foreground" />
-        <p className="text-muted-foreground text-sm max-w-xs">
-          Sheet ID not configured. Please sign in as Principal or Developer to set it up.
-        </p>
-      </div>
-    );
-  }
-
-  if (isLoading) {
+  if (configLoading || isLoading || (!sheetId && !isError)) {
     return (
       <div className="p-4 md:p-8 space-y-4 max-w-7xl">
         <Skeleton className="h-8 w-48" />
