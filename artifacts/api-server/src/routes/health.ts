@@ -25,8 +25,6 @@ router.get("/healthz/auth", (_req, res) => {
     .replace(/\r/g, '\n')
     .trim();
 
-  const starts = privateKey.substring(0, 27);
-  const ends = privateKey.substring(privateKey.length - 25);
   const lineCount = privateKey.split('\n').length;
 
   try {
@@ -35,9 +33,9 @@ router.get("/healthz/auth", (_req, res) => {
       key: privateKey,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
-    res.json({ ok: true, rawLen, starts, ends, lineCount });
+    res.json({ ok: true, rawLen, lineCount });
   } catch (err: any) {
-    res.json({ ok: false, error: err.message, rawLen, starts, ends, lineCount });
+    res.json({ ok: false, error: err.message, rawLen, lineCount });
   }
 });
 
