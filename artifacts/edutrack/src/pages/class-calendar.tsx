@@ -33,6 +33,24 @@ const sample = [
     time: "5-6:30 PM",
     note: "Lab practice",
   },
+  {
+    className: "English",
+    type: "Individual",
+    teacher: "Ms. Anika",
+    students: 1,
+    days: ["Tue", "Thu"],
+    time: "10-11 AM",
+    note: "Reading + writing",
+  },
+  {
+    className: "Hindi",
+    type: "Group",
+    teacher: "Ms. Nisha",
+    students: 10,
+    days: ["Sat"],
+    time: "3:30-5 PM",
+    note: "Weekend batch",
+  },
 ];
 
 const individualClasses = sample.filter(row => row.type === "Individual");
