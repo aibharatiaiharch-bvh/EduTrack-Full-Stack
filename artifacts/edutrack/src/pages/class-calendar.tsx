@@ -82,14 +82,14 @@ export default function ClassCalendar() {
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 {label} classes
+                <Badge variant="secondary" className="text-[10px] ml-1">Type</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-xs border-collapse">
+              <table className="min-w-[760px] w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left px-2 py-1.5 font-medium sticky left-0 bg-muted/50">Class</th>
-                  <th className="text-left px-2 py-1.5 font-medium">Type</th>
                   {DAYS.map(day => (
                     <th key={day} className="text-left px-2 py-1.5 font-medium">{day}</th>
                   ))}
@@ -102,10 +102,8 @@ export default function ClassCalendar() {
                       <div className="flex items-center gap-2">
                         <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
                         {row.className}
+                        <Badge variant="secondary" className="text-[10px]">{row.type === "Individual" ? "Ind" : "Grp"}</Badge>
                       </div>
-                    </td>
-                    <td className="px-2 py-2 min-w-[90px]">
-                      <Badge variant="secondary" className="text-[10px]">{row.type}</Badge>
                     </td>
                     {DAYS.map(day => {
                       const active = inDays(row, day);
