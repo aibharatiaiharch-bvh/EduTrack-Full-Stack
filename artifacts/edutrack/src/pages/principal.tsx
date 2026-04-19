@@ -353,6 +353,7 @@ function ClassesTab() {
 
 type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "attendance" | "upload";
 
+
 function StatusBadge({ status }: { status: string }) {
   const s = (status || "").toLowerCase();
   const color =
@@ -1603,36 +1604,8 @@ function AttendanceTab() {
   );
 }
 
-function CalendarTab() {
-  const [sheetId, setSheetId] = useState("");
-
-  useEffect(() => {
-    setSheetId(localStorage.getItem("edutrack_sheet_id") || "");
-  }, []);
-
-  return (
-    <div>
-      <SectionHeader title="Class Calendar" onRefresh={() => window.location.assign("/calendar")} loading={false} />
-      {sheetId ? (
-        <p className="text-sm text-muted-foreground mb-4">
-          Open the weekday matrix calendar view for all classes.
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground mb-4">
-          No Google Sheet linked. Please go to Settings first.
-        </p>
-      )}
-      <Button onClick={() => window.location.assign("/calendar")} className="gap-2">
-        <CalendarDays className="w-4 h-4" />
-        Open Matrix Calendar
-      </Button>
-    </div>
-  );
-}
-
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
-  { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
@@ -1694,7 +1667,6 @@ export default function PrincipalDashboard() {
         {tab === "tutors"      && <TutorsTab />}
         {tab === "classes"     && <ClassesTab />}
         {tab === "attendance"  && <AttendanceTab />}
-        {tab === "calendar"    && <CalendarTab />}
         {tab === "users"       && <UsersTab />}
         {tab === "upload"      && <BulkUploadCard />}
       </main>

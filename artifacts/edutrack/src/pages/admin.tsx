@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, Users, Shield, Database, Wrench,
   CheckCircle2, XCircle, RefreshCw, ExternalLink, ChevronRight,
-  BookOpen, UserCheck, ClipboardList, UserPlus, Eye, Loader2,
+  ClipboardList, UserPlus, Eye, Loader2,
   AlertTriangle, Activity, GitBranch, Plus, Upload, Bell, BellOff, Send,
 } from "lucide-react";
 
@@ -256,8 +256,6 @@ function OverviewTab() {
           {[
             { label: "Public Enrollment Form", path: "/enroll", icon: <UserPlus className="h-4 w-4" />, desc: "Shareable link for new students & tutors" },
             { label: "Principal Dashboard",    path: "/principal", icon: <ClipboardList className="h-4 w-4" />, desc: "Enrollment requests, students, tutors" },
-            { label: "Tutor Portal",           path: "/tutor", icon: <UserCheck className="h-4 w-4" />, desc: "Class schedule & attendance marking" },
-            { label: "Student Portal",         path: "/student", icon: <BookOpen className="h-4 w-4" />, desc: "Enrolled classes & cancellation" },
           ].map(link => (
             <a key={link.path} href={link.path}
               className="flex items-start gap-3 p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
