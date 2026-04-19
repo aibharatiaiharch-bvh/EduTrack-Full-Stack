@@ -58,7 +58,7 @@ export default function ClassCalendar() {
           <p className="text-muted-foreground">Grouped by class type with compact sample schedules.</p>
         </header>
 
-        {[["Individual", individualClasses], ["Group", groupClasses]].map(([label, rows]) => (
+        {[["Group", groupClasses], ["Individual", individualClasses]].map(([label, rows]) => (
           <Card key={label}>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
