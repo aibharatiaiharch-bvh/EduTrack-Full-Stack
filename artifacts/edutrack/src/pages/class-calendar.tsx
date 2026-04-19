@@ -35,6 +35,9 @@ const sample = [
   },
 ];
 
+const individualClasses = sample.filter(row => row.type === "Individual");
+const groupClasses = sample.filter(row => row.type === "Group");
+
 function statusForSeats(students: number, type: string) {
   if (type === "Individual") return { label: "Ind", className: "bg-emerald-100 text-emerald-800 border-emerald-200" };
   if (students >= 10) return { label: "Grp", className: "bg-red-100 text-red-800 border-red-200" };
@@ -55,15 +58,16 @@ export default function ClassCalendar() {
           <p className="text-muted-foreground">Example matrix by weekday with teacher and student count.</p>
         </header>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Weekly sample matrix
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="min-w-[900px] w-full text-xs border-collapse">
+        {[["Individual", individualClasses], ["Group", groupClasses]].map(([label, rows]) => (
+          <Card key={label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                {label} classes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <table className="min-w-[900px] w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left px-2 py-1.5 font-medium sticky left-0 bg-muted/50">Class</th>
@@ -74,7 +78,7 @@ export default function ClassCalendar() {
                 </tr>
               </thead>
               <tbody>
-                {sample.map(row => (
+                {rows.map(row => (
                   <tr key={`${row.className}-${row.type}`} className="border-b last:border-0 align-top">
                     <td className="px-2 py-2 sticky left-0 bg-background font-medium min-w-[150px]">
                       <div className="flex items-center gap-2">
@@ -121,31 +125,7 @@ export default function ClassCalendar() {
             </table>
           </CardContent>
         </Card>
-
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {sample.map(row => (
-            <Card key={`${row.className}-${row.type}-summary`}>
-              <CardHeader className="pb-1 pt-2.5">
-                <CardTitle className="text-xs flex items-center justify-between">
-                  <span>{row.className} · {row.type}</span>
-                  <Badge variant="secondary" className="text-[10px]">{row.students}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-xs pt-0 pb-2.5">
-                <div className="flex items-center gap-2">
-                  <div className={`rounded px-2 py-0.5 text-[10px] font-semibold ${statusForSeats(row.students, row.type).className}`}>
-                    {statusForSeats(row.students, row.type).label}
-                  </div>
-                  <span className="truncate text-muted-foreground">{row.teacher}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{row.days.join(", ")} · {row.time}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        ))}
         <div className="text-xs text-muted-foreground">
           Sheet mapping: Subjects tab uses <span className="font-medium">Name, Type, Teachers, Days, Time, Room, MaxCapacity</span>; enrollments tab supplies the live student count and is what drives red/yellow/green.
         </div>
