@@ -37,6 +37,10 @@ const PAGE_NAMES: Record<string, string> = {
   "/housekeeping": "Housekeeping",
 };
 
+function isElevatedRole(role: string) {
+  return role === "principal" || role === "developer" || role === "admin";
+}
+
 function buildNavigation(role: string, features: ReturnType<typeof getFeatures>) {
   if (role === "tutor") {
     return [
@@ -111,22 +115,18 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       items: [
         { name: "Browse Classes", href: "/classes", icon: BookOpen },
         { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
-        { name: "Housekeeping", href: "/housekeeping", icon: Settings },
       ],
     },
     {
       label: "Account",
       items: [
-        { name: "Settings", href: "/settings", icon: Settings },
-        ...(role === "developer" || role === "admin"
-          ? [{ name: "Developer Tools", href: "/admin", icon: FlaskConical }]
-          : []),
-      ],
-    },
-    {
-      label: "Portals",
-      items: [
-        { name: "Parent Portal", href: "/parent", icon: UserRound },
+        ...(isElevatedRole(role)
+          ? [
+              { name: "Settings", href: "/settings", icon: Settings },
+              { name: "Housekeeping", href: "/housekeeping", icon: Settings },
+              { name: "Developer Tools", href: "/admin", icon: FlaskConical },
+            ]
+          : [{ name: "Settings", href: "/settings", icon: Settings }]),
       ],
     },
   ];
