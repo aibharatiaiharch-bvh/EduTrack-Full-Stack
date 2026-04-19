@@ -54,10 +54,10 @@ const sample = [
 ];
 
 function statusForSeats(students: number, type: string) {
-  if (type === "Individual") return { label: "Green", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
-  if (students >= 10) return { label: "Red", className: "bg-red-50 text-red-700 border-red-200" };
-  if (students >= 6) return { label: "Yellow", className: "bg-amber-50 text-amber-700 border-amber-200" };
-  return { label: "Green", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (type === "Individual") return { label: "Green", className: "bg-emerald-500 text-white border-emerald-500" };
+  if (students >= 10) return { label: "Red", className: "bg-red-500 text-white border-red-500" };
+  if (students >= 6) return { label: "Yellow", className: "bg-amber-400 text-slate-900 border-amber-400" };
+  return { label: "Green", className: "bg-emerald-500 text-white border-emerald-500" };
 }
 
 function inDays(row: (typeof sample)[number], day: string) {
@@ -143,26 +143,22 @@ export default function ClassCalendar() {
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {sample.map(row => (
             <Card key={`${row.className}-${row.type}-summary`}>
-              <CardHeader className="pb-1.5 pt-3">
+              <CardHeader className="pb-1 pt-2.5">
                 <CardTitle className="text-xs flex items-center justify-between">
                   <span>{row.className} · {row.type}</span>
                   <Badge variant="secondary" className="text-[10px]">{row.students}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 text-xs pt-0 pb-3">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <UserRound className="h-3.5 w-3.5" />
-                  {row.teacher}
+              <CardContent className="space-y-1 text-xs pt-0 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${statusForSeats(row.students, row.type).className}`}>
+                    {row.students}/8
+                  </Badge>
+                  <span className="truncate text-muted-foreground">{row.teacher}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
-                  {row.days.join(", ")} · {row.time}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`text-[10px] ${statusForSeats(row.students, row.type).className}`}>
-                    {statusForSeats(row.students, row.type).label}
-                  </Badge>
-                  <span className="text-muted-foreground">seat status</span>
+                  <span>{row.days.join(", ")} · {row.time}</span>
                 </div>
               </CardContent>
             </Card>
