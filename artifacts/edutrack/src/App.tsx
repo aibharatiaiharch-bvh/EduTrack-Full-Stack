@@ -38,7 +38,8 @@ function ProtectedRoute({ component: Component, requiredRole }: { component: Rea
   const storedRole = localStorage.getItem("edutrack_user_role");
 
   if (!storedRole) return <Redirect to="/" />;
-  if (requiredRole && storedRole !== requiredRole && storedRole !== "developer") return <Redirect to="/" />;
+  if (storedRole === "developer" || storedRole === "principal") return <Component />;
+  if (requiredRole && storedRole !== requiredRole) return <Redirect to="/" />;
   return <Component />;
 }
 
