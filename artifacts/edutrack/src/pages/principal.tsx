@@ -1611,6 +1611,7 @@ type AnalysisData = {
   bySubject: { subjectId: string; name: string; type: string; teacherName: string; days: string[]; sessionsPerWeek: number; durationHours: number; hoursPerWeek: number; students: number; maxCapacity: number; fillPct: number }[];
   byTeacher: { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[] }[];
   byWeekday: { day: string; classCount: number; students: number; hoursTotal: number }[];
+  byMonth: { yyyyMM: string; label: string; sessions: number; studentAttendances: number; absences: number }[];
 };
 
 function MiniBar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {
@@ -1648,10 +1649,11 @@ function AnalysisTab() {
   if (error) return <p className="text-red-500 text-sm py-6">{error}</p>;
   if (!data) return null;
 
-  const { totals, bySubject, byTeacher, byWeekday } = data;
-  const maxStudents = Math.max(...bySubject.map(s => s.students), 1);
+  const { totals, bySubject, byTeacher, byWeekday, byMonth } = data;
+  const maxStudents        = Math.max(...bySubject.map(s => s.students), 1);
   const maxTeacherStudents = Math.max(...byTeacher.map(t => t.students), 1);
-  const maxDayStudents = Math.max(...byWeekday.map(d => d.students), 1);
+  const maxDayStudents     = Math.max(...byWeekday.map(d => d.students), 1);
+  const maxMonthAttend     = Math.max(...(byMonth || []).map(m => m.studentAttendances), 1);
 
   return (
     <div className="space-y-8">
@@ -1770,7 +1772,7 @@ function AnalysisTab() {
                 <th className="px-3 py-2.5 text-left">Day</th>
                 <th className="px-3 py-2.5 text-center">Classes</th>
                 <th className="px-3 py-2.5 text-center">Students</th>
-                <th className="px-3 py-2.5 text-center">Hours</th>
+                <th className="px-3 py-2.5 text-center">Hrs</th>
                 <th className="px-3 py-2.5 text-left min-w-[140px]">Activity</th>
               </tr>
             </thead>
@@ -1789,6 +1791,50 @@ function AnalysisTab() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* By Month */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Month</h3>
+        {(!byMonth || byMonth.length === 0) ? (
+          <div className="rounded-lg border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+            No attendance records yet — sessions will appear here once attendance is marked.
+          </div>
+        ) : (
+          <div className="rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                  <th className="px-3 py-2.5 text-left">Month</th>
+                  <th className="px-3 py-2.5 text-center">Sessions Held</th>
+                  <th className="px-3 py-2.5 text-center">Attendances</th>
+                  <th className="px-3 py-2.5 text-center">Absences</th>
+                  <th className="px-3 py-2.5 text-left min-w-[140px]">Attendance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byMonth.map((m, i) => {
+                  const total = m.studentAttendances + m.absences;
+                  const attendPct = total > 0 ? Math.round((m.studentAttendances / total) * 100) : 0;
+                  return (
+                    <tr key={m.yyyyMM} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                      <td className="px-3 py-2.5 font-semibold">{m.label}</td>
+                      <td className="px-3 py-2.5 text-center">{m.sessions}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-green-700">{m.studentAttendances}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-red-600">{m.absences}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <MiniBar pct={(m.studentAttendances / maxMonthAttend) * 100} color="bg-green-500" />
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">{attendPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
