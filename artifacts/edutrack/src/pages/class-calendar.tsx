@@ -53,6 +53,13 @@ const sample = [
   },
 ];
 
+function statusForSeats(students: number, type: string) {
+  if (type === "Individual") return { label: "Green", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  if (students >= 10) return { label: "Red", className: "bg-red-50 text-red-700 border-red-200" };
+  if (students >= 6) return { label: "Yellow", className: "bg-amber-50 text-amber-700 border-amber-200" };
+  return { label: "Green", className: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+}
+
 function inDays(row: (typeof sample)[number], day: string) {
   return row.days.includes(day);
 }
@@ -98,6 +105,7 @@ export default function ClassCalendar() {
                     </td>
                     {DAYS.map(day => {
                       const active = inDays(row, day);
+                      const seat = statusForSeats(row.students, row.type);
                       return (
                         <td key={day} className="px-2 py-2 min-w-[125px] align-top">
                           {active ? (
@@ -107,7 +115,7 @@ export default function ClassCalendar() {
                                   <Clock className="h-3 w-3" />
                                   {row.time}
                                 </span>
-                                <Badge variant="outline" className="text-[10px]">Live</Badge>
+                                <Badge variant="outline" className={`text-[10px] ${seat.className}`}>{seat.label}</Badge>
                               </div>
                               <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                                 <UserRound className="h-3 w-3" />
@@ -150,9 +158,18 @@ export default function ClassCalendar() {
                   <Clock className="h-3.5 w-3.5" />
                   {row.days.join(", ")} · {row.time}
                 </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-[10px] ${statusForSeats(row.students, row.type).className}`}>
+                    {statusForSeats(row.students, row.type).label}
+                  </Badge>
+                  <span className="text-muted-foreground">seat status</span>
+                </div>
               </CardContent>
             </Card>
           ))}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Sheet mapping: Subjects tab uses <span className="font-medium">Name, Type, Teachers, Days, Time, Room, MaxCapacity</span>; enrollments tab supplies the live student count and is what drives red/yellow/green.
         </div>
       </div>
     </AppLayout>
