@@ -82,7 +82,6 @@ export default function ClassCalendar() {
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 {label} classes
-                <Badge variant="secondary" className="text-[10px] ml-1">Type</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
@@ -102,7 +101,6 @@ export default function ClassCalendar() {
                       <div className="flex items-center gap-2">
                         <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
                         {row.className}
-                        <Badge variant="secondary" className="text-[10px]">{row.type === "Individual" ? "Ind" : "Grp"}</Badge>
                       </div>
                     </td>
                     {DAYS.map(day => {
