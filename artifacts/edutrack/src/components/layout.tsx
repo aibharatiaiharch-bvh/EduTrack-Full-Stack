@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
+import { LayoutDashboard, BookOpen, Settings, LogOut, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
       {
         label: "Academics",
         items: [
-          { name: "Browse Classes", href: "/classes", icon: BookOpen },
           { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
         ],
       },
@@ -72,7 +71,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "My Portal",
         items: [
           { name: "My Schedule", href: "/student", icon: CalendarDays },
-          { name: "Browse Classes", href: "/classes", icon: BookOpen },
           { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
         ],
       },
@@ -113,7 +111,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
     {
       label: "Academics",
       items: [
-        { name: "Browse Classes", href: "/classes", icon: BookOpen },
         { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
       ],
     },
