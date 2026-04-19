@@ -5,7 +5,6 @@ import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { apiUrl } from "@/lib/api";
 
-import Home from "@/pages/home";
 import SignInPage from "@/pages/sign-in";
 import AuthRedirect from "@/pages/auth-redirect";
 import AdminPortal from "@/pages/admin";
@@ -53,7 +52,7 @@ function AppRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <Switch>
-          <Route path="/" component={Home} />
+          <Route path="/" component={ClassCalendar} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/auth-redirect" component={AuthRedirect} />
           <Route path="/admin">

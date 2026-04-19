@@ -1,8 +1,9 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight } from "lucide-react";
+import { LayoutDashboard, BookOpen, Settings, LogOut, UserRound, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { getFeatures } from "@/config/features";
 import { DevModeBanner } from "@/components/dev-mode-banner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
@@ -253,5 +254,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       <DevModeBanner />
     </SidebarProvider>
+  );
+}
+
+export function PublicLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="sticky top-0 z-10 border-b border-border bg-background px-4 py-2 flex items-center justify-between">
+        <Link href="/">
+          <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-semibold">EduTrack</span>
+          </div>
+        </Link>
+        <Button asChild size="sm" variant="default">
+          <Link href="/sign-in">Sign In</Link>
+        </Button>
+      </header>
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
+    </div>
   );
 }
