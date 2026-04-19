@@ -117,6 +117,29 @@ function OverviewTab() {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Quick Links</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {[
+            { label: "Public Enrollment Form", path: "/enroll", icon: <UserPlus className="h-4 w-4" />, desc: "Shareable link for new students & tutors" },
+            { label: "Principal Dashboard", path: "/principal", icon: <ClipboardList className="h-4 w-4" />, desc: "Enrollment requests, students, tutors" },
+          ].map(link => (
+            <a key={link.path} href={link.path} className="flex items-start gap-3 p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+              <div className="w-8 h-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                {link.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{link.label}</p>
+                <p className="text-xs text-muted-foreground">{link.desc}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0 mt-0.5" />
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Health */}
         <Card>
@@ -247,30 +270,6 @@ function OverviewTab() {
         </div>
       )}
 
-      {/* Quick links */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quick Links</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {[
-            { label: "Public Enrollment Form", path: "/enroll", icon: <UserPlus className="h-4 w-4" />, desc: "Shareable link for new students & tutors" },
-            { label: "Principal Dashboard",    path: "/principal", icon: <ClipboardList className="h-4 w-4" />, desc: "Enrollment requests, students, tutors" },
-          ].map(link => (
-            <a key={link.path} href={link.path}
-              className="flex items-start gap-3 p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
-              <div className="w-8 h-8 rounded-md bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                {link.icon}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{link.label}</p>
-                <p className="text-xs text-muted-foreground">{link.desc}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0 mt-0.5" />
-            </a>
-          ))}
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -1241,11 +1240,10 @@ function ToolsTab() {
 // ─── Main Admin Portal ────────────────────────────────────────────────────────
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "overview",  label: "Overview",    icon: <Activity className="w-4 h-4" /> },
-  { id: "navigate",  label: "View as Role", icon: <Eye className="w-4 h-4" /> },
-  { id: "data",      label: "Data Browser", icon: <Database className="w-4 h-4" /> },
-  { id: "tools",     label: "Dev Tools",    icon: <Wrench className="w-4 h-4" /> },
-  { id: "upload",    label: "Mass Upload",  icon: <Upload className="w-4 h-4" /> },
+  { id: "overview", label: "Overview", icon: <Activity className="w-4 h-4" /> },
+  { id: "data", label: "Data Browser", icon: <Database className="w-4 h-4" /> },
+  { id: "tools", label: "Dev Tools", icon: <Wrench className="w-4 h-4" /> },
+  { id: "upload", label: "Mass Upload", icon: <Upload className="w-4 h-4" /> },
 ];
 
 export default function AdminPortal() {
@@ -1295,10 +1293,9 @@ export default function AdminPortal() {
 
       <main className="max-w-4xl mx-auto px-6 py-8">
         {tab === "overview" && <OverviewTab />}
-        {tab === "navigate" && <NavigateTab />}
-        {tab === "data"     && <DataTab />}
-        {tab === "tools"    && <ToolsTab />}
-        {tab === "upload"   && <BulkUploadCard />}
+        {tab === "data" && <DataTab />}
+        {tab === "tools" && <ToolsTab />}
+        {tab === "upload" && <BulkUploadCard />}
       </main>
     </div>
   );

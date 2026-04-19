@@ -53,7 +53,7 @@ function AppRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <Switch>
-          <Route path="/" component={ClassCalendar} />
+          <Route path="/" component={SignInPage} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/auth-redirect" component={AuthRedirect} />
           <Route path="/admin">

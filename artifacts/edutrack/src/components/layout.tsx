@@ -103,12 +103,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
 
   return [
     {
-      label: "Overview",
-      items: [
-        { name: "Principal Dashboard", href: "/principal", icon: ShieldCheck },
-      ],
-    },
-    {
       label: "Academics",
       items: [
         { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
