@@ -299,20 +299,6 @@ function NavigateTab() {
       desc: "6 tabs — enrollment requests, late cancellations, students, tutors, classes, users",
     },
     {
-      label: "Tutor Portal",
-      path: "/tutor",
-      icon: <UserCheck className="h-8 w-8" />,
-      color: "bg-blue-100 text-blue-700",
-      desc: "Class schedule, per-class student lists, attendance marking",
-    },
-    {
-      label: "Student Portal",
-      path: "/student",
-      icon: <BookOpen className="h-8 w-8" />,
-      color: "bg-green-100 text-green-700",
-      desc: "Enrolled classes, Zoom links, cancellation with late-cancel detection",
-    },
-    {
       label: "Enrollment Form",
       path: "/enroll",
       icon: <UserPlus className="h-8 w-8" />,
