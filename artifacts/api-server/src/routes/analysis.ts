@@ -106,9 +106,10 @@ router.get('/analysis', async (req, res): Promise<void> => {
       })
       .sort((a, b) => b.students - a.students);
 
-    const teacherAgg = new Map<string, { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[] }>();
+    type ClassBreakdown = { name: string; day: string; students: number };
+    const teacherAgg = new Map<string, { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[]; classBreakdown: ClassBreakdown[] }>();
     for (const s of bySubject) {
-      if (!teacherAgg.has(s.teacherName)) teacherAgg.set(s.teacherName, { teacherName: s.teacherName, classCount: 0, students: 0, hoursPerWeek: 0, classes: [] });
+      if (!teacherAgg.has(s.teacherName)) teacherAgg.set(s.teacherName, { teacherName: s.teacherName, classCount: 0, students: 0, hoursPerWeek: 0, classes: [], classBreakdown: [] });
       const t = teacherAgg.get(s.teacherName)!;
       t.classCount++;
       t.students += s.students;
@@ -117,6 +118,9 @@ router.get('/analysis', async (req, res): Promise<void> => {
       // to disambiguate (e.g. "English (Tue)" vs "English (Thu)").
       const dayShort = s.days.map(d => d.slice(0, 3)).join("/");
       t.classes.push(dayShort ? `${s.name} (${dayShort})` : s.name);
+      // For stacked-bar visualisation, emit one entry per (Subject, Day).
+      const dayLong = s.days[0] || '';
+      t.classBreakdown.push({ name: s.name, day: dayLong, students: s.students });
     }
     const byTeacher = [...teacherAgg.values()].sort((a, b) => b.students - a.students);
 

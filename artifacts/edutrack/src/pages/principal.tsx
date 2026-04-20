@@ -1538,7 +1538,7 @@ type AnalysisData = {
   totals: { subjects: number; teachers: number; students: number; hoursPerWeek: number };
   periodTotals: { sessions: number; attendances: number; absences: number; attendancePct: number | null };
   bySubject: { subjectId: string; name: string; type: string; teacherName: string; days: string[]; sessionsPerWeek: number; durationHours: number; hoursPerWeek: number; students: number; maxCapacity: number; fillPct: number }[];
-  byTeacher: { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[] }[];
+  byTeacher: { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[]; classBreakdown: { name: string; day: string; students: number }[] }[];
   byWeekday: { day: string; classCount: number; students: number; hoursTotal: number }[];
   byMonth: { yyyyMM: string; label: string; sessions: number; studentAttendances: number; absences: number }[];
 };
@@ -1547,6 +1547,66 @@ function MiniBar({ pct, color = "bg-primary" }: { pct: number; color?: string })
   return (
     <div className="w-full bg-muted rounded-full h-1.5 mt-1">
       <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${Math.min(pct, 100)}%` }} />
+    </div>
+  );
+}
+
+const DAY_COLORS: Record<string, { bg: string; text: string; chip: string }> = {
+  Monday:    { bg: "bg-blue-500",    text: "text-blue-700",    chip: "bg-blue-50 text-blue-700 border-blue-200" },
+  Tuesday:   { bg: "bg-violet-500",  text: "text-violet-700",  chip: "bg-violet-50 text-violet-700 border-violet-200" },
+  Wednesday: { bg: "bg-emerald-500", text: "text-emerald-700", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  Thursday:  { bg: "bg-amber-500",   text: "text-amber-700",   chip: "bg-amber-50 text-amber-700 border-amber-200" },
+  Friday:    { bg: "bg-pink-500",    text: "text-pink-700",    chip: "bg-pink-50 text-pink-700 border-pink-200" },
+  Saturday:  { bg: "bg-cyan-500",    text: "text-cyan-700",    chip: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+  Sunday:    { bg: "bg-gray-500",    text: "text-gray-700",    chip: "bg-gray-50 text-gray-700 border-gray-200" },
+};
+const DAY_ORDER_LOAD = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+function StackedDayBar({ items, total }: {
+  items: { name: string; day: string; students: number }[];
+  total: number;
+}) {
+  const filtered = items.filter(it => it.students > 0);
+  const sorted = [...filtered].sort((a, b) =>
+    DAY_ORDER_LOAD.indexOf(a.day) - DAY_ORDER_LOAD.indexOf(b.day)
+  );
+  if (sorted.length === 0 || total === 0) {
+    return <div className="w-full bg-muted rounded-full h-2 mt-1" />;
+  }
+  const usedDays = Array.from(new Set(sorted.map(s => s.day)));
+  return (
+    <div>
+      <div className="w-full flex h-2 rounded-full overflow-hidden bg-muted mt-1">
+        {sorted.map((it, i) => {
+          const pct = (it.students / total) * 100;
+          const c = DAY_COLORS[it.day] || DAY_COLORS.Sunday;
+          return (
+            <div
+              key={`${it.name}-${it.day}-${i}`}
+              className={`${c.bg} h-2 hover:opacity-80 transition-opacity cursor-help`}
+              style={{ width: `${pct}%` }}
+              title={`${it.name} — ${it.day.slice(0,3)}: ${it.students} student${it.students === 1 ? "" : "s"}`}
+            />
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap gap-1 mt-1.5">
+        {usedDays.map(day => {
+          const c = DAY_COLORS[day] || DAY_COLORS.Sunday;
+          const dayItems = sorted.filter(s => s.day === day);
+          const dayTotal = dayItems.reduce((n, s) => n + s.students, 0);
+          const tip = dayItems.map(s => `${s.name}: ${s.students}`).join("\n");
+          return (
+            <span
+              key={day}
+              className={`text-[10px] px-1.5 py-0.5 rounded border ${c.chip} cursor-help`}
+              title={tip}
+            >
+              {day.slice(0,3)} {dayTotal}
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1689,8 +1749,7 @@ function AnalysisTab() {
                   <td className="px-3 py-2.5 text-center font-bold">{t.students}</td>
                   <td className="px-3 py-2.5 text-center font-semibold">{t.hoursPerWeek}</td>
                   <td className="px-3 py-2.5">
-                    <MiniBar pct={(t.students / maxTeacherStudents) * 100} color="bg-violet-500" />
-                    <p className="text-xs text-muted-foreground mt-0.5">{t.classes.join(", ")}</p>
+                    <StackedDayBar items={t.classBreakdown || []} total={t.students} />
                   </td>
                 </tr>
               ))}
