@@ -50,13 +50,23 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
     // Principal email
     const principalEmail = users.find(u => (u.role || '').toLowerCase() === 'principal')?.email || '';
 
+    // Build tutor email lookup from Users tab (role=tutor) by name
+    const tutorEmailByName: Record<string, string> = {};
+    for (const u of users) {
+      if ((u.role || '').toLowerCase() === 'tutor' && u.name && u.email) {
+        tutorEmailByName[u.name.toLowerCase()] = u.email;
+      }
+    }
+
     // Build teacher lookup by TeacherID → { name, email, zoomLink }
     const teacherById: Record<string, { name: string; email: string; zoomLink: string }> = {};
     const teacherByName: Record<string, { name: string; email: string; zoomLink: string }> = {};
     for (const t of teachers) {
       const tid = (t['TeacherID'] || '').trim();
       const name = (t['Name'] || '').trim();
-      const entry = { name, email: t['Email'] || '', zoomLink: t['Zoom Link'] || '' };
+      // Fall back to Users tab for email if Teachers tab has none
+      const email = t['Email'] || tutorEmailByName[name.toLowerCase()] || '';
+      const entry = { name, email, zoomLink: t['Zoom Link'] || '' };
       if (tid) teacherById[tid] = entry;
       if (name) teacherByName[name.toLowerCase()] = entry;
     }
