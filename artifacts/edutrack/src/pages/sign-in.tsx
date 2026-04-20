@@ -37,10 +37,8 @@ export default function SignInPage() {
 
       if (data.role === "developer" || data.role === "admin") {
         setLocation("/admin");
-      } else if (data.role === "principal") {
-        setLocation("/principal");
       } else {
-        setLocation("/");
+        setLocation("/calendar");
       }
     } catch {
       setError("Could not reach the server. Please try again.");

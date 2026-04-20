@@ -9,10 +9,8 @@ export default function Home() {
   function goToPortal() {
     if (storedRole === "developer" || storedRole === "admin") {
       setLocation("/admin");
-    } else if (storedRole === "principal") {
-      setLocation("/principal");
     } else {
-      setLocation("/sign-in");
+      setLocation("/calendar");
     }
   }
 
