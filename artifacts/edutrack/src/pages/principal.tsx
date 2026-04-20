@@ -1291,13 +1291,14 @@ function AttendanceTab() {
             <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
           </h3>
           <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm min-w-[360px]">
+            <table className="w-full text-sm min-w-[400px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left font-medium px-3 py-2.5 w-6" />
                   <th className="text-left font-medium px-3 py-2.5 w-32">Student</th>
                   <th className="text-center font-medium px-3 py-2.5 text-green-700 w-20">Present</th>
                   <th className="text-center font-medium px-3 py-2.5 text-red-700 w-20">Absent</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 w-24">Cancelled</th>
                   <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-28">Sessions Attended</th>
                 </tr>
               </thead>
@@ -1306,6 +1307,7 @@ function AttendanceTab() {
                   const isOpen = expandedStudents.has(s.studentId);
                   const sPresent = s.classes.reduce((n: number, c: any) => n + c.present, 0);
                   const sAbsent = s.classes.reduce((n: number, c: any) => n + c.absent, 0);
+                  const sCancelled = cancellations.filter((c: any) => c.userId === s.studentId);
                   return (
                     <Fragment key={s.studentId}>
                       {/* ── Student subtotal row ── */}
@@ -1321,27 +1323,40 @@ function AttendanceTab() {
                         <td className="px-3 py-2.5 font-semibold">{s.studentName}</td>
                         <td className="px-3 py-2.5 text-center text-green-700 font-medium">{sPresent}</td>
                         <td className="px-3 py-2.5 text-center text-red-700">{sAbsent}</td>
+                        <td className="px-3 py-2.5 text-center text-amber-700 font-medium">{sCancelled.length || "—"}</td>
                         <td className="px-3 py-2.5 text-center font-bold bg-primary/5">
                           {s.totalAttended}
                           <span className="text-xs font-normal text-muted-foreground"> / {s.classes.reduce((n: number, c: any) => n + c.totalSessions, 0)}</span>
                         </td>
                       </tr>
                       {/* ── Per-class breakdown (collapsed by default) ── */}
-                      {isOpen && s.classes.map((c: any) => (
-                        <tr key={`${s.studentId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
-                          <td className="px-2 py-1.5" />
-                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
-                            <span className="font-medium text-foreground">{c.className}</span>
-                            <span className="ml-1.5 text-muted-foreground hidden sm:inline">— {c.teacherName}</span>
-                          </td>
-                          <td className="px-3 py-1.5 text-center text-green-700">{c.present}</td>
-                          <td className="px-3 py-1.5 text-center text-red-700">{c.absent}</td>
-                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">
-                            {c.attended}
-                            <span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
-                          </td>
-                        </tr>
-                      ))}
+                      {isOpen && s.classes.map((c: any) => {
+                        const classCancelled = cancellations.filter((x: any) => x.userId === s.studentId && x.classId === c.classId);
+                        const w24 = classCancelled.filter((x: any) => x.within24Hrs?.toLowerCase() !== "no").length;
+                        return (
+                          <tr key={`${s.studentId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
+                            <td className="px-2 py-1.5" />
+                            <td className="px-3 py-1.5 pl-7 text-muted-foreground">
+                              <span className="font-medium text-foreground">{c.className}</span>
+                              <span className="ml-1.5 text-muted-foreground hidden sm:inline">— {c.teacherName}</span>
+                            </td>
+                            <td className="px-3 py-1.5 text-center text-green-700">{c.present}</td>
+                            <td className="px-3 py-1.5 text-center text-red-700">{c.absent}</td>
+                            <td className="px-3 py-1.5 text-center text-amber-700">
+                              {classCancelled.length > 0 ? (
+                                <span>
+                                  {classCancelled.length}
+                                  {w24 > 0 && <span className="ml-1 text-amber-500">({w24} &lt;24h)</span>}
+                                </span>
+                              ) : "—"}
+                            </td>
+                            <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">
+                              {c.attended}
+                              <span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </Fragment>
                   );
                 })}
@@ -1353,6 +1368,7 @@ function AttendanceTab() {
                   <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
                   <td className="px-3 py-2 text-center font-semibold text-green-700">{totalPresent}</td>
                   <td className="px-3 py-2 text-center font-semibold text-red-700">{totalAbsent}</td>
+                  <td className="px-3 py-2 text-center font-semibold text-amber-700">{cancelCount || "—"}</td>
                   <td className="px-3 py-2 text-center font-bold bg-primary/10">{totalAttended}</td>
                 </tr>
               </tfoot>
@@ -1491,6 +1507,7 @@ function AttendanceTab() {
 
 type AnalysisData = {
   totals: { subjects: number; teachers: number; students: number; hoursPerWeek: number };
+  periodTotals: { sessions: number; attendances: number; absences: number; attendancePct: number | null };
   bySubject: { subjectId: string; name: string; type: string; teacherName: string; days: string[]; sessionsPerWeek: number; durationHours: number; hoursPerWeek: number; students: number; maxCapacity: number; fillPct: number }[];
   byTeacher: { teacherName: string; classCount: number; students: number; hoursPerWeek: number; classes: string[] }[];
   byWeekday: { day: string; classCount: number; students: number; hoursTotal: number }[];
@@ -1506,16 +1523,25 @@ function MiniBar({ pct, color = "bg-primary" }: { pct: number; color?: string })
 }
 
 function AnalysisTab() {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const janThisYear = `${now.getFullYear()}-01`;
+
   const [data, setData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [from, setFrom] = useState(janThisYear);
+  const [to, setTo] = useState(thisMonth);
 
-  async function load() {
+  async function load(f = from, t = to) {
     const sid = sheetId();
     if (!sid) { setError("No sheet linked."); setLoading(false); return; }
     setLoading(true); setError("");
     try {
-      const res = await fetch(apiUrl(`/analysis?sheetId=${encodeURIComponent(sid)}`));
+      const params = new URLSearchParams({ sheetId: sid });
+      if (f) params.set("from", f);
+      if (t) params.set("to", t);
+      const res = await fetch(apiUrl(`/analysis?${params.toString()}`));
       const json = await res.json();
       if (json.error) { setError(json.error); } else { setData(json); }
     } catch { setError("Could not load analysis data."); }
@@ -1532,7 +1558,7 @@ function AnalysisTab() {
   if (error) return <p className="text-red-500 text-sm py-6">{error}</p>;
   if (!data) return null;
 
-  const { totals, bySubject, byTeacher, byWeekday, byMonth } = data;
+  const { totals, periodTotals, bySubject, byTeacher, byWeekday, byMonth } = data;
   const maxStudents        = Math.max(...bySubject.map(s => s.students), 1);
   const maxTeacherStudents = Math.max(...byTeacher.map(t => t.students), 1);
   const maxDayStudents     = Math.max(...byWeekday.map(d => d.students), 1);
@@ -1542,9 +1568,57 @@ function AnalysisTab() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Business Analysis</h2>
-        <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+        <Button variant="ghost" size="sm" onClick={() => load()} disabled={loading}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
+      </div>
+
+      {/* Period filter */}
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Attendance Period</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">From</label>
+            <input
+              type="month"
+              value={from}
+              onChange={e => { setFrom(e.target.value); load(e.target.value, to); }}
+              className="border rounded-md px-3 py-1.5 text-sm bg-background"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-muted-foreground">To</label>
+            <input
+              type="month"
+              value={to}
+              onChange={e => { setTo(e.target.value); load(from, e.target.value); }}
+              className="border rounded-md px-3 py-1.5 text-sm bg-background"
+            />
+          </div>
+        </div>
+        {/* Period totals */}
+        {periodTotals && (
+          <div className="flex flex-wrap gap-3 pt-1">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-background text-sm">
+              <span className="font-semibold">{periodTotals.sessions}</span>
+              <span className="text-muted-foreground">sessions held</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-green-50 text-sm">
+              <span className="font-semibold text-green-700">{periodTotals.attendances}</span>
+              <span className="text-green-700">attendances</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-red-50 text-sm">
+              <span className="font-semibold text-red-700">{periodTotals.absences}</span>
+              <span className="text-red-700">absences</span>
+            </div>
+            {periodTotals.attendancePct !== null && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-primary/5 text-sm">
+                <span className="font-semibold text-primary">{periodTotals.attendancePct}%</span>
+                <span className="text-muted-foreground">attendance rate</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Summary cards */}

@@ -66,6 +66,9 @@ router.get('/analysis', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
+  const fromParam = (req.query.from as string || '').trim();  // YYYY-MM
+  const toParam   = (req.query.to   as string || '').trim();  // YYYY-MM
+
   try {
     const [subjects, enrollments, users, attendance] = await Promise.all([
       readTabRows(sheetId, SHEET_TABS.subjects),
@@ -141,9 +144,23 @@ router.get('/analysis', async (req, res): Promise<void> => {
       if (status === 'present' || status === 'late') b.present++;
       else if (status === 'absent') b.absent++;
     }
-    const byMonth: MonthBucket[] = [...monthBuckets.entries()]
+    const allByMonth: MonthBucket[] = [...monthBuckets.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([yyyyMM, b]) => ({ yyyyMM, label: monthLabel(yyyyMM), sessions: b.sessions.size, studentAttendances: b.present, absences: b.absent }));
+
+    // Filter byMonth to requested period
+    const byMonth = allByMonth.filter(m =>
+      (!fromParam || m.yyyyMM >= fromParam) &&
+      (!toParam   || m.yyyyMM <= toParam)
+    );
+
+    // Period totals across filtered months
+    const periodSessions     = byMonth.reduce((n, m) => n + m.sessions, 0);
+    const periodAttendances  = byMonth.reduce((n, m) => n + m.studentAttendances, 0);
+    const periodAbsences     = byMonth.reduce((n, m) => n + m.absences, 0);
+    const periodTotal        = periodAttendances + periodAbsences;
+    const periodAttendancePct = periodTotal > 0 ? Math.round((periodAttendances / periodTotal) * 100) : null;
+    const periodTotals = { sessions: periodSessions, attendances: periodAttendances, absences: periodAbsences, attendancePct: periodAttendancePct };
 
     const totals = {
       subjects: bySubject.length,
@@ -152,7 +169,7 @@ router.get('/analysis', async (req, res): Promise<void> => {
       hoursPerWeek: Math.round(bySubject.reduce((n, s) => n + s.hoursPerWeek, 0) * 100) / 100,
     };
 
-    res.json({ bySubject, byTeacher, byWeekday, byMonth, totals });
+    res.json({ bySubject, byTeacher, byWeekday, byMonth, totals, periodTotals });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
