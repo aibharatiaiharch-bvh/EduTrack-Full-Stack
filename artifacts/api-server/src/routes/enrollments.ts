@@ -322,7 +322,7 @@ router.post('/enrollments', async (req, res): Promise<void> => {
 });
 
 // ─── POST /api/enrollments/:row/cancel ──────────────────────────────────────
-// Every cancellation → Status=Inactive, Fee=Not Waived (principal decides)
+// Every cancellation → Status=Inactive, Fee=Not Waived + writes Absent attendance row
 router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);
   if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -330,12 +330,46 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
   const rowNum = parseInt(req.params.row, 10);
   if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
 
+  const { userId, classId, within24Hrs, sessionDate } = req.body as {
+    userId?: string; classId?: string; within24Hrs?: string; sessionDate?: string;
+  };
+
   try {
     const cols = await ensureFeeColumn(spreadsheetId);
     await Promise.all([
       updateCell(spreadsheetId, `${TAB}!${cols.statusCol}${rowNum}`, 'Inactive'),
       updateCell(spreadsheetId, `${TAB}!${cols.feeCol}${rowNum}`,    'Not Waived'),
     ]);
+
+    // Write an Absent attendance row if student/class info provided
+    if (userId && classId) {
+      const now        = new Date().toISOString();
+      const date       = sessionDate || now.slice(0, 10);
+      const w24        = within24Hrs === 'No' ? 'No' : 'Yes';
+      const attHeaders = SHEET_HEADERS.attendance;
+      const attId      = `ATT-${Date.now()}`;
+      const rowValues  = attHeaders.map((h: string) => {
+        if (h === 'AttendanceID') return attId;
+        if (h === 'ClassID')      return classId;
+        if (h === 'UserID')       return userId;
+        if (h === 'SessionDate')  return date;
+        if (h === 'Status')       return 'Absent';
+        if (h === 'Notes')        return 'Student cancellation';
+        if (h === 'MarkedBy')     return 'system';
+        if (h === 'MarkedAt')     return now;
+        if (h === 'Within24Hrs')  return w24;
+        return '';
+      });
+      const sheets = await getUncachableGoogleSheetClient();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${SHEET_TABS.attendance}!A1`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: [rowValues] },
+      });
+    }
+
     res.json({ ok: true, status: 'Inactive', fee: 'Not Waived' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

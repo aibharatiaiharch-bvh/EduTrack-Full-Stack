@@ -1322,12 +1322,35 @@ function AttendanceTab() {
     ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
     : "";
 
+  const [cancellations, setCancellations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (data?.cancellations) setCancellations(data.cancellations);
+  }, [data]);
+
+  async function toggleWithin24hrs(attendanceId: string, current: string) {
+    const next = current.toLowerCase() === "no" ? "Yes" : "No";
+    setCancellations(prev => prev.map(c => c.attendanceId === attendanceId ? { ...c, within24Hrs: next } : c));
+    try {
+      await apiFetch("/attendance/within24hrs", {
+        method: "PATCH",
+        body: JSON.stringify({ attendanceId, within24Hrs: next }),
+      });
+    } catch {
+      // revert on failure
+      setCancellations(prev => prev.map(c => c.attendanceId === attendanceId ? { ...c, within24Hrs: current } : c));
+    }
+  }
+
   const students: any[] = data?.students ?? [];
   const tutors:   any[] = data?.tutors   ?? [];
 
   const totalPresent  = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0);
   const totalAbsent   = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0);
   const totalAttended = students.reduce((n: number, s: any) => n + s.totalAttended, 0);
+  const cancelCount   = cancellations.length;
+  const within24Yes   = cancellations.filter(c => c.within24Hrs?.toLowerCase() !== "no").length;
+  const within24No    = cancellations.filter(c => c.within24Hrs?.toLowerCase() === "no").length;
 
   return (
     <div>
@@ -1486,6 +1509,69 @@ function AttendanceTab() {
               </tfoot>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* ── Cancellations ── */}
+      {data && (
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Cancellations
+          </h3>
+
+          {/* Summary chips */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-muted/40 text-sm">
+              <span className="font-semibold">{cancelCount}</span>
+              <span className="text-muted-foreground">total cancelled</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-amber-50 text-sm">
+              <span className="font-semibold text-amber-700">{within24Yes}</span>
+              <span className="text-amber-700">within 24 hrs</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-blue-50 text-sm">
+              <span className="font-semibold text-blue-700">{within24No}</span>
+              <span className="text-blue-700">not within 24 hrs</span>
+            </div>
+          </div>
+
+          {cancellations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No cancellations recorded for {monthLabel}.</p>
+          ) : (
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2.5">Student</th>
+                    <th className="text-left font-medium px-3 py-2.5">Class</th>
+                    <th className="text-left font-medium px-3 py-2.5">Date</th>
+                    <th className="text-center font-medium px-3 py-2.5 w-32">Within 24 hrs</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {cancellations.map((c: any) => (
+                    <tr key={c.attendanceId} className="hover:bg-muted/20">
+                      <td className="px-3 py-2.5 font-medium">{c.studentName || "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{c.className || "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{c.sessionDate || "—"}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          onClick={() => toggleWithin24hrs(c.attendanceId, c.within24Hrs)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                            c.within24Hrs?.toLowerCase() === "no"
+                              ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                              : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                          }`}
+                        >
+                          {c.within24Hrs?.toLowerCase() === "no" ? "No" : "Yes"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

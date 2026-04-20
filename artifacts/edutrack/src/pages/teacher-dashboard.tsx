@@ -195,9 +195,26 @@ function ClassCard({
                     Attendance for today · {markedCount}/{localStudents.length} marked
                   </p>
                   <button
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      setShowAttendance(v => !v);
+                      const opening = !showAttendance;
+                      setShowAttendance(opening);
+                      if (opening) {
+                        // Auto-mark all unmarked students as Present (default)
+                        const unmarked = localStudents.filter(s => !s.attendanceToday);
+                        if (unmarked.length > 0) {
+                          await Promise.all(unmarked.map(s =>
+                            fetch(apiUrl("/attendance/mark"), {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ classId: group.classId, sessionDate: todayISO, userId: s.userId, status: "Present", markedBy, sheetId }),
+                            })
+                          ));
+                          setLocalStudents(prev => prev.map(s =>
+                            s.attendanceToday ? s : { ...s, attendanceToday: "Present" }
+                          ));
+                        }
+                      }
                     }}
                     className="text-xs text-primary hover:underline"
                   >

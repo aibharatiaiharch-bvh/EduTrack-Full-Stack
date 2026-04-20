@@ -106,11 +106,28 @@ export default function ParentView() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: async (row: number) => {
-      const res = await fetch(apiUrl(`/enrollments/${row}/cancel`), {
+    mutationFn: async (enrollment: any) => {
+      const classDate  = enrollment["ClassDate"] || enrollment["Class Date"] || "";
+      const classTime  = enrollment["ClassTime"] || enrollment["Class Time"] || "";
+      const sessionDate = new Date().toISOString().slice(0, 10);
+      // Determine if within 24 hrs: check if class date string starts today or is within 24h
+      let within24Hrs = "Yes";
+      if (classDate) {
+        const parsed = new Date(classDate);
+        if (!isNaN(parsed.getTime())) {
+          within24Hrs = (parsed.getTime() - Date.now()) <= 24 * 60 * 60 * 1000 ? "Yes" : "No";
+        }
+      }
+      const res = await fetch(apiUrl(`/enrollments/${enrollment._row}/cancel`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheetId }),
+        body: JSON.stringify({
+          sheetId,
+          userId:    enrollment["UserID"]  || enrollment.UserID  || "",
+          classId:   enrollment["ClassID"] || enrollment.ClassID || "",
+          within24Hrs,
+          sessionDate,
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
@@ -357,7 +374,7 @@ export default function ParentView() {
             <AlertDialogCancel>Keep class</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              onClick={() => cancelRow && cancelMutation.mutate(cancelRow._row)}
+              onClick={() => cancelRow && cancelMutation.mutate(cancelRow)}
             >
               Yes, cancel
             </AlertDialogAction>

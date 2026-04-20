@@ -148,9 +148,20 @@ export default function StudentDashboard() {
     if (!cancelling) return;
     setConfirming(true);
     try {
+      const sub        = subjectMap[cancelling.ClassID] || {};
+      const days       = sub.Days || sub["Days"] || "";
+      const time       = sub.Time || sub["Time"] || "";
+      const within24Hrs = nextSessionWithin24h(days, time) ? "Yes" : "No";
+      const sessionDate = new Date().toISOString().slice(0, 10);
       const data = await apiFetch(`/enrollments/${cancelling._row}/cancel`, {
         method: "POST",
-        body: JSON.stringify({ sheetId: sheetId() }),
+        body: JSON.stringify({
+          sheetId: sheetId(),
+          userId,
+          classId: cancelling.ClassID || cancelling["ClassID"] || "",
+          within24Hrs,
+          sessionDate,
+        }),
       });
       if (data.ok) {
         setCancelling(null);
