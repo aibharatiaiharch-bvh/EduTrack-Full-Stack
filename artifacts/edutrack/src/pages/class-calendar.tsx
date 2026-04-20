@@ -191,7 +191,7 @@ function buildContactRows(days: ApiDay[]): ContactRow[] {
   for (const day of days) {
     const short = SHORT_DAY[day.dayName] ?? day.dayName.slice(0, 3);
     for (const slot of day.slots) {
-      const key = `${slot.className}||${short}`;
+      const key = `${slot.className}||${slot.teacherEmail}||${slot.time}`;
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push({
