@@ -794,6 +794,7 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [enrollmentsByStudent, setEnrollmentsByStudent] = useState<Record<string, string>>({});
   const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
@@ -805,7 +806,7 @@ function StudentsTab() {
       const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
       if (Array.isArray(data)) {
         const classNames = data.map((enr: any) => enr["Class Name"] || enr.ClassID).filter(Boolean).join(", ");
-        setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
+        setEnrollmentsByStudent(prev => ({ ...prev, [userId]: classNames || "" }));
       }
     } catch { /* ignore */ }
   }
@@ -966,8 +967,7 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = studentClasses[s.userId] || s.classes || s.subjects || s.enrolledClasses || "—";
-                      const isActive = s.status?.toLowerCase() === "active";
+                      const classes = enrollmentsByStudent[s.userId] || s.classes || s.subjects || s.enrolledClasses || "—";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
@@ -978,7 +978,6 @@ function StudentsTab() {
                             <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.parentEmail || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground text-xs truncate">{classes}</td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
-                            <td className="px-3 py-2.5" />
                           </tr>
                         </Fragment>
                       );
