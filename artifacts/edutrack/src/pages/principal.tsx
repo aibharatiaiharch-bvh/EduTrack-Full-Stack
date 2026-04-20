@@ -794,7 +794,6 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [enrollmentsByStudent, setEnrollmentsByStudent] = useState<Record<string, string>>({});
   const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
@@ -806,7 +805,7 @@ function StudentsTab() {
       const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
       if (Array.isArray(data)) {
         const classNames = data.map((enr: any) => enr["Class Name"] || enr.ClassID).filter(Boolean).join(", ");
-        setEnrollmentsByStudent(prev => ({ ...prev, [userId]: classNames || "" }));
+        setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
       }
     } catch { /* ignore */ }
   }
@@ -967,7 +966,7 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = enrollmentsByStudent[s.userId] || s.classes || s.subjects || s.enrolledClasses || "—";
+                      const classes = studentClasses[s.userId] || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
