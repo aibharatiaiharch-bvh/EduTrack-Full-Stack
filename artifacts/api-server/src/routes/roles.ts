@@ -44,7 +44,9 @@ function unpackNotes(notes: string): Record<string, string> {
 }
 
 router.get('/roles/check', async (req, res): Promise<void> => {
-  const sheetId = getSheetId(req);
+  // Sign-in page has no sheetId yet, so fall back to DEFAULT_SHEET_ID so we
+  // can look users up in the Users tab.
+  const sheetId = getSheetId(req) || process.env.DEFAULT_SHEET_ID || '';
   const email = ((req.query.email as string) || '').toLowerCase().trim();
 
   if (!email) {
@@ -91,6 +93,7 @@ router.get('/roles/check', async (req, res): Promise<void> => {
         userId: user.userId,
         found: true,
         tabMissing: false,
+        sheetId: sheetId || null,
       });
       return;
     }
