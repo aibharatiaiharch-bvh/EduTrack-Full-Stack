@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout, PublicLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDays, Clock, Users, BookOpen, UserRound, AlertCircle, Mail } from "lucide-react";
 import { apiUrl } from "@/lib/api";
@@ -77,8 +76,13 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
 
 function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean }) {
   const style = seatStyle(slot);
+  const [open, setOpen] = useState(false);
   const box = (
-    <div className={`min-h-[52px] rounded-md border px-2 py-1.5 ${style} ${canSeeStudents ? "cursor-pointer hover:brightness-95 active:brightness-90 transition-all" : ""}`}>
+    <div
+      className={`min-h-[52px] rounded-md border px-2 py-1.5 ${style} ${canSeeStudents ? "cursor-pointer hover:brightness-95 active:brightness-90 transition-all" : ""}`}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <div className="flex items-center gap-1 text-[10px] font-semibold">
         <Clock className="h-3 w-3 shrink-0" />
         <span className="truncate">{slot.time || "—"}</span>
@@ -95,13 +99,10 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
   if (!canSeeStudents) return box;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="w-full text-left">
-          {box}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-56 p-3 pointer-events-auto" side="top" align="start">
+    <div className="relative">
+      {box}
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="text-xs font-semibold mb-2">
           {slot.className} — {slot.students.length} enrolled
         </p>
@@ -119,8 +120,9 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
             ))}
           </ul>
         )}
-      </PopoverContent>
-    </Popover>
+        </div>
+      )}
+    </div>
   );
 }
 
