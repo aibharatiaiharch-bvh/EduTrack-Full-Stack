@@ -992,15 +992,15 @@ function StudentsTab() {
             />
             {paged.length === 0 && <p className="text-sm text-muted-foreground">No students match your search.</p>}
             {paged.length > 0 && (
-              <div className="rounded-md border overflow-x-auto">
-                <table className="w-full text-sm">
+        <div className="rounded-md border overflow-x-auto">
+              <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5">Name</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Grade</th>
-                      <th className="text-left font-medium px-3 py-2.5">Status</th>
-                      <th className="text-left font-medium px-3 py-2.5">Classes</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-1/3">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/5">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-24">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-20">Classes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1010,7 +1010,7 @@ function StudentsTab() {
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
-                            <td className="px-3 py-2.5 font-medium">{s.name}</td>
+                            <td className="px-3 py-2.5 font-medium truncate">{s.name || s.displayName || s.email || "Unknown"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.email || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{s.currentGrade || "—"}</td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
@@ -1041,7 +1041,7 @@ function StudentsTab() {
                                   <p className="text-xs text-muted-foreground">No active enrollments.</p>
                                 )}
                                 {classes.length > 0 && (
-                                  <table className="w-full text-xs">
+                              <table className="w-full text-xs table-fixed">
                                     <thead>
                                       <tr className="text-muted-foreground border-b">
                                         <th className="text-left font-medium pb-1.5">Class</th>
@@ -1229,22 +1229,24 @@ function TutorsTab() {
             {paged.length === 0 && <p className="text-sm text-muted-foreground">No tutors match your search.</p>}
             {paged.length > 0 && (
               <div className="rounded-md border overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5">Name</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Subjects</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Specialty</th>
-                      <th className="text-left font-medium px-3 py-2.5">Status</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-1/4">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/5">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-1/5">Subjects</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Zoom Link</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Specialty</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((t) => (
                       <tr key={t.UserID} className="hover:bg-muted/20">
-                        <td className="px-3 py-2.5 font-medium">{t.Name}</td>
+                        <td className="px-3 py-2.5 font-medium truncate">{t.Name || t.name || t.Email || "Unknown"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{t.Email || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{t.Subjects || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{t["Zoom Link"] || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
                         <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
                       </tr>
