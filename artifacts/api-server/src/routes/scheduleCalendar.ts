@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express';
-import { getUncachableGoogleSheetClient, SHEET_TABS } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_TABS, readUsersTab } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
