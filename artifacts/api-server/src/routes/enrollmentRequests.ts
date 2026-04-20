@@ -14,9 +14,24 @@ function tryParseJson(val: string): Record<string, string> {
 }
 
 function buildWelcomeEmail(studentName: string, classes: string, principalName: string): string {
-  const enrollLink = process.env.EDUTRACK_ENROLL_URL || "https://edutrack.app/enroll";
-  const classLine = classes
-    ? `<p>You have expressed interest in: <strong>${classes}</strong>. Our team will be in touch shortly to confirm class placement and scheduling details.</p>`
+  // Link people to the live app's sign-in page so they can log in immediately
+  // (NOT the public /enroll form — they're already enrolled).
+  const appBase = (process.env.EDUTRACK_APP_URL || "https://edutrack.app").replace(/\/$/, "");
+  const loginLink = `${appBase}/sign-in`;
+
+  // Render the comma-separated class list as a real bulleted list so each
+  // approved class is easy to read on its own line.
+  const classItems = (classes || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const classBlock = classItems.length
+    ? `
+        <p style="margin-bottom: 8px;">You have been approved for the following:</p>
+        <ul style="margin: 0 0 16px 20px; padding: 0;">
+          ${classItems.map(c => `<li style="margin: 4px 0;">${c}</li>`).join("")}
+        </ul>
+      `
     : `<p>Our team will be in touch shortly to confirm class placement and scheduling details.</p>`;
 
   return `
@@ -25,12 +40,15 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
         <h1 style="color: white; margin: 0; font-size: 22px;">Welcome to EduTrack!</h1>
       </div>
       <div style="padding: 32px; background: #f9fafb; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
-        <p style="font-size: 16px;">Dear Parent/Guardian of <strong>${studentName}</strong>,</p>
-        <p>We are delighted to welcome <strong>${studentName}</strong> to EduTrack. Your enrolment request has been reviewed and <strong>approved</strong>.</p>
-        <p>This email confirms that your account has been created and your class request is now active in our system.</p>
-        ${classLine}
-        <p>You can review the enrolment form here: <a href="${enrollLink}" style="color: #1d4ed8; text-decoration: underline;">${enrollLink}</a></p>
-        <p>If you have any questions in the meantime, please don't hesitate to reply to this email — we're happy to help.</p>
+        <p style="font-size: 16px;">Dear <strong>${studentName}</strong>,</p>
+        <p>Your enrolment has been reviewed and <strong>approved</strong>. Your account is now active.</p>
+        ${classBlock}
+        <p style="margin: 20px 0;">
+          <a href="${loginLink}" style="display: inline-block; background: #1d4ed8; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">Log in to EduTrack</a>
+        </p>
+        <p style="font-size: 13px; color: #6b7280;">Or open: <a href="${loginLink}" style="color: #1d4ed8;">${loginLink}</a></p>
+        <p>Sign in with this email address — no password needed. From the dashboard you can view your schedule, class calendar, and analysis.</p>
+        <p>If you have any questions, just reply to this email.</p>
         <p style="margin-top: 32px;">Warm regards,<br/>
         <strong>${principalName}</strong><br/>
         <span style="color: #6b7280; font-size: 14px;">EduTrack</span></p>
