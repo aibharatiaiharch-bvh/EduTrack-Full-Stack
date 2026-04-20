@@ -293,12 +293,10 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
     const existingParentRow = parentRows.find(r => r["UserID"] === parentUserId || r["ParentID"] === parentUserId);
     if (existingParentRow) {
       const currentChildren = existingParentRow["Children"] || "";
-      const names = currentChildren ? currentChildren.split(";").map((n: string) => n.trim()) : [];
-      if (!names.includes(studentName)) {
-        names.push(studentName);
-        const col = colLetter("parents", "Children");
-        await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${existingParentRow._row}`, names.join("; "));
-      }
+      const names = currentChildren ? currentChildren.split(";").map((n: string) => n.trim()).filter(Boolean) : [];
+      const childList = Array.from(new Set([...names, studentName])).filter(Boolean);
+      const col = colLetter("parents", "Children");
+      await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${existingParentRow._row}`, childList.join("; "));
     } else {
       const parentTabId = await generateTabId("PAR", sheetId, SHEET_TABS.parents);
       await appendRow(sheetId, SHEET_TABS.parents, [
@@ -361,12 +359,12 @@ async function materialiseStudentEnrollments(
       EnrolledAt: now,
       TeacherID: tid,
       "Teacher Name": teacher?.["Name"] || "",
-      TeacherEmail: "",
+      TeacherEmail: teacher?.["Email"] || "",
       "Zoom Link": teacher?.["Zoom Link"] || "",
       "Class Type": enrollRow["Class Type"] || sub?.["Type"] || "Group",
       ClassDate: "",
       ClassTime: sub?.["Time"] || "",
-      Notes: `Enrolled via request row ${rowNum}`,
+      Notes: enrollRow["Notes"] || "",
       Fee: enrollRow["Fee"] || "",
     };
     await appendRow(sheetId, SHEET_TABS.enrollments, enrollmentSchema.map(k => data[k] || ""));
