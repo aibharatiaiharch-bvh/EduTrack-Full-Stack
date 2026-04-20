@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout, PublicLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDays, Clock, Users, BookOpen, UserRound, AlertCircle, Mail } from "lucide-react";
 import { apiUrl } from "@/lib/api";
@@ -83,8 +84,6 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
   const box = (
     <div
       className={`min-h-[52px] rounded-md border px-2 py-1.5 ${style} ${canSeeStudents ? "cursor-pointer hover:brightness-95 active:brightness-90 transition-all" : ""}`}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
     >
       <div className="flex items-center gap-1 text-[10px] font-semibold">
         <Clock className="h-3 w-3 shrink-0" />
@@ -101,18 +100,32 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
 
   if (!canSeeStudents) return box;
 
+  // Use Radix Popover (which renders into a Portal) so the popover escapes
+  // the table's overflow-x-auto container instead of being clipped.
   return (
-    <div className="relative">
-      {box}
-      {open && (
-        <div className="absolute left-0 bottom-full z-50 mb-2 w-56 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        asChild
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {box}
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        className="w-60 p-3"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
         <p className="text-xs font-semibold mb-2">
           {slot.className} — {slot.students.length} enrolled
         </p>
         {slot.students.length === 0 ? (
           <p className="text-xs text-muted-foreground">No students yet</p>
         ) : (
-          <ul className="space-y-0.5">
+          <ul className="space-y-0.5 max-h-64 overflow-y-auto">
             {slot.students.map((s, i) => (
               <li key={i} className="text-xs flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">
@@ -123,9 +136,8 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
             ))}
           </ul>
         )}
-        </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
