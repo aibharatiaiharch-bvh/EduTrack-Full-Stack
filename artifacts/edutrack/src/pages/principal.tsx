@@ -810,6 +810,28 @@ function StudentsTab() {
     } catch { /* ignore */ }
   }
 
+  async function loadAllStudentClasses() {
+    try {
+      const data = await apiFetch("/enrollments");
+      if (!Array.isArray(data)) return;
+      const grouped = data.reduce((acc: Record<string, string[]>, enr: any) => {
+        const userId = enr.UserID || enr["UserID"];
+        if (!userId) return acc;
+        const status = String(enr.Status || "").toLowerCase();
+        if (status && status !== "active") return acc;
+        const className = enr["Class Name"] || enr.ClassID || enr["ClassID"];
+        if (!className) return acc;
+        if (!acc[userId]) acc[userId] = [];
+        acc[userId].push(className);
+        return acc;
+      }, {});
+      const mapped = Object.fromEntries(
+        Object.entries(grouped).map(([userId, names]) => [userId, names.join(", ")])
+      );
+      setStudentClasses(mapped);
+    } catch { /* ignore */ }
+  }
+
   async function load() {
     setLoading(true);
     setError("");
@@ -824,6 +846,7 @@ function StudentsTab() {
         setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
         setSubjectObjects(subjectData);
       }
+      await loadAllStudentClasses();
     } catch { setError("Connection error."); }
     setLoading(false);
   }
