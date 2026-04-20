@@ -223,20 +223,35 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
               <th className="text-left px-2 py-1.5 font-medium min-w-[140px]">Class</th>
               <th className="text-left px-2 py-1.5 font-medium min-w-[50px]">Day</th>
               <th className="text-left px-2 py-1.5 font-medium min-w-[80px]">Time</th>
-              <th className="text-left px-2 py-1.5 font-medium min-w-[160px]">Teacher</th>
+              <th className="text-left px-2 py-1.5 font-medium min-w-[100px]">Tutor</th>
               {principalEmail && (
-                <th className="text-left px-2 py-1.5 font-medium min-w-[160px]">Principal</th>
+                <th className="text-left px-2 py-1.5 font-medium min-w-[100px]">Principal</th>
               )}
               <th className="text-left px-2 py-1.5 font-medium min-w-[180px]">Students</th>
+              <th className="text-left px-2 py-1.5 font-medium min-w-[100px]">All Emails</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => {
+              const subject = encodeURIComponent(`Re: ${row.className} class (${row.day})`);
               const teacherMailto = row.teacherEmail
-                ? `mailto:${row.teacherEmail}?subject=${encodeURIComponent(`Re: ${row.className} class`)}`
+                ? `mailto:${row.teacherEmail}?subject=${subject}`
                 : null;
               const principalMailto = principalEmail
-                ? `mailto:${principalEmail}${row.teacherEmail ? `?cc=${encodeURIComponent(row.teacherEmail)}` : ""}&subject=${encodeURIComponent(`Re: ${row.className} class (${row.day})`)}`
+                ? `mailto:${principalEmail}${row.teacherEmail ? `?cc=${encodeURIComponent(row.teacherEmail)}` : ""}&subject=${subject}`
+                : null;
+
+              // "Email All" — TO: teacher, CC: principal + all students with emails
+              const allEmails = [
+                row.teacherEmail,
+                principalEmail,
+                ...row.students.map(s => s.email).filter(Boolean),
+              ].filter(Boolean);
+              const uniqueEmails = [...new Set(allEmails)];
+              const toEmail = uniqueEmails[0] || '';
+              const ccEmails = uniqueEmails.slice(1).join(',');
+              const emailAllHref = toEmail
+                ? `mailto:${toEmail}${ccEmails ? `?cc=${encodeURIComponent(ccEmails)}` : ''}&subject=${subject}`
                 : null;
 
               return (
@@ -246,12 +261,9 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
                   <td className="px-2 py-2 text-muted-foreground">{row.time || "—"}</td>
                   <td className="px-2 py-2">
                     {teacherMailto ? (
-                      <a
-                        href={teacherMailto}
-                        className="text-blue-600 hover:underline flex items-center gap-1"
-                      >
+                      <a href={teacherMailto} className="text-blue-600 hover:underline flex items-center gap-1">
                         <Mail className="h-3 w-3 shrink-0" />
-                        {row.teacherName || row.teacherEmail}
+                        Tutor
                       </a>
                     ) : (
                       <span className="text-muted-foreground">{row.teacherName || "—"}</span>
@@ -291,6 +303,19 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
                           )
                         ))}
                       </div>
+                    )}
+                  </td>
+                  <td className="px-2 py-2">
+                    {emailAllHref ? (
+                      <a
+                        href={emailAllHref}
+                        className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-700 transition-colors"
+                      >
+                        <Mail className="h-3 w-3 shrink-0" />
+                        Email All
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
                   </td>
                 </tr>
