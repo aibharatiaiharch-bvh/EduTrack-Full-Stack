@@ -42,10 +42,6 @@ function ClassesTab() {
   const [tutors, setTutors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reassigning, setReassigning] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", type: "Group", days: "", time: "", room: "", maxCapacity: "8", teacherId: "" });
   const [addSubmitting, setAddSubmitting] = useState(false);
@@ -98,28 +94,6 @@ function ClassesTab() {
       }
     } catch { setAddError("Connection error."); }
     setAddSubmitting(false);
-  }
-
-  async function doReassign(classId: string) {
-    const newTeacherId = selected[classId];
-    if (!newTeacherId) return;
-    setSaving(classId);
-    setSuccess(null);
-    try {
-      const data = await apiFetch("/principals/reassign-teacher", {
-        method: "POST",
-        body: JSON.stringify({ classId, newTeacherId }),
-      });
-      if (data.ok) {
-        setSuccess(classId);
-        setReassigning(null);
-        setSelected(s => { const n = { ...s }; delete n[classId]; return n; });
-        await load();
-      } else {
-        setError(data.error || "Reassignment failed.");
-      }
-    } catch { setError("Connection error."); }
-    setSaving(null);
   }
 
   return (
@@ -256,89 +230,24 @@ function ClassesTab() {
                     <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Schedule</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Students</th>
-                    <th className="px-3 py-2.5" />
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filtered.map((s) => {
                     const subjectId = s["SubjectID"] || s.SubjectID || "";
-                    const isOpen = reassigning === subjectId;
-                    const isSaving = saving === subjectId;
-                    const didSucceed = success === subjectId;
                     const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
-                    const currentEnrolled = s.currentEnrolled ?? 0;
                     return (
-                      <Fragment key={subjectId}>
-                        <tr className={`hover:bg-muted/20 ${isOpen ? "bg-amber-50/60" : ""}`}>
-                          <td className="px-3 py-2.5 font-medium">
-                            <span>{s.Name || s["Name"]}</span>
-                            {didSucceed && !isOpen && (
-                              <span className="ml-2 text-xs text-green-600 font-normal inline-flex items-center gap-1">
-                                <CheckCircle className="w-3 h-3" /> Reassigned
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
-                            {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
-                          </td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
-                            {s.enrolledNames || "—"}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            {!isOpen ? (
-                              <Button
-                                size="sm" variant="outline"
-                                className="text-xs gap-1 text-amber-700 border-amber-300 hover:bg-amber-50 h-7"
-                                onClick={() => { setReassigning(subjectId); setSuccess(null); }}
-                              >
-                                <AlertTriangle className="w-3 h-3" /> Reassign
-                              </Button>
-                            ) : (
-                              <Button
-                                size="sm" variant="outline" className="h-7 text-xs"
-                                onClick={() => { setReassigning(null); setSelected(sv => { const n = { ...sv }; delete n[subjectId]; return n; }); }}
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                        {isOpen && (
-                          <tr className="bg-amber-50/30">
-                            <td colSpan={6} className="px-4 py-3">
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 shrink-0">
-                                  <AlertTriangle className="w-3 h-3 shrink-0" />
-                                  Updates class and all active enrollments immediately.
-                                </div>
-                                <select
-                                  className="flex-1 border rounded-md px-3 py-2 text-sm bg-background"
-                                  value={selected[subjectId] || ""}
-                                  onChange={e => setSelected(sv => ({ ...sv, [subjectId]: e.target.value }))}
-                                >
-                                  <option value="">Select a tutor…</option>
-                                  {tutors.map(t => (
-                                    <option key={t.UserID} value={t.UserID} disabled={t.UserID === s["TeacherID"]}>
-                                      {t.Name}{t.UserID === s["TeacherID"] ? " (current)" : ""}
-                                    </option>
-                                  ))}
-                                </select>
-                                <Button
-                                  size="sm"
-                                  disabled={!selected[subjectId] || isSaving}
-                                  onClick={() => doReassign(subjectId)}
-                                  className="gap-1 shrink-0"
-                                >
-                                  <CheckCircle className="w-3 h-3" />
-                                  {isSaving ? "Saving…" : `Confirm (${currentEnrolled} enrolment${currentEnrolled !== 1 ? "s" : ""})`}
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
+                      <tr key={subjectId} className="hover:bg-muted/20">
+                        <td className="px-3 py-2.5 font-medium">{s.Name || s["Name"]}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
+                          {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
+                          {s.enrolledNames || "—"}
+                        </td>
+                      </tr>
                     );
                   })}
                 </tbody>

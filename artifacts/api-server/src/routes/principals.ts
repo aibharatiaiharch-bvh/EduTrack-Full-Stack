@@ -572,69 +572,6 @@ router.post('/principals/reconcile', async (req, res): Promise<void> => {
   }
 });
 
-// ─── POST /api/principals/reassign-teacher ──────────────────────────────────
-// Emergency reassignment: updates the teacher on a Subject + all its active Enrollments.
-router.post('/principals/reassign-teacher', async (req, res): Promise<void> => {
-  const sheetId = getSheetId(req);
-  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
-
-  const { classId, newTeacherId } = req.body as { classId?: string; newTeacherId?: string };
-  if (!classId || !newTeacherId) {
-    res.status(400).json({ error: 'classId and newTeacherId are required' }); return;
-  }
-
-  try {
-    const [users, teacherRows, subjectRows, enrollmentRows] = await Promise.all([
-      readUsersTab(sheetId),
-      readTabRows(sheetId, SHEET_TABS.teachers),
-      readTabRows(sheetId, SHEET_TABS.subjects),
-      readTabRows(sheetId, SHEET_TABS.enrollments),
-    ]);
-
-    // Resolve new teacher details
-    const teacherUser = users.find(u => u.userId === newTeacherId);
-    if (!teacherUser) { res.status(404).json({ error: 'Teacher not found in Users tab' }); return; }
-
-    const teacherExt  = teacherRows.find(t => t['UserID'] === newTeacherId || t['TeacherID'] === newTeacherId);
-    const teacherName  = teacherUser.name;
-    const teacherEmail = teacherUser.email;
-    const zoomLink     = teacherExt?.['Zoom Link'] || '';
-
-    // 1. Update Subjects tab — TeacherID column (col D, index 3)
-    const subject = subjectRows.find(s => (s['SubjectID'] || '').toLowerCase() === classId.toLowerCase());
-    if (!subject) { res.status(404).json({ error: 'Class not found in Subjects tab' }); return; }
-
-    const subjectTeacherCol = colLetter('subjects', 'TeacherID');
-    await updateCell(sheetId, `${SHEET_TABS.subjects}!${subjectTeacherCol}${subject._row}`, newTeacherId);
-
-    // 2. Update all active Enrollments for this class
-    const activeEnrollments = enrollmentRows.filter(e =>
-      (e['ClassID'] || '').toLowerCase() === classId.toLowerCase() &&
-      !['cancelled', 'rejected'].includes((e['Status'] || '').toLowerCase())
-    );
-
-    const teacherIdCol    = colLetter('enrollments', 'TeacherID');
-    const teacherNameCol  = colLetter('enrollments', 'Teacher Name');
-    const teacherEmailCol = colLetter('enrollments', 'TeacherEmail');
-    const zoomLinkCol     = colLetter('enrollments', 'Zoom Link');
-
-    for (const enr of activeEnrollments) {
-      await updateCell(sheetId, `${SHEET_TABS.enrollments}!${teacherIdCol}${enr._row}`,    newTeacherId);
-      await updateCell(sheetId, `${SHEET_TABS.enrollments}!${teacherNameCol}${enr._row}`,  teacherName);
-      await updateCell(sheetId, `${SHEET_TABS.enrollments}!${teacherEmailCol}${enr._row}`, teacherEmail);
-      await updateCell(sheetId, `${SHEET_TABS.enrollments}!${zoomLinkCol}${enr._row}`,     zoomLink);
-    }
-
-    res.json({
-      ok: true,
-      updatedEnrollments: activeEnrollments.length,
-      teacher: { id: newTeacherId, name: teacherName, email: teacherEmail, zoomLink },
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // POST /api/principals/reconcile-active
 // Finds all users who have an Approved enrollment but are still Pending — activates them
 router.post('/principals/reconcile-active', async (req, res) => {
