@@ -766,7 +766,7 @@ function CreateSheetCard() {
 
           {saved && (
             <p className="text-xs text-green-700">
-              This sheet is now active. Reload the page or navigate to any portal to see your data.
+              This sheet is now active. Reload the page or navigate to any page to see your data.
               Remember to also set <code className="font-mono bg-white px-0.5 rounded">DEFAULT_SHEET_ID={result.spreadsheetId}</code> in your Railway environment variables for production.
             </p>
           )}
