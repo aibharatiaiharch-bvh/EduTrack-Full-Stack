@@ -713,11 +713,25 @@ function StudentsTab() {
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
 
+  // Build "Subject (Day)" label from an enrollment row. The new schema has one
+  // Subject row per (Class, Day), with ClassID like "SUB-ENG-TUE" — the day
+  // suffix is the source of truth for which weekday the enrolment belongs to.
+  function enrollmentLabel(enr: any): string {
+    const name = enr["Class Name"] || enr.ClassID || enr["ClassID"] || "";
+    const id = String(enr.ClassID || enr["ClassID"] || "");
+    const dayMap: Record<string, string> = {
+      MON: "Mon", TUE: "Tue", WED: "Wed", THU: "Thu", FRI: "Fri", SAT: "Sat", SUN: "Sun",
+    };
+    const m = id.match(/-([A-Z]{3})$/);
+    const day = m ? dayMap[m[1]] : "";
+    return day ? `${name} (${day})` : name;
+  }
+
   async function loadStudentClasses(userId: string) {
     try {
       const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
       if (Array.isArray(data)) {
-        const classNames = data.map((enr: any) => enr["Class Name"] || enr.ClassID).filter(Boolean).join(", ");
+        const classNames = data.map(enrollmentLabel).filter(Boolean).join(", ");
         setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
       }
     } catch { /* ignore */ }
@@ -732,10 +746,10 @@ function StudentsTab() {
         if (!userId) return acc;
         const status = String(enr.Status || "").toLowerCase();
         if (status && status !== "active") return acc;
-        const className = enr["Class Name"] || enr.ClassID || enr["ClassID"];
-        if (!className) return acc;
+        const label = enrollmentLabel(enr);
+        if (!label) return acc;
         if (!acc[userId]) acc[userId] = [];
-        acc[userId].push(className);
+        acc[userId].push(label);
         return acc;
       }, {});
       const mapped = Object.fromEntries(
