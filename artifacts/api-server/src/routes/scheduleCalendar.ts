@@ -36,17 +36,22 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
   const weeks = Math.min(Math.max(parseInt((req.query.weeks as string) || '2', 10), 1), 4);
 
   try {
-    const [subjects, enrollments, teachers] = await Promise.all([
+    const [subjects, enrollments, teachers, users] = await Promise.all([
       readRows(sheetId, SHEET_TABS.subjects),
       readRows(sheetId, SHEET_TABS.enrollments),
       readRows(sheetId, SHEET_TABS.teachers),
+      readUsersTab(sheetId),
     ]);
 
     const activeSubjects = subjects.filter(s => (s['Status'] || '').toLowerCase() === 'active');
 
+    // Build user lookup by userId → { name, email, role }
+    const userById = new Map(users.map(u => [u.userId, u]));
+    // Principal email
+    const principalEmail = users.find(u => (u.role || '').toLowerCase() === 'principal')?.email || '';
+
     // Build teacher lookup by TeacherID → { name, email, zoomLink }
     const teacherById: Record<string, { name: string; email: string; zoomLink: string }> = {};
-    // Also build by name (lowercase) as fallback
     const teacherByName: Record<string, { name: string; email: string; zoomLink: string }> = {};
     for (const t of teachers) {
       const tid = (t['TeacherID'] || '').trim();
@@ -56,19 +61,19 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
       if (name) teacherByName[name.toLowerCase()] = entry;
     }
 
-    // Count active enrollments per SubjectID (status Active, ignoring date)
-    // The Enrollments tab uses ClassID to link to Subjects.SubjectID
-    // Status values that count as enrolled: Active (default), anything not Inactive/Cancelled
-    const enrolledBySubject: Record<string, { count: number; students: string[] }> = {};
+    // Count active enrollments per SubjectID; include student name + email
+    const enrolledBySubject: Record<string, { count: number; students: { name: string; email: string }[] }> = {};
     for (const e of enrollments) {
       const classId = (e['ClassID'] || '').trim();
       const status = (e['Status'] || 'active').toLowerCase().trim();
-      // Only count active enrollments
       if (!classId || status === 'inactive' || status === 'cancelled' || status === 'late cancellation') continue;
       if (!enrolledBySubject[classId]) enrolledBySubject[classId] = { count: 0, students: [] };
       enrolledBySubject[classId].count++;
-      const studentName = (e['Student Name'] || '').trim();
-      if (studentName) enrolledBySubject[classId].students.push(studentName);
+      const userId = (e['UserID'] || '').trim();
+      const user = userById.get(userId);
+      const studentName = user?.name || (e['Student Name'] || '').trim();
+      const studentEmail = user?.email || (e['StudentEmail'] || '').trim();
+      if (studentName) enrolledBySubject[classId].students.push({ name: studentName, email: studentEmail });
     }
 
     const today = new Date();
@@ -80,7 +85,7 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
         subjectId: string; className: string; type: string;
         teacherName: string; teacherEmail: string; zoomLink: string;
         room: string; time: string; maxCapacity: number;
-        enrolled: number; isFull: boolean; students: string[];
+        enrolled: number; isFull: boolean; students: { name: string; email: string }[];
       }>;
     }> = [];
 
@@ -139,7 +144,7 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
     }
     const teacherSchedules = Object.values(byTeacher).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
 
-    res.json({ days, teacherSchedules, weeks });
+    res.json({ days, teacherSchedules, weeks, principalEmail });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

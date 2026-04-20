@@ -4,7 +4,7 @@ import { AppLayout, PublicLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarDays, Clock, Users, BookOpen, UserRound, AlertCircle } from "lucide-react";
+import { CalendarDays, Clock, Users, BookOpen, UserRound, AlertCircle, Mail } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 const SHORT_DAY: Record<string, string> = {
@@ -13,14 +13,20 @@ const SHORT_DAY: Record<string, string> = {
 };
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+interface Student {
+  name: string;
+  email: string;
+}
+
 interface Slot {
   subjectId: string;
   className: string;
   type: string;
   teacherName: string;
+  teacherEmail: string;
   enrolled: number;
   maxCapacity: number;
-  students: string[];
+  students: Student[];
   time: string;
   room: string;
 }
@@ -30,6 +36,11 @@ interface ApiDay {
   dateISO: string;
   dayName: string;
   slots: Slot[];
+}
+
+interface CalendarApiResponse {
+  days: ApiDay[];
+  principalEmail: string;
 }
 
 interface SubjectRow {
@@ -64,13 +75,7 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
   };
 }
 
-function SlotBox({
-  slot,
-  canSeeStudents,
-}: {
-  slot: Slot;
-  canSeeStudents: boolean;
-}) {
+function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean }) {
   const style = seatStyle(slot);
   const box = (
     <div className={`min-h-[52px] rounded-md border px-2 py-1.5 ${style} ${canSeeStudents ? "cursor-pointer hover:brightness-95 active:brightness-90 transition-all" : ""}`}>
@@ -103,9 +108,9 @@ function SlotBox({
             {slot.students.map((s, i) => (
               <li key={i} className="text-xs flex items-center gap-1.5">
                 <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">
-                  {s.charAt(0).toUpperCase()}
+                  {s.name.charAt(0).toUpperCase()}
                 </span>
-                {s}
+                {s.name}
               </li>
             ))}
           </ul>
@@ -165,11 +170,143 @@ function CalendarGrid({ rows, title, canSeeStudents }: { rows: SubjectRow[]; tit
   );
 }
 
+interface ContactRow {
+  className: string;
+  day: string;
+  time: string;
+  teacherName: string;
+  teacherEmail: string;
+  students: Student[];
+}
+
+function buildContactRows(days: ApiDay[]): ContactRow[] {
+  const seen = new Set<string>();
+  const rows: ContactRow[] = [];
+  for (const day of days) {
+    const short = SHORT_DAY[day.dayName] ?? day.dayName.slice(0, 3);
+    for (const slot of day.slots) {
+      const key = `${slot.className}||${short}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        className: slot.className,
+        day: short,
+        time: slot.time,
+        teacherName: slot.teacherName,
+        teacherEmail: slot.teacherEmail,
+        students: slot.students,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.className.localeCompare(b.className) || a.day.localeCompare(b.day));
+}
+
+function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail: string }) {
+  const rows = buildContactRows(days);
+  if (rows.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Mail className="h-4 w-4" />
+          Contact Directory
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          Click any email link to open your mail client with the address pre-filled.
+        </p>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <table className="min-w-[640px] w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              <th className="text-left px-2 py-1.5 font-medium min-w-[140px]">Class</th>
+              <th className="text-left px-2 py-1.5 font-medium min-w-[50px]">Day</th>
+              <th className="text-left px-2 py-1.5 font-medium min-w-[80px]">Time</th>
+              <th className="text-left px-2 py-1.5 font-medium min-w-[160px]">Teacher</th>
+              {principalEmail && (
+                <th className="text-left px-2 py-1.5 font-medium min-w-[160px]">Principal</th>
+              )}
+              <th className="text-left px-2 py-1.5 font-medium min-w-[180px]">Students</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const teacherMailto = row.teacherEmail
+                ? `mailto:${row.teacherEmail}?subject=${encodeURIComponent(`Re: ${row.className} class`)}`
+                : null;
+              const principalMailto = principalEmail
+                ? `mailto:${principalEmail}${row.teacherEmail ? `?cc=${encodeURIComponent(row.teacherEmail)}` : ""}&subject=${encodeURIComponent(`Re: ${row.className} class (${row.day})`)}`
+                : null;
+
+              return (
+                <tr key={i} className="border-b last:border-0 align-top hover:bg-muted/30">
+                  <td className="px-2 py-2 font-medium">{row.className}</td>
+                  <td className="px-2 py-2 text-muted-foreground">{row.day}</td>
+                  <td className="px-2 py-2 text-muted-foreground">{row.time || "—"}</td>
+                  <td className="px-2 py-2">
+                    {teacherMailto ? (
+                      <a
+                        href={teacherMailto}
+                        className="text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <Mail className="h-3 w-3 shrink-0" />
+                        {row.teacherName || row.teacherEmail}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">{row.teacherName || "—"}</span>
+                    )}
+                  </td>
+                  {principalEmail && (
+                    <td className="px-2 py-2">
+                      {principalMailto ? (
+                        <a
+                          href={principalMailto}
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          <Mail className="h-3 w-3 shrink-0" />
+                          Principal
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-2 py-2">
+                    {row.students.length === 0 ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {row.students.map((s, j) => (
+                          s.email ? (
+                            <a
+                              key={j}
+                              href={`mailto:${s.email}?subject=${encodeURIComponent(`Re: ${row.className} class`)}`}
+                              className="text-blue-600 hover:underline"
+                            >
+                              {s.name}
+                            </a>
+                          ) : (
+                            <span key={j} className="text-muted-foreground">{s.name}</span>
+                          )
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
+
 function CalendarContent() {
   const role = localStorage.getItem("edutrack_user_role") || "";
   const canSeeStudents = role === "principal" || role === "developer" || role === "admin";
 
-  // Fetch the sheet ID from the API if not already cached in localStorage
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["config"],
     queryFn: async () => {
@@ -179,7 +316,6 @@ function CalendarContent() {
       if (d.sheetId) localStorage.setItem("edutrack_sheet_id", d.sheetId);
       return d as { sheetId: string };
     },
-    // Only fetch if we don't already have it
     enabled: !localStorage.getItem("edutrack_sheet_id"),
     staleTime: Infinity,
   });
@@ -192,7 +328,7 @@ function CalendarContent() {
       const url = apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId)}&weeks=1`);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`API error ${res.status}`);
-      return res.json() as Promise<{ days: ApiDay[] }>;
+      return res.json() as Promise<CalendarApiResponse>;
     },
     enabled: !!sheetId,
     staleTime: 5 * 60 * 1000,
@@ -219,6 +355,7 @@ function CalendarContent() {
   }
 
   const days = data?.days ?? [];
+  const principalEmail = data?.principalEmail ?? "";
   const { group, individual } = transformToGrid(days);
 
   return (
@@ -237,6 +374,7 @@ function CalendarContent() {
         <>
           <CalendarGrid rows={group} title="Group Classes" canSeeStudents={canSeeStudents} />
           <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />
+          <ContactTable days={days} principalEmail={principalEmail} />
         </>
       )}
     </div>
