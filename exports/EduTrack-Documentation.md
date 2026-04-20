@@ -40,9 +40,9 @@ EduTrack is a tutor and coaching centre management platform. It replaces spreads
 |---|---|
 | Frontend | React 18, Vite, Tailwind CSS, shadcn/ui |
 | Backend API | Node.js, Express 5 |
-| Authentication | Clerk (email + social login) |
+| Authentication | Custom email-only login (no passwords, no Clerk UI) |
 | Data store | Google Sheets (via Replit connector) |
-| Hosting | Replit (development + production) |
+| Hosting | Replit (development + published) |
 
 ---
 
@@ -51,25 +51,30 @@ EduTrack is a tutor and coaching centre management platform. It replaces spreads
 ### Role Routing Flow
 
 ```
-User signs in with Clerk
+User enters email on /sign-in
         ↓
-  /auth-redirect
-        ↓
-  GET /api/roles/check   (looks up email in Users tab)
+  GET /api/roles/check?email=…   (looks up the Users tab — the API
+                                  falls back to DEFAULT_SHEET_ID when
+                                  the client has no sheet linked yet)
         ↓
   ┌─────────────────────────────────────────┐
-  │ Role in Users tab → Portal             │
+  │ Role from Users tab → Portal           │
   │  developer / admin  →  /admin          │
   │  principal          →  /principal      │
   │  tutor              →  /dashboard      │
   │  parent             →  /parent         │
-  │  student            →  /parent         │
+  │  student            →  /student        │
   └─────────────────────────────────────────┘
 ```
 
+There are no passwords. Login is granted purely by the email being present in the Users tab with `Status = Active`.
+
 **If email is NOT found in the Users tab:**
-- If the email matches the `DEVELOPER_EMAIL` environment variable → granted `developer` role automatically (no Users tab entry needed).
-- Otherwise → access denied; user sees an "Account not found" message and can contact the principal.
+- If the email matches the `DEVELOPER_EMAIL` environment variable → granted `developer` role automatically.
+- If the email matches the `PRINCIPAL_EMAIL` environment variable → granted `principal` role automatically.
+- Otherwise → access denied; user sees "This email is not registered in the system. Contact your principal to be added."
+
+**Sign-out** clears all `edutrack_*` keys from `localStorage` and returns the user to `/`.
 
 ### Role Capabilities
 
@@ -132,19 +137,20 @@ This is the **single source of truth for login access**. Being listed in the Stu
 | Subjects | Comma-separated list of subjects they teach |
 | Zoom Link | Default meeting link used for all their classes |
 
-### Tab 4 — Subjects
+### Tab 4 — Subjects (per-day rows)
 
-**Columns:** `SubjectID | Name | Type | Teachers | Room | Days | Status | MaxCapacity`
+**Columns:** `SubjectID | Name | Type | TeacherID | Room | Days | Time | Status | MaxCapacity`
 
 | Field | Values / Notes |
 |---|---|
-| SubjectID | Sequential: `SUB-001`, `SUB-002`, … |
-| Type | `Individual`, `Group`, or `Both` |
-| Teachers | Teacher's full name (must match Teachers tab Name exactly) |
-| Days | Days of the week, e.g. `Mon, Wed` or `Tue, Thu, Fri` |
-| MaxCapacity | Integer. Defaults to `8` if blank. Controls the capacity bar on the Classes page. |
+| SubjectID | Pattern: `SUB-<CLASS3>-<DAY3>` — e.g. `SUB-ENG-TUE`, `SUB-ENG-THU`, `SUB-ENG-FRI`. The 3-letter day suffix is the source of truth for which weekday this row represents. |
+| Type | `Individual` or `Group` |
+| TeacherID | Cross-reference to a Users-tab tutor (e.g. `TCH-002`) |
+| Days | A **single** weekday for this row (e.g. `Tuesday`) |
+| Time | Class time range, e.g. `11:00 AM - 12:00 PM` (used to compute hours/week) |
+| MaxCapacity | Integer. Falls back to the configurable default if blank. Controls the capacity bar / colour-coding. |
 
-Each row = **one unique offering** (one subject + one type + one teacher). If a subject is offered as both Individual and Group by the same teacher, it needs two rows.
+**Each row represents one (Class, Day) combination.** A class that runs on three weekdays is three rows. The Calendar, Analysis, and Enrolment dropdowns all key off `(SubjectID, Days)` — so dropdowns and tables show the day alongside the name (e.g. *English — Tue — 11:00 AM*) to keep otherwise-identical rows distinguishable.
 
 ### Tab 5 — Enrollments
 
@@ -634,6 +640,62 @@ The demo includes enrollments in every status for testing purposes:
 |---|---|---|---|
 | ANN-001 | Term 2 Enrolments Open | Standard | Term 2 enrolments are now open. Contact us to secure your spot. |
 | ANN-002 | Public Holiday Closure | **Urgent** | EduTrack will be closed on Monday 22 April. All classes cancelled. |
+
+---
+
+## 11. Analysis & Insights (Principal)
+
+The Principal Dashboard's **Analysis** tab is a read-only business view. Section order: **By Teacher → By Month → By Weekday → By Subject**.
+
+- **By Teacher.** Each row shows total classes, students, and hours/week. The **Load** column renders a stacked bar with one segment per (Subject, Day), colour-coded by weekday — Mon (blue), Tue (violet), Wed (green), Thu (amber), Fri (pink), Sat (cyan), Sun (gray). Hovering a segment shows e.g. *"English — Tue: 1 student"*. Day chips below the bar show per-day totals.
+- **By Month.** Sessions held, attendances, absences, and attendance % per month, filtered by the period selector at the top.
+- **By Weekday.** Aggregated classes / students / hours for each weekday — a quick read on which day is busiest.
+- **By Subject.** Each per-day class with its student count and fill % vs MaxCapacity.
+
+### Configurable thresholds (planned — Developer-only "Assumptions" tab)
+
+The platform is intended to be sold to multiple schools with different capacity norms. A future Developer-only tab will let each deployment edit:
+
+| Setting | Default | Used for |
+|---|---|---|
+| Group fill RED %    | 90 | Turn-away risk flag |
+| Group fill AMBER %  | 70 | Warning flag |
+| Group fill LOW %    | 40 | "Promote / pause" suggestion |
+| Individual target hrs/week | 20 | Per-tutor 1-on-1 capacity bench |
+| Individual under-util % | 50 | Underused tutor flag |
+| Individual over-util %  | 90 | Over-booked tutor flag |
+| Attendance target % | 85 | Monthly attendance benchmark |
+| Default group capacity | 8 | Fallback when Subject row's MaxCapacity is blank |
+
+These values will drive every colour, flag, and auto-insight on the Analysis page.
+
+---
+
+## 12. FAQ
+
+**Q: I'm listed in the Users tab as a Principal but the sign-in page says my email isn't registered.**
+A: This was a bug in the sign-in lookup before April 2026. The fix makes `/api/roles/check` fall back to `DEFAULT_SHEET_ID` so it can find your row even before the browser has linked a sheet. If you still see this, check that (a) `DEFAULT_SHEET_ID` is set in the API's environment, and (b) your row in Users has `Status = Active`.
+
+**Q: The Sign Out button does nothing.**
+A: Fixed. Sign-out now clears all `edutrack_*` keys from `localStorage` and routes back to `/`. If it still doesn't work, hard-refresh to clear any cached old build.
+
+**Q: A class shows red on the Calendar but the hover popover only lists one student.**
+A: The popover used to be clipped by the table's horizontal scroll. It now renders into a portal so it escapes the overflow. The seat count and the popover always reflect the same per-day enrolment list.
+
+**Q: My class dropdown shows the same option three times — *English, English, English*.**
+A: Under the per-day Subject schema each weekday is its own row, so labels include the day (e.g. *English — Tue — 11:00 AM*). If you still see duplicates without days, the dropdown is reading a legacy field; flag it and we'll patch.
+
+**Q: The "Classes" column on the Students table or the "Load" column on the Analysis page shows *English, English, English*.**
+A: Same root cause as above. These now render as *English (Tue), English (Thu), English (Fri)* (Students table) and as a colour-coded stacked bar with hover tooltips (Analysis page).
+
+**Q: How do I publish my changes?**
+A: Use Replit's "Publish" flow. The `.replit.app` URL is the live app. The GitHub auto-push workflow is optional — it backs the codebase up to GitHub but is not part of deployment.
+
+**Q: How do I add a new principal / tutor / student?**
+A: Add a row in the Users tab with the right `Role`, `Email`, `Name`, and `Status = Active`. They can then sign in with that email immediately. Tutor and student rows in their respective extension tabs are for profile data; access is controlled by the Users tab only.
+
+**Q: Where do I change the Google Sheet the app reads from?**
+A: Settings page → "Google Sheet ID". The ID is stored per-browser (`edutrack_sheet_id`) and sent with every API request. The API also has a server-side `DEFAULT_SHEET_ID` used by sign-in.
 
 ---
 
