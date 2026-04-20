@@ -20,7 +20,7 @@ const ROLE_HOME: Record<string, string> = {
   tutor:     "/dashboard",
   student:   "/student",
   parent:    "/parent",
-  principal: "/principal",
+  principal: "/calendar",
   developer: "/admin",
   admin:     "/admin",
 };

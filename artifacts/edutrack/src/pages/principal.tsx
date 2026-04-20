@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from "react";
+import { AppLayout } from "@/components/layout";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
@@ -1870,6 +1871,7 @@ export default function PrincipalDashboard() {
   }, []);
 
   return (
+    <AppLayout>
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1918,5 +1920,6 @@ export default function PrincipalDashboard() {
         {tab === "upload"      && <BulkUploadCard />}
       </main>
     </div>
+    </AppLayout>
   );
 }
