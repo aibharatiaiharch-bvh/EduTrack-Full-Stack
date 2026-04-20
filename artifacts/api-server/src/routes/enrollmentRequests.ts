@@ -209,7 +209,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
 
     const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
 
-    // Send welcome email now that payment is confirmed
+    // Send welcome email now that the student is activated
     if (isEmailConfigured()) {
       const studentEmail   = extra.studentEmail || "";
       const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
