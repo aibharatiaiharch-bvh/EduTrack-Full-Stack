@@ -1138,7 +1138,7 @@ function TutorsTab() {
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{t.Subjects || t.Classes || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">
                           {t["Zoom Link"] ? (
-                            <a href={t["Zoom Link"]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[180px]">{t["Zoom Link"]}</a>
+                            <a href={t["Zoom Link"]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Zoom</a>
                           ) : "—"}
                         </td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
