@@ -976,7 +976,7 @@ function StudentsTab() {
       {!loading && students.length > 0 && (() => {
         const q = search.toLowerCase();
         const filtered = students.filter(s => {
-          const matchesSearch = !q || s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q);
+          const matchesSearch = !q || s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q) || s.currentSchool?.toLowerCase().includes(q) || s.parentEmail?.toLowerCase().includes(q);
           const matchesStatus = statusFilter === "all" || (s.status?.toLowerCase() ?? "") === statusFilter;
           return matchesSearch && matchesStatus;
         });
@@ -996,9 +996,11 @@ function StudentsTab() {
               <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5 w-1/3">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-1/4">Name</th>
                       <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/5">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-24">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-1/5">School</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Parent Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-20">Grade</th>
                       <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                       <th className="text-left font-medium px-3 py-2.5 w-20">Classes</th>
                     </tr>
@@ -1011,7 +1013,9 @@ function StudentsTab() {
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
                             <td className="px-3 py-2.5 font-medium truncate">{s.name || s.displayName || s.email || "Unknown"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.email || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell truncate">{s.email || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{s.currentSchool || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.parentEmail || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{s.currentGrade || "—"}</td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
                             <td className="px-3 py-2.5">
@@ -1033,7 +1037,7 @@ function StudentsTab() {
                           </tr>
                           {isExpanded && (
                             <tr className="bg-muted/30">
-                              <td colSpan={6} className="px-4 py-3">
+                              <td colSpan={7} className="px-4 py-3">
                                 {classLoading === s.userId && (
                                   <p className="text-xs text-muted-foreground">Loading classes…</p>
                                 )}
