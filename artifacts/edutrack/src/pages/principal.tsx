@@ -1125,7 +1125,7 @@ function TutorsTab() {
                       <th className="text-left font-medium px-3 py-2.5 w-28">Name</th>
                       <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-36">Email</th>
                       <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-36">Classes Taught</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-48">Zoom Link</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-48">Zoom Link</th>
                       <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-32">Specialty</th>
                       <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                     </tr>
@@ -1136,7 +1136,11 @@ function TutorsTab() {
                         <td className="px-3 py-2.5 font-medium truncate">{t.Name || t.name || t.Email || "Unknown"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell truncate">{t.Email || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{t.Subjects || t.Classes || "—"}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{t["Zoom Link"] || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">
+                          {t["Zoom Link"] ? (
+                            <a href={t["Zoom Link"]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate block max-w-[180px]">{t["Zoom Link"]}</a>
+                          ) : "—"}
+                        </td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
                         <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
                       </tr>
