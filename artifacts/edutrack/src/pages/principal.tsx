@@ -995,7 +995,7 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = studentClasses[s.userId] || "—";
+                      const classes = studentClasses[s.userId] || s.classes || s.subjects || s.enrolledClasses || "—";
                       const isActive = s.status?.toLowerCase() === "active";
                       return (
                         <Fragment key={s.userId}>
@@ -1015,7 +1015,7 @@ function StudentsTab() {
                                 onClick={() => { setJoiningStudent(s.userId); setJoinSubjectId(""); setJoinError(""); }}
                                 className={`h-7 text-xs ${isActive ? "text-primary border-primary/30 hover:bg-primary/5" : "text-muted-foreground opacity-60 cursor-not-allowed"}`}
                               >
-                                {isActive ? "Add" : "Inactive"}
+                                {isActive ? "Add to Class" : "Inactive"}
                               </Button>
                             </td>
                           </tr>
