@@ -264,6 +264,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Breadcrumb />
                 </div>
               )}
+            <button
+              onClick={() => signOut({ redirectUrl: `${BASE}/sign-in` })}
+              className="md:hidden text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] text-right hover:text-foreground transition-colors"
+              title="Switch email / sign out"
+            >
+              {user?.primaryEmailAddress?.emailAddress || "Sign out"}
+            </button>
               <button
                 onClick={() => signOut({ redirectUrl: `${BASE}/sign-in` })}
                 className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] text-right hover:text-foreground transition-colors"
