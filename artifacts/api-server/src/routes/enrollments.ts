@@ -101,6 +101,41 @@ async function readSubjectRows(spreadsheetId: string) {
   return readTabRows(spreadsheetId, SHEET_TABS.subjects);
 }
 
+/** Compute next YYYY-MM-DD occurrence of a weekly class given its Days and Time strings. */
+function nextClassDate(days: string, time: string): string {
+  if (!days) return '';
+  const DAY_MAP: Record<string, number> = {
+    sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
+    wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
+  };
+  // Parse time → hours/minutes
+  let h = 0, m = 0;
+  const tp = (time || '').match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+  if (tp) {
+    h = parseInt(tp[1], 10);
+    m = parseInt(tp[2] || '0', 10);
+    const p = (tp[3] || '').toLowerCase();
+    if (p === 'pm' && h !== 12) h += 12;
+    if (p === 'am' && h === 12) h = 0;
+  }
+  const now      = Date.now();
+  const todayDay = new Date().getDay();
+  let   earliest = Infinity;
+  const parts = days.toLowerCase().split(/[,;\/\s]+/).map(d => d.trim()).filter(Boolean);
+  for (const part of parts) {
+    const target = DAY_MAP[part];
+    if (target === undefined) continue;
+    let diff = (target - todayDay + 7) % 7;
+    const candidate = new Date();
+    candidate.setDate(candidate.getDate() + diff);
+    candidate.setHours(h, m, 0, 0);
+    if (candidate.getTime() <= now) candidate.setDate(candidate.getDate() + 7);
+    if (candidate.getTime() < earliest) earliest = candidate.getTime();
+  }
+  if (!isFinite(earliest)) return '';
+  return new Date(earliest).toISOString().slice(0, 10);
+}
+
 async function enrichEnrollments(rows: any[], spreadsheetId: string): Promise<any[]> {
   const [users, subjects] = await Promise.all([
     readUsersTab(spreadsheetId),
@@ -114,16 +149,20 @@ async function enrichEnrollments(rows: any[], spreadsheetId: string): Promise<an
     const teacher = userMap.get(r['TeacherID'] || '');
     const parent  = userMap.get(r['ParentID']  || '');
     const subject = subjectMap.get(r['ClassID'] || '');
+    // Use stored ClassDate if present; otherwise derive from the subject's weekly schedule
+    const storedDate = (r['ClassDate'] || r['Class Date'] || '').trim();
+    const classDate  = storedDate || nextClassDate(subject?.['Days'] || '', subject?.['Time'] || '');
     return {
       ...r,
       'Student Name':  student?.name  || r['UserID']    || '',
       'Student Email': student?.email || '',
       'Class Name':    subject?.['Name'] || r['ClassID'] || '',
-      'Class Date':    r['ClassDate'] || r['Class Date'] || '',
-      'Class Time':    r['ClassTime'] || r['Class Time'] || '',
+      'Class Date':    classDate,
+      'Class Time':    r['ClassTime'] || r['Class Time'] || subject?.['Time'] || '',
       'Parent Email':  parent?.email  || r['ParentID']  || '',
       'Teacher':       teacher?.name  || r['TeacherID'] || '',
       'Teacher Email': r['TeacherEmail'] || teacher?.email || '',
+      'Days':          subject?.['Days'] || '',
     };
   });
 }
