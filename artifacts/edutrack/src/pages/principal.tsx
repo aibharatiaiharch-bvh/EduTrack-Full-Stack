@@ -980,17 +980,17 @@ function StudentsTab() {
             {paged.length === 0 && <p className="text-sm text-muted-foreground">No students match your search.</p>}
             {paged.length > 0 && (
         <div className="rounded-md border overflow-x-auto">
-              <table className="w-full text-sm table-fixed">
+              <table className="w-full text-sm">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5 w-28">Name</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-36">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-24">Grade</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-36">School</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-40">Parent Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 w-56">Classes</th>
+                      <th className="text-left font-medium px-3 py-2.5">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-20">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">School</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Parent Email</th>
+                      <th className="text-left font-medium px-3 py-2.5">Classes</th>
                       <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
-                      <th className="px-3 py-2.5 w-24" />
+                      <th className="px-3 py-2.5 w-20" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
