@@ -802,8 +802,11 @@ router.get('/principals/students', async (req, res): Promise<void> => {
     ]);
 
     const students = users.filter(u => u.role === 'student');
+    const userMap = new Map(users.map(u => [u.userId, u]));
     const enriched = students.map(u => {
       const ext = studentRows.find(r => r['UserID'] === u.userId || r['StudentID'] === u.userId);
+      const parentId = ext?.['ParentID'] || '';
+      const parentUser = parentId ? userMap.get(parentId) : undefined;
       return {
         _row:          u._row,
         userId:        u.userId,
@@ -816,7 +819,9 @@ router.get('/principals/students', async (req, res): Promise<void> => {
         currentGrade:  ext?.['CurrentGrade'] || ext?.['currentGrade'] || '',
         currentSchool: ext?.['CurrentSchool'] || ext?.['currentSchool'] || '',
         phone:         ext?.['Phone'] || '',
-        parentId:      ext?.['ParentID'] || '',
+        parentId,
+        parentEmail:   parentUser?.email || '',
+        parentName:    parentUser?.name || '',
       };
     });
 
