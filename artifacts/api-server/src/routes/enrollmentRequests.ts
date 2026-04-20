@@ -139,7 +139,7 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
   const tutorUserId = enrollRow["UserID"] || "";
   const tutorName   = enrollRow["Student Name"] || extra.applicantName || extra.requesterName || "";
   const tutorEmail  = (extra.applicantEmail || extra.requesterEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
-  const zoomLink    = extra.zoomLink || "";
+  const zoomLink    = extra.zoomLink || extra.reference || "";
   const phone       = extra.phone || extra.parentPhone || "";
   const notesText   = extra.extra || "";
   // Selected per-day Subject rows (";"-separated SubjectIDs from the form;
@@ -188,6 +188,15 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
       if (merged.length !== current.length) {
         const col = colLetter("teachers", "Subjects");
         await updateCell(sheetId, `${SHEET_TABS.teachers}!${col}${existing._row}`, merged.join(", "));
+      }
+      // Fill in zoom link and notes/phone if currently blank
+      if (!existing["Zoom Link"] && zoomLink) {
+        const col = colLetter("teachers", "Zoom Link");
+        await updateCell(sheetId, `${SHEET_TABS.teachers}!${col}${existing._row}`, zoomLink);
+      }
+      if (!existing["Notes"] && (notesText || phone)) {
+        const col = colLetter("teachers", "Notes");
+        await updateCell(sheetId, `${SHEET_TABS.teachers}!${col}${existing._row}`, notesText || phone);
       }
     } else {
       // Use the tutor's Users-tab UserID as the Teachers-tab TeacherID too,

@@ -174,6 +174,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
         applicantEmail,
         subjects: classesInterested || '',
         phone: parentPhone || '',
+        zoomLink: reference || '',
         extra: notes || '',
       });
       await appendRow(sheetId, SHEET_TABS.enrollments, [
