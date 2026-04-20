@@ -994,7 +994,7 @@ function StudentsTab() {
                           <tr className="hover:bg-muted/20">
                             <td className="px-3 py-2.5 font-medium">{s.name || s.displayName || s.email || "Unknown"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground">{s.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground">{s.currentGrade || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">{s.currentGrade ? s.currentGrade.toString().replace(/[^\d]/g, "") || s.currentGrade : "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground">{s.currentSchool || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground">{s.parentEmail || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground text-xs">{classes}</td>
