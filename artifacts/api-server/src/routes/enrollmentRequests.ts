@@ -204,14 +204,15 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
 
 // Helper: activate student, create parent user + extension rows
 async function activateStudent(sheetId: string, enrollRow: any, users: any[], extra: any) {
-  const studentUserId = enrollRow["UserID"] || "";
-  const studentName   = enrollRow["Student Name"] || extra.studentName || extra.applicantName || "";
-  const parentEmail   = (extra.parentEmail || extra.applicantEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
-  const parentPhone   = extra.parentPhone || extra.phone || "";
-  const rawClasses    = String(enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "");
-  const currentSchool = extra.currentSchool || "";
-  const currentGrade  = extra.currentGrade || "";
-  const now           = new Date().toISOString();
+  const studentUserId  = enrollRow["UserID"] || "";
+  const studentName    = enrollRow["Student Name"] || extra.studentName || extra.applicantName || "";
+  const parentEmail    = (extra.parentEmail || extra.applicantEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
+  const parentPhone    = extra.parentPhone || extra.phone || "";
+  const studentPhone   = extra.studentPhone || parentPhone;
+  const rawClasses     = String(enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "");
+  const currentSchool  = extra.currentSchool || "";
+  const currentGrade   = extra.currentGrade || "";
+  const now            = new Date().toISOString();
 
   // Parse the picked items. New rows store SubjectIDs joined with ";"; legacy
   // rows may store full labels joined with "," or "; ".
@@ -232,8 +233,7 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
       resolved.push({ id: direct["SubjectID"], label: `${direct["Name"]}${day}` });
       continue;
     }
-    // Legacy label fallback: take the first " — "-delimited segment as the
-    // subject name, and any 3-letter day token in the rest as the day.
+    // Legacy label fallback
     const segs = p.split(/—|–|-/).map(s => s.trim()).filter(Boolean);
     const name = segs[0] || "";
     const dayMatch = p.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
@@ -251,7 +251,7 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
   }
   const classes = [...resolved.map(r => r.label), ...interestOnly].join("; ");
 
-  // Activate student in Users tab
+  // ── 1. Activate student in Users tab ──────────────────────────────────────
   if (studentUserId) {
     const studentUser = users.find((u: any) => u.userId === studentUserId);
     if (studentUser && (studentUser as any)._row) {
@@ -260,20 +260,7 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
     }
   }
 
-  // Ensure student row in Students tab
-  if (studentUserId && studentName) {
-    const studentRows = await readTabRows(sheetId, SHEET_TABS.students);
-    const existing = studentRows.find(r => r["UserID"] === studentUserId || r["StudentID"] === studentUserId);
-    if (!existing) {
-      const parentUser = users.find((u: any) => u.email === parentEmail && u.role === "parent");
-      await appendRow(sheetId, SHEET_TABS.students, [
-        studentUserId, studentUserId, studentName, parentUser?.userId || "",
-        classes, "", "", currentSchool, currentGrade, "No",
-      ]);
-    }
-  }
-
-  // Ensure parent user in Users tab
+  // ── 2. Ensure parent user + parent tab row FIRST so we have the ID/name ──
   let parentUserId = "";
   let parentDisplayName = "Parent";
   if (parentEmail) {
@@ -305,6 +292,41 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
       await appendRow(sheetId, SHEET_TABS.parents, [
         parentTabId, parentUserId, parentDisplayName, studentName, parentPhone, "",
       ]);
+    }
+  }
+
+  // ── 3. Ensure student row in Students tab (after parent exists) ───────────
+  // Schema: StudentID, UserID, Name, ParentID, Classes, Phone, Notes, CurrentSchool, CurrentGrade, PreviousStudent
+  if (studentUserId && studentName) {
+    const studentRows = await readTabRows(sheetId, SHEET_TABS.students);
+    const existing = studentRows.find(r => r["UserID"] === studentUserId || r["StudentID"] === studentUserId);
+    if (!existing) {
+      await appendRow(sheetId, SHEET_TABS.students, [
+        studentUserId,        // StudentID
+        studentUserId,        // UserID
+        studentName,          // Name
+        parentDisplayName,    // ParentID — show parent name for readability
+        classes,              // Classes — human-readable subject labels
+        studentPhone,         // Phone
+        "",                   // Notes
+        currentSchool,        // CurrentSchool
+        currentGrade,         // CurrentGrade
+        "No",                 // PreviousStudent
+      ]);
+    } else {
+      // Update existing row's Classes and Phone if they're blank
+      if (!existing["Classes"] && classes) {
+        const col = colLetter("students", "Classes");
+        await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, classes);
+      }
+      if (!existing["Phone"] && studentPhone) {
+        const col = colLetter("students", "Phone");
+        await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, studentPhone);
+      }
+      if (!existing["ParentID"] && parentDisplayName) {
+        const col = colLetter("students", "ParentID");
+        await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, parentDisplayName);
+      }
     }
   }
 
