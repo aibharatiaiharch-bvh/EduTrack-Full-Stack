@@ -9,6 +9,14 @@ export default function AuthRedirect() {
     const role = localStorage.getItem("edutrack_user_role");
     if (role === "admin" || role === "developer") {
       setLocation("/admin");
+    } else if (role === "principal") {
+      setLocation("/principal");
+    } else if (role === "student") {
+      setLocation("/student");
+    } else if (role === "tutor") {
+      setLocation("/tutor");
+    } else if (role === "parent") {
+      setLocation("/calendar");
     } else {
       setLocation("/calendar");
     }

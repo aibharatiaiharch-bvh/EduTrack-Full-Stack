@@ -350,52 +350,61 @@ async function materialiseStudentEnrollments(
   sheetId: string, rowNum: number, enrollRow: any,
   resolved: { id: string; label: string }[],
   studentUserId: string, studentName: string, parentDisplayName: string,
+  users: any[],
 ) {
   if (!resolved.length) return;
   const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
   const teacherRows = await readTabRows(sheetId, SHEET_TABS.teachers);
-  const subjectToTeacher = new Map<string, any>();
-  for (const sub of subjectRows) {
-    const tid = (sub["TeacherID"] || "").trim();
-    if (tid) subjectToTeacher.set(sub["SubjectID"], teacherRows.find((t: any) => t["TeacherID"] === tid));
-  }
 
-  // Rewrite the original row's ClassID + denormalised teacher fields to the first SubjectID
+  // Helper: get teacher email from Users tab (Teachers tab has no Email column)
+  const teacherEmail = (teacherId: string): string => {
+    const u = users.find((u: any) => u.userId === teacherId);
+    return u?.email || "";
+  };
+
+  // Generate all ENR IDs upfront sequentially so IDs are contiguous
+  const firstEnrollId = await generateTabId("ENR", sheetId, SHEET_TABS.enrollments);
+  // For additional subjects we increment manually to avoid re-reading the sheet each time
+  const firstNum = parseInt(firstEnrollId.split("-")[1] || "0", 10);
+  const enrollIdFor = (i: number) => `ENR-${String(firstNum + i).padStart(3, "0")}`;
+
+  // ── Rewrite the original request row for the first Subject ────────────────
   const first = resolved[0];
-  const firstSub = subjectRows.find((r: any) => r["SubjectID"] === first.id);
-  const firstTeacherId = (firstSub?.["TeacherID"] || "").trim();
-  const firstTeacher   = subjectToTeacher.get(first.id) || teacherRows.find((t: any) => t["TeacherID"] === firstTeacherId);
-  const classIdCol = colLetter("enrollments", "ClassID");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${classIdCol}${rowNum}`, first.id);
-  const tIdCol = colLetter("enrollments", "TeacherID");
-  const tNameCol = colLetter("enrollments", "Teacher Name");
-  const tEmailCol = colLetter("enrollments", "TeacherEmail");
-  const zoomCol = colLetter("enrollments", "Zoom Link");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tIdCol}${rowNum}`, firstTeacherId);
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tNameCol}${rowNum}`, firstTeacher?.["Name"] || "");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tEmailCol}${rowNum}`, firstTeacher?.["Email"] || "");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${zoomCol}${rowNum}`, firstTeacher?.["Zoom Link"] || "");
+  const firstSub     = subjectRows.find((r: any) => r["SubjectID"] === first.id);
+  const firstTid     = (firstSub?.["TeacherID"] || "").trim();
+  const firstTeacher = teacherRows.find((t: any) => t["TeacherID"] === firstTid);
+
+  const classIdCol  = colLetter("enrollments", "ClassID");
+  const tIdCol      = colLetter("enrollments", "TeacherID");
+  const tNameCol    = colLetter("enrollments", "Teacher Name");
+  const tEmailCol   = colLetter("enrollments", "TeacherEmail");
+  const zoomCol     = colLetter("enrollments", "Zoom Link");
   const classTypeCol = colLetter("enrollments", "Class Type");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${classTypeCol}${rowNum}`, firstSub?.["Type"] || enrollRow["Class Type"] || "Group");
   const enrollIdCol = colLetter("enrollments", "EnrollmentID");
-  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${enrollIdCol}${rowNum}`, `ENR-${String(rowNum).padStart(3, "0")}`);
-  const parentCol = colLetter("enrollments", "ParentID");
+  const parentCol   = colLetter("enrollments", "ParentID");
+
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${enrollIdCol}${rowNum}`, enrollIdFor(0));
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${classIdCol}${rowNum}`, first.id);
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tIdCol}${rowNum}`, firstTid);
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tNameCol}${rowNum}`, firstTeacher?.["Name"] || "");
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tEmailCol}${rowNum}`, teacherEmail(firstTid));
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${zoomCol}${rowNum}`, firstTeacher?.["Zoom Link"] || "");
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${classTypeCol}${rowNum}`, firstSub?.["Type"] || enrollRow["Class Type"] || "Group");
   await updateCell(sheetId, `${SHEET_TABS.enrollments}!${parentCol}${rowNum}`, parentDisplayName || "");
 
-  // Append new rows for the remaining SubjectIDs
+  // ── Append new rows for remaining SubjectIDs ──────────────────────────────
   const now = new Date().toISOString();
   const enrollmentSchema = [
     "EnrollmentID","UserID","Student Name","ClassID","ParentID","Status","EnrolledAt",
     "TeacherID","Teacher Name","TeacherEmail","Zoom Link","Class Type","ClassDate","ClassTime","Notes","Fee",
   ];
   for (let i = 1; i < resolved.length; i++) {
-    const r = resolved[i];
+    const r   = resolved[i];
     const sub = subjectRows.find((x: any) => x["SubjectID"] === r.id);
     const tid = (sub?.["TeacherID"] || "").trim();
     const teacher = teacherRows.find((t: any) => t["TeacherID"] === tid);
-    const enrollmentId = await generateTabId("ENR", sheetId, SHEET_TABS.enrollments);
     const data: Record<string, string> = {
-      EnrollmentID: enrollmentId,
+      EnrollmentID: enrollIdFor(i),
       UserID: studentUserId,
       "Student Name": studentName,
       ClassID: r.id,
@@ -404,7 +413,7 @@ async function materialiseStudentEnrollments(
       EnrolledAt: now,
       TeacherID: tid,
       "Teacher Name": teacher?.["Name"] || "",
-      TeacherEmail: teacher?.["Email"] || "",
+      TeacherEmail: teacherEmail(tid),
       "Zoom Link": teacher?.["Zoom Link"] || "",
       "Class Type": sub?.["Type"] || enrollRow["Class Type"] || "Group",
       ClassDate: "",
@@ -469,7 +478,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
       const { studentName, parentEmail, classes, parentDisplayName, resolved } = await activateStudent(sheetId, enrollRow, users, extra);
       // Materialise one Enrollment row per Subject so the calendar shows this student on each class slot.
       try {
-        await materialiseStudentEnrollments(sheetId, rowNum, enrollRow, resolved, enrollRow["UserID"] || "", studentName, parentDisplayName || "");
+        await materialiseStudentEnrollments(sheetId, rowNum, enrollRow, resolved, enrollRow["UserID"] || "", studentName, parentDisplayName || "", users);
       } catch (matErr: any) {
         console.error("Materialise student enrollments failed:", matErr.message);
       }

@@ -37,6 +37,14 @@ export default function SignInPage() {
 
       if (data.role === "developer" || data.role === "admin") {
         setLocation("/admin");
+      } else if (data.role === "principal") {
+        setLocation("/principal");
+      } else if (data.role === "student") {
+        setLocation("/student");
+      } else if (data.role === "tutor") {
+        setLocation("/tutor");
+      } else if (data.role === "parent") {
+        setLocation("/calendar");
       } else {
         setLocation("/calendar");
       }
