@@ -113,7 +113,10 @@ router.get('/analysis', async (req, res): Promise<void> => {
       t.classCount++;
       t.students += s.students;
       t.hoursPerWeek = Math.round((t.hoursPerWeek + s.hoursPerWeek) * 100) / 100;
-      t.classes.push(s.name);
+      // Each Subject row is per-day under the new schema, so include the day
+      // to disambiguate (e.g. "English (Tue)" vs "English (Thu)").
+      const dayShort = s.days.map(d => d.slice(0, 3)).join("/");
+      t.classes.push(dayShort ? `${s.name} (${dayShort})` : s.name);
     }
     const byTeacher = [...teacherAgg.values()].sort((a, b) => b.students - a.students);
 
