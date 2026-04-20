@@ -107,17 +107,11 @@ export default function ParentView() {
 
   const cancelMutation = useMutation({
     mutationFn: async (enrollment: any) => {
-      const classDate  = enrollment["ClassDate"] || enrollment["Class Date"] || "";
-      const classTime  = enrollment["ClassTime"] || enrollment["Class Time"] || "";
-      const sessionDate = new Date().toISOString().slice(0, 10);
-      // Determine if within 24 hrs: check if class date string starts today or is within 24h
-      let within24Hrs = "Yes";
-      if (classDate) {
-        const parsed = new Date(classDate);
-        if (!isNaN(parsed.getTime())) {
-          within24Hrs = (parsed.getTime() - Date.now()) <= 24 * 60 * 60 * 1000 ? "Yes" : "No";
-        }
-      }
+      const classDate   = enrollment["ClassDate"] || enrollment["Class Date"] || "";
+      const today       = new Date().toISOString().slice(0, 10);
+      // Late = cancelled on the same calendar day as the class; not late = cancelled before
+      const within24Hrs = (!classDate || classDate === today) ? "Yes" : "No";
+      const sessionDate = classDate || today;
       const res = await fetch(apiUrl(`/enrollments/${enrollment._row}/cancel`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },

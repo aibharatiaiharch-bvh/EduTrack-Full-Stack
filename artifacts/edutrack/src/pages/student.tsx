@@ -36,8 +36,9 @@ type Enrollment = {
 };
 
 /** Compute whether the next occurrence of 'days' at 'time' is within 24 h. */
-function nextSessionWithin24h(days: string, time: string): boolean {
-  if (!days || !time) return false;
+// Returns next class date as YYYY-MM-DD string (or today if class is today and not yet started)
+function nextClassDateStr(days: string, time: string): string {
+  if (!days) return new Date().toISOString().slice(0, 10);
   const dayMap: Record<string, number> = {
     sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tuesday: 2,
     wed: 3, wednesday: 3, thu: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
@@ -53,27 +54,33 @@ function nextSessionWithin24h(days: string, time: string): boolean {
     if (p === "pm" && h !== 12) h += 12;
     if (p === "am" && h === 12) h = 0;
   }
+  let earliest = Infinity;
   for (const part of parts) {
     const target = dayMap[part];
     if (target === undefined) continue;
-    let diff = (target - todayDay + 7) % 7;
+    const diff = (target - todayDay + 7) % 7;
     const candidate = new Date();
     candidate.setDate(candidate.getDate() + diff);
     candidate.setHours(h, m, 0, 0);
-    if (candidate.getTime() < Date.now()) {
-      candidate.setDate(candidate.getDate() + 7);
-    }
-    const msUntil = candidate.getTime() - Date.now();
-    if (msUntil <= 24 * 60 * 60 * 1000) return true;
+    if (candidate.getTime() <= Date.now()) candidate.setDate(candidate.getDate() + 7);
+    if (candidate.getTime() < earliest) earliest = candidate.getTime();
   }
-  return false;
+  return isFinite(earliest)
+    ? new Date(earliest).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+}
+
+function isLateCancel(days: string, time: string): boolean {
+  const nextDate = nextClassDateStr(days, time);
+  const today    = new Date().toISOString().slice(0, 10);
+  return nextDate === today;
 }
 
 function CancelModal({ name, days, time, onConfirm, onClose, confirming }: {
   name: string; days: string; time: string;
   onConfirm: () => void; onClose: () => void; confirming: boolean;
 }) {
-  const isLate = nextSessionWithin24h(days, time);
+  const isLate = isLateCancel(days, time);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <Card className="w-full max-w-sm shadow-xl">
@@ -151,8 +158,8 @@ export default function StudentDashboard() {
       const sub        = subjectMap[cancelling.ClassID] || {};
       const days       = sub.Days || sub["Days"] || "";
       const time       = sub.Time || sub["Time"] || "";
-      const within24Hrs = nextSessionWithin24h(days, time) ? "Yes" : "No";
-      const sessionDate = new Date().toISOString().slice(0, 10);
+      const sessionDate = nextClassDateStr(days, time);
+      const within24Hrs = sessionDate === new Date().toISOString().slice(0, 10) ? "Yes" : "No";
       const data = await apiFetch(`/enrollments/${cancelling._row}/cancel`, {
         method: "POST",
         body: JSON.stringify({
@@ -227,7 +234,7 @@ export default function StudentDashboard() {
             const sub  = subjectMap[enr.ClassID] || {};
             const days = sub.Days || sub["Days"] || "";
             const time = sub.Time || sub["Time"] || (enr["Class Time"] !== "TBD" ? enr["Class Time"] : "");
-            const isLate = nextSessionWithin24h(days, time);
+            const isLate = isLateCancel(days, time);
             const isGroup = (enr["Class Type"] || "").toLowerCase() === "group";
 
             return (
