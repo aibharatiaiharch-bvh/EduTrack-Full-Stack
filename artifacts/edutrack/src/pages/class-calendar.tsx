@@ -102,7 +102,7 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
     <div className="relative">
       {box}
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
+        <div className="absolute left-0 bottom-full z-50 mb-2 w-56 rounded-md border bg-popover p-3 text-popover-foreground shadow-md">
         <p className="text-xs font-semibold mb-2">
           {slot.className} — {slot.students.length} enrolled
         </p>
