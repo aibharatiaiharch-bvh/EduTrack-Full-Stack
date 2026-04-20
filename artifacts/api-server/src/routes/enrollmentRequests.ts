@@ -225,7 +225,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
           await sendEmail({
             to: uniqueRecipients,
             cc: ccRecipients.length > 0 ? ccRecipients : undefined,
-            subject: `Welcome to EduTrack — ${studentName} is approved!`,
+            subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
             html: buildWelcomeEmail(studentName, classes, principalName),
           });
         } catch (emailErr: any) {
