@@ -1254,7 +1254,7 @@ export default function AdminPortal() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background">
       <div className="border-b bg-card px-6">
         <div className="flex gap-1 overflow-x-auto max-w-4xl mx-auto">
           {TABS.map(t => (
@@ -1270,7 +1270,7 @@ export default function AdminPortal() {
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 overflow-x-hidden">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {tab === "overview" && <OverviewTab />}
         {tab === "data" && <DataTab />}
         {tab === "tools" && <ToolsTab />}
