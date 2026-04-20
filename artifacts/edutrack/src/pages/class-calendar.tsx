@@ -89,10 +89,6 @@ function SlotBox({
           <UserRound className="h-3 w-3 shrink-0" />
           <span className="truncate">{slot.teacherName || "—"}</span>
         </span>
-        <span className="shrink-0 flex items-center gap-1">
-          <Users className="h-3 w-3" />
-          {slot.enrolled}/{slot.maxCapacity}
-        </span>
       </div>
     </div>
   );
