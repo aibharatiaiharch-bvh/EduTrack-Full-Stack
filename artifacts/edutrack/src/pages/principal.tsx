@@ -255,7 +255,6 @@ function ClassesTab() {
                     <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Type</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Schedule</th>
-                    <th className="text-left font-medium px-3 py-2.5">Enrolled</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Students</th>
                     <th className="px-3 py-2.5" />
                   </tr>
@@ -284,7 +283,6 @@ function ClassesTab() {
                           <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
                             {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
                           </td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled} / {s.MaxCapacity ?? "∞"}</td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
                             {s.enrolledNames || "—"}
                           </td>
@@ -309,7 +307,7 @@ function ClassesTab() {
                         </tr>
                         {isOpen && (
                           <tr className="bg-amber-50/30">
-                            <td colSpan={7} className="px-4 py-3">
+                            <td colSpan={6} className="px-4 py-3">
                               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                 <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 shrink-0">
                                   <AlertTriangle className="w-3 h-3 shrink-0" />
@@ -796,10 +794,7 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
-  const [studentClasses,  setStudentClasses]  = useState<Record<string, any[]>>({});
-  const [classLoading,    setClassLoading]    = useState<string | null>(null);
-  const [cancellingRow,   setCancellingRow]   = useState<number | null>(null);
+  const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
   const [joiningStudent,  setJoiningStudent]  = useState<string | null>(null);
   const [joinSubjectId,   setJoinSubjectId]   = useState("");
   const [joinSaving,      setJoinSaving]      = useState(false);
@@ -810,21 +805,13 @@ function StudentsTab() {
   const [page,         setPage]         = useState(1);
 
   async function loadStudentClasses(userId: string) {
-    setClassLoading(userId);
     try {
       const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
-      if (Array.isArray(data)) setStudentClasses(prev => ({ ...prev, [userId]: data }));
+      if (Array.isArray(data)) {
+        const classNames = data.map((enr: any) => enr["Class Name"] || enr.ClassID).filter(Boolean).join(", ");
+        setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
+      }
     } catch { /* ignore */ }
-    setClassLoading(null);
-  }
-
-  async function cancelEnrollment(userId: string, rowNum: number) {
-    setCancellingRow(rowNum);
-    try {
-      await apiFetch(`/enrollments/${rowNum}/cancel`, { method: "POST", body: JSON.stringify({}) });
-      await loadStudentClasses(userId);
-    } catch { /* ignore */ }
-    setCancellingRow(null);
   }
 
   async function joinClass(userId: string) {
@@ -996,125 +983,42 @@ function StudentsTab() {
               <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5 w-1/4">Name</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/5">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-1/5">School</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Parent Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-20">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-28">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-36">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-24">Grade</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-36">School</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-40">Parent Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-56">Classes</th>
                       <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
-                      <th className="text-left font-medium px-3 py-2.5 w-20">Classes</th>
+                      <th className="px-3 py-2.5 w-24" />
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const isExpanded = expandedStudent === s.userId;
-                      const classes    = studentClasses[s.userId] || [];
+                      const classes = studentClasses[s.userId] || "—";
+                      const isActive = s.status?.toLowerCase() === "active";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
                             <td className="px-3 py-2.5 font-medium truncate">{s.name || s.displayName || s.email || "Unknown"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell truncate">{s.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{s.currentSchool || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.parentEmail || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{s.currentGrade || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.currentSchool || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.parentEmail || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground text-xs truncate">{classes}</td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
-                            <td className="px-3 py-2.5">
-                              <button
-                                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => {
-                                  if (!isExpanded) {
-                                    setExpandedStudent(s.userId);
-                                    if (!studentClasses[s.userId]) loadStudentClasses(s.userId);
-                                  } else {
-                                    setExpandedStudent(null);
-                                  }
-                                }}
+                            <td className="px-3 py-2.5 text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={!isActive}
+                                onClick={() => { setJoiningStudent(s.userId); setJoinSubjectId(""); setJoinError(""); }}
+                                className={`h-7 text-xs ${isActive ? "text-primary border-primary/30 hover:bg-primary/5" : "text-muted-foreground opacity-60 cursor-not-allowed"}`}
                               >
-                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                View
-                              </button>
+                                {isActive ? "Add" : "Inactive"}
+                              </Button>
                             </td>
                           </tr>
-                          {isExpanded && (
-                            <tr className="bg-muted/30">
-                              <td colSpan={7} className="px-4 py-3">
-                                {classLoading === s.userId && (
-                                  <p className="text-xs text-muted-foreground">Loading classes…</p>
-                                )}
-                                {classLoading !== s.userId && classes.length === 0 && (
-                                  <p className="text-xs text-muted-foreground">No active enrollments.</p>
-                                )}
-                                {classes.length > 0 && (
-                              <table className="w-full text-xs table-fixed">
-                                    <thead>
-                                      <tr className="text-muted-foreground border-b">
-                                        <th className="text-left font-medium pb-1.5">Class</th>
-                                        <th className="text-left font-medium pb-1.5 hidden sm:table-cell">Date</th>
-                                        <th className="pb-1.5" />
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                      {classes.map((enr: any) => (
-                                        <tr key={enr.EnrollmentID || enr._row}>
-                                          <td className="py-1.5 font-medium">{enr["Class Name"] || enr.ClassID}</td>
-                                          <td className="py-1.5 text-muted-foreground hidden sm:table-cell">
-                                            {(enr["Class Date"] && enr["Class Date"] !== "TBD") ? enr["Class Date"] : "—"}
-                                          </td>
-                                          <td className="py-1.5 text-right">
-                                            <Button
-                                              size="sm" variant="outline"
-                                              disabled={cancellingRow === enr._row}
-                                              onClick={() => cancelEnrollment(s.userId, enr._row)}
-                                              className="h-6 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                                            >
-                                              {cancellingRow === enr._row ? "…" : "Cancel"}
-                                            </Button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                )}
-
-                                {/* Add to Class */}
-                                <div className="mt-3 pt-2 border-t border-border/50">
-                                  {joiningStudent !== s.userId ? (
-                                    <button
-                                      onClick={() => { setJoiningStudent(s.userId); setJoinSubjectId(""); setJoinError(""); }}
-                                      className="text-xs px-2.5 py-1.5 rounded-md border border-primary/30 text-primary hover:bg-primary/5 font-medium flex items-center gap-1"
-                                    >
-                                      <Plus className="w-3 h-3" /> Add to Class
-                                    </button>
-                                  ) : (
-                                    <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                                      <select
-                                        value={joinSubjectId}
-                                        onChange={e => setJoinSubjectId(e.target.value)}
-                                        className="flex-1 border rounded-md px-2 py-1.5 text-xs bg-background min-w-0"
-                                        aria-label="Select class to add student to"
-                                      >
-                                        <option value="">Select a class…</option>
-                                        {subjectObjects.map(sub => (
-                                          <option key={sub["SubjectID"]} value={sub["SubjectID"]}>
-                                            {sub["Name"]} ({sub["Type"] || "Group"})
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <div className="flex gap-1.5 shrink-0">
-                                        <Button size="sm" className="h-7 text-xs" disabled={!joinSubjectId || joinSaving} onClick={() => joinClass(s.userId)}>
-                                          {joinSaving ? "Adding…" : "Confirm"}
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setJoiningStudent(null); setJoinSubjectId(""); setJoinError(""); }}>
-                                          Cancel
-                                        </Button>
-                                      </div>
-                                      {joinError && <p className="text-xs text-red-500">{joinError}</p>}
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
                         </Fragment>
                       );
                     })}
@@ -1123,6 +1027,39 @@ function StudentsTab() {
               </div>
             )}
             <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
+            {joiningStudent && (
+              <Card className="mt-3">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm">Add student to class</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                  <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                    <select
+                      value={joinSubjectId}
+                      onChange={e => setJoinSubjectId(e.target.value)}
+                      className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background"
+                      aria-label="Select class"
+                    >
+                      <option value="">Select a class…</option>
+                      {subjectObjects.map(sub => (
+                        <option key={sub["SubjectID"]} value={sub["SubjectID"]}>
+                          {sub["Name"]} ({sub["Type"] || "Group"})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-1.5 shrink-0">
+                      <Button size="sm" className="h-8 text-xs" disabled={!joinSubjectId || joinSaving} onClick={() => joinClass(joiningStudent)}>
+                        {joinSaving ? "Adding…" : "Confirm"}
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setJoiningStudent(null); setJoinSubjectId(""); setJoinError(""); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                  {joinError && <p className="text-xs text-red-500 mt-2">{joinError}</p>}
+                </CardContent>
+              </Card>
+            )}
           </>
         );
       })()}
@@ -1236,11 +1173,11 @@ function TutorsTab() {
                 <table className="w-full text-sm table-fixed">
                   <thead className="bg-muted/50 border-b">
                     <tr>
-                      <th className="text-left font-medium px-3 py-2.5 w-1/4">Name</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/5">Email</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-1/5">Subjects</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Zoom Link</th>
-                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/5">Specialty</th>
+                      <th className="text-left font-medium px-3 py-2.5 w-28">Name</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-36">Email</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-36">Classes Taught</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-48">Zoom Link</th>
+                      <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-32">Specialty</th>
                       <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                     </tr>
                   </thead>
@@ -1248,8 +1185,8 @@ function TutorsTab() {
                     {paged.map((t) => (
                       <tr key={t.UserID} className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium truncate">{t.Name || t.name || t.Email || "Unknown"}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{t.Email || "—"}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{t.Subjects || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell truncate">{t.Email || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{t.Subjects || t.Classes || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{t["Zoom Link"] || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell">{t.Specialty || "—"}</td>
                         <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
@@ -1354,8 +1291,8 @@ function UsersTab() {
           <table className="w-full text-sm table-fixed">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left font-medium px-3 py-2.5 w-1/2">Name</th>
-                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                <th className="text-left font-medium px-3 py-2.5 w-36">Name</th>
+                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-40">Email</th>
                 <th className="text-left font-medium px-3 py-2.5 w-20">Role</th>
                 <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                 <th className="px-3 py-2.5" />
@@ -1366,15 +1303,17 @@ function UsersTab() {
                 <tr key={u.userId} className="hover:bg-muted/20">
                   <td className="px-3 py-2.5 truncate">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium truncate">{u.name || u.displayName || u.email || "Unknown"}</span>
-                      <Button
-                        size="sm" variant="outline"
-                        disabled={acting === u.userId}
-                        onClick={() => toggleStatus(u)}
-                        className="text-xs h-6 px-2 shrink-0"
-                      >
-                        {u.status?.toLowerCase() === "active" ? "Deactivate" : "Activate"}
-                      </Button>
+                      <span className="font-medium truncate max-w-[8rem] sm:max-w-[11rem]">{u.name || u.displayName || u.email || "Unknown"}</span>
+                      {u.status?.toLowerCase() === "active" && (
+                        <Button
+                          size="sm" variant="outline"
+                          disabled={acting === u.userId}
+                          onClick={() => toggleStatus(u)}
+                          className="text-xs h-6 px-2 shrink-0 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                        >
+                          Deactivate
+                        </Button>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{u.email || "—"}</td>
@@ -1471,16 +1410,16 @@ function AttendanceTab() {
             Student Billing Summary
             <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
           </h3>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[360px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left font-medium px-3 py-2.5 w-6" />
-                  <th className="text-left font-medium px-3 py-2.5">Student</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-green-700 hidden sm:table-cell">Present</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 hidden md:table-cell">Late</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-red-700 hidden md:table-cell">Absent</th>
-                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Sessions Attended</th>
+                  <th className="text-left font-medium px-3 py-2.5 w-32">Student</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-green-700 w-20 hidden sm:table-cell">Present</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 w-16 hidden md:table-cell">Late</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-red-700 w-16 hidden md:table-cell">Absent</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-28">Sessions Attended</th>
                 </tr>
               </thead>
               <tbody>
@@ -1554,13 +1493,13 @@ function AttendanceTab() {
             Tutor Payment Summary
             <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
           </h3>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[300px]">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left font-medium px-3 py-2.5 w-6" />
                   <th className="text-left font-medium px-3 py-2.5">Tutor</th>
-                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5">Sessions Taught</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-32">Sessions Taught</th>
                 </tr>
               </thead>
               <tbody>
