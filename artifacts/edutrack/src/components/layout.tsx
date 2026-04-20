@@ -180,8 +180,10 @@ function Breadcrumb() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const [location] = useLocation();
   const role = getStoredRole();
   const showSidebar = role === "principal" || role === "developer" || role === "admin";
+  const showReturnLink = showSidebar && location !== "/principal" && location !== "/admin" && location !== "/housekeeping";
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex bg-background w-full">
@@ -195,6 +197,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="hidden md:flex">
                   <Breadcrumb />
                 </div>
+              )}
+              {showReturnLink && (
+                <Link href="/principal" className="md:hidden text-xs font-medium text-primary hover:underline">
+                  Back to sidebar
+                </Link>
               )}
             </div>
             <div className="flex items-center gap-3">
