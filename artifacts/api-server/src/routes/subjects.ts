@@ -119,11 +119,16 @@ router.get('/subjects', async (req, res): Promise<void> => {
     try { users = await readUsersTab(spreadsheetId); } catch {}
     const userMap = new Map(users.map(u => [u.userId, u]));
 
-    const enriched = rows.map(s => ({
-      ...s,
-      Teachers:    userMap.get(s['TeacherID'] || '')?.name || s['TeacherID'] || '',
-      TeacherName: userMap.get(s['TeacherID'] || '')?.name || s['TeacherID'] || '',
-    }));
+    const enriched = rows.map(s => {
+      const teacher = userMap.get(s['TeacherID'] || '');
+      const teacherName = teacher?.name || s['TeacherID'] || '';
+      return {
+        ...s,
+        TeacherID: teacherName,
+        Teachers: teacherName,
+        TeacherName: teacherName,
+      };
+    });
 
     res.json(enriched);
   } catch (err: any) {
