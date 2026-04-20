@@ -75,8 +75,9 @@ router.get("/enrollment-requests", async (req, res) => {
   try {
     const rows = await readTabRows(sheetId, SHEET_TABS.enrollments);
 
-    // Filter to only rows that are actual requests (Pending, Approved, or no status yet)
-    const requestRows = rows.filter(row => {
+    // ?all=1 → return every row (used by the principal "All Enrollments" view + diagnostics)
+    const showAll = String(req.query.all || "") === "1";
+    const requestRows = showAll ? rows : rows.filter(row => {
       const status = (row["Status"] || "").toLowerCase().trim();
       return !ACTIVE_ENROLLMENT_STATUSES.has(status);
     });
@@ -217,18 +218,33 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
   const picks = (rawClasses.includes(";") ? rawClasses.split(";") : rawClasses.split(","))
     .map(s => s.trim()).filter(Boolean);
 
-  // Resolve picks against the Subjects tab. Anything that doesn't map to a
-  // SubjectID is treated as a "not in list" interest and only kept for the
-  // student's "Classes" column / welcome email — no enrollment row is created
-  // for it (the principal must add the class first).
+  // Resolve picks against the Subjects tab. New-format picks are SubjectIDs
+  // (e.g. "SUB-MAT-FRI"); legacy picks (from cached older bundles) are full
+  // labels like "Mathematics — Fri — 9:00 AM (Group) — Dr. Sarah Chen", so
+  // we fuzzy-match by the first segment (subject name) + the day substring.
   const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
   const resolved: { id: string; label: string }[] = [];
   const interestOnly: string[] = [];
   for (const p of picks) {
-    const sub = subjectRows.find((r: any) => r["SubjectID"] === p);
-    if (sub) {
-      const day = sub["Days"] ? ` (${sub["Days"]})` : "";
-      resolved.push({ id: sub["SubjectID"], label: `${sub["Name"]}${day}` });
+    const direct = subjectRows.find((r: any) => r["SubjectID"] === p);
+    if (direct) {
+      const day = direct["Days"] ? ` (${direct["Days"]})` : "";
+      resolved.push({ id: direct["SubjectID"], label: `${direct["Name"]}${day}` });
+      continue;
+    }
+    // Legacy label fallback: take the first " — "-delimited segment as the
+    // subject name, and any 3-letter day token in the rest as the day.
+    const segs = p.split(/—|–|-/).map(s => s.trim()).filter(Boolean);
+    const name = segs[0] || "";
+    const dayMatch = p.match(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)/i);
+    const day = dayMatch ? dayMatch[1].slice(0, 3).toLowerCase() : "";
+    const fuzzy = subjectRows.find((r: any) =>
+      (r["Name"] || "").toLowerCase() === name.toLowerCase() &&
+      (!day || (r["Days"] || "").toLowerCase().includes(day))
+    );
+    if (fuzzy) {
+      const d = fuzzy["Days"] ? ` (${fuzzy["Days"]})` : "";
+      resolved.push({ id: fuzzy["SubjectID"], label: `${fuzzy["Name"]}${d}` });
     } else {
       interestOnly.push(p);
     }

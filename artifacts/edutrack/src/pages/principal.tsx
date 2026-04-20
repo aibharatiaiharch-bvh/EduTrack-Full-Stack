@@ -563,6 +563,111 @@ function RequestsTab() {
           </div>
         </>
       )}
+
+      {/* Contact Directory — moved here from the public Calendar page so only
+          the principal sees everyone's email addresses. */}
+      <ContactDirectorySection />
+    </div>
+  );
+}
+
+// ─── Contact Directory (Principal-only) ────────────────────────────────────
+function ContactDirectorySection() {
+  const [data, setData] = useState<{ days: any[]; principalEmail: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const d = await apiFetch("/schedule/calendar?weeks=2");
+      setData(d);
+    } catch {}
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  // One row per (className, day, time) — dedupe across the date range.
+  const rows: Array<{ className: string; day: string; time: string; teacherName: string; teacherEmail: string; students: { name: string; email: string }[] }> = [];
+  const seen = new Set<string>();
+  const SHORT: Record<string, string> = { Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed", Thursday: "Thu", Friday: "Fri", Saturday: "Sat", Sunday: "Sun" };
+  for (const day of (data?.days || [])) {
+    const short = SHORT[day.dayName] || day.dayName.slice(0, 3);
+    for (const slot of (day.slots || [])) {
+      const key = `${slot.className}||${short}||${slot.time}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        className: slot.className, day: short, time: slot.time,
+        teacherName: slot.teacherName, teacherEmail: slot.teacherEmail,
+        students: slot.students || [],
+      });
+    }
+  }
+  const DAY_ORDER: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+  rows.sort((a, b) => a.className.localeCompare(b.className) || (DAY_ORDER[a.day] ?? 99) - (DAY_ORDER[b.day] ?? 99));
+  const principalEmail = data?.principalEmail || "";
+
+  return (
+    <div className="mt-8">
+      <SectionHeader title="Contact Directory" onRefresh={load} loading={loading} />
+      <p className="text-xs text-muted-foreground mb-3">
+        Only visible to you. Click any email to open your mail client. Use <strong>Email All</strong> to message the tutor, principal and every enrolled student in one click.
+      </p>
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {!loading && rows.length === 0 && <p className="text-sm text-muted-foreground">No active classes scheduled in the next 2 weeks.</p>}
+      {!loading && rows.length > 0 && (
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead className="bg-muted/50 border-b">
+              <tr>
+                <th className="text-left px-2 py-2 font-medium">Class</th>
+                <th className="text-left px-2 py-2 font-medium">Day</th>
+                <th className="text-left px-2 py-2 font-medium">Time</th>
+                <th className="text-left px-2 py-2 font-medium">Tutor</th>
+                <th className="text-left px-2 py-2 font-medium">Students</th>
+                <th className="text-left px-2 py-2 font-medium">Email All</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {rows.map((r, i) => {
+                const subject = encodeURIComponent(`Re: ${r.className} class (${r.day})`);
+                const teacherMailto = r.teacherEmail ? `mailto:${r.teacherEmail}?subject=${subject}` : null;
+                const all = [r.teacherEmail, principalEmail, ...r.students.map(s => s.email).filter(Boolean)].filter(Boolean);
+                const uniq = [...new Set(all)];
+                const to = uniq[0] || ""; const cc = uniq.slice(1).join(",");
+                const allHref = to ? `mailto:${to}${cc ? `?cc=${encodeURIComponent(cc)}` : ""}&subject=${subject}` : null;
+                return (
+                  <tr key={i} className="align-top hover:bg-muted/30">
+                    <td className="px-2 py-2 font-medium">{r.className}</td>
+                    <td className="px-2 py-2 text-muted-foreground">{r.day}</td>
+                    <td className="px-2 py-2 text-muted-foreground">{r.time || "—"}</td>
+                    <td className="px-2 py-2">
+                      {teacherMailto
+                        ? <a href={teacherMailto} className="text-blue-600 hover:underline">{r.teacherName || "Tutor"}</a>
+                        : <span className="text-muted-foreground">{r.teacherName || "—"}</span>}
+                    </td>
+                    <td className="px-2 py-2">
+                      {r.students.length === 0
+                        ? <span className="text-muted-foreground">—</span>
+                        : <div className="flex flex-wrap gap-x-2 gap-y-1">
+                            {r.students.map((s, j) => s.email
+                              ? <a key={j} href={`mailto:${s.email}?subject=${subject}`} className="text-blue-600 hover:underline">{s.name}</a>
+                              : <span key={j} className="text-muted-foreground">{s.name}</span>
+                            )}
+                          </div>}
+                    </td>
+                    <td className="px-2 py-2">
+                      {allHref
+                        ? <a href={allHref} className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-blue-700">Email All</a>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

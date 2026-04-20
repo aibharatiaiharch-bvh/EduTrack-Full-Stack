@@ -425,7 +425,8 @@ function CalendarContent() {
         <>
           <CalendarGrid rows={group} title="Group Classes" canSeeStudents={canSeeStudents} />
           <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />
-          <ContactTable days={days} principalEmail={principalEmail} />
+          {/* Contact Directory moved to Principal → Requests tab for data privacy. */}
+          {false && <ContactTable days={days} principalEmail={principalEmail} />}
         </>
       )}
     </div>
