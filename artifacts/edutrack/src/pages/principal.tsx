@@ -602,9 +602,6 @@ function RequestsTab() {
                                     <CheckCircle className="w-3.5 h-3.5" /> App Fee / App Paid
                                   </Button>
                                 )}
-                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
-                                  <XCircle className="w-3.5 h-3.5" /> Reject
-                                </Button>
                               </>
                             )}
                             {row._src === "fee-waiver" && !isDone && (
