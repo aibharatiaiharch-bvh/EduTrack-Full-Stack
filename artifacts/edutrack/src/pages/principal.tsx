@@ -1821,7 +1821,6 @@ export default function PrincipalDashboard() {
         <NotificationPrompt />
         <div className="flex flex-wrap gap-2 mb-4">
           <Button size="sm" variant={tab === "requests" ? "default" : "outline"} onClick={() => setTab("requests")}>Requests</Button>
-          <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>Manage Classes</Button>
         </div>
         <div className="border-b bg-card px-6 rounded-t-lg">
           <div className="flex gap-1 overflow-x-auto">
