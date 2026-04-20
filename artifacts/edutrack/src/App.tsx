@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { ClerkProvider } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,13 +8,14 @@ import { apiUrl } from "@/lib/api";
 
 import SignInPage from "@/pages/sign-in";
 import AuthRedirect from "@/pages/auth-redirect";
-import AdminPortal from "@/pages/admin";
-import PrincipalDashboard from "@/pages/principal";
-import StudentDashboard from "@/pages/student";
-import TutorDashboard from "@/pages/teacher-dashboard";
-import ClassCalendar from "@/pages/class-calendar";
-import EnrollPage from "@/pages/enroll";
-import NotFound from "@/pages/not-found";
+
+const AdminPortal = lazy(() => import("@/pages/admin"));
+const PrincipalDashboard = lazy(() => import("@/pages/principal"));
+const StudentDashboard = lazy(() => import("@/pages/student"));
+const TutorDashboard = lazy(() => import("@/pages/teacher-dashboard"));
+const ClassCalendar = lazy(() => import("@/pages/class-calendar"));
+const EnrollPage = lazy(() => import("@/pages/enroll"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 
 async function ensureSheetId() {
   if (localStorage.getItem("edutrack_sheet_id")) return;
@@ -34,6 +36,14 @@ function stripBase(path: string) {
   return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path;
 }
 
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen text-sm text-muted-foreground">
+      Loading…
+    </div>
+  );
+}
+
 function ProtectedRoute({ component: Component, requiredRole }: { component: React.ComponentType; requiredRole?: string }) {
   const storedRole = localStorage.getItem("edutrack_user_role");
 
@@ -52,26 +62,28 @@ function AppRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
-        <Switch>
-          <Route path="/" component={SignInPage} />
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/auth-redirect" component={AuthRedirect} />
-          <Route path="/admin">
-            <ProtectedRoute component={AdminPortal} />
-          </Route>
-          <Route path="/principal">
-            <ProtectedRoute component={PrincipalDashboard} requiredRole="principal" />
-          </Route>
-          <Route path="/student">
-            <ProtectedRoute component={StudentDashboard} requiredRole="student" />
-          </Route>
-          <Route path="/tutor">
-            <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
-          </Route>
-          <Route path="/calendar" component={ClassCalendar} />
-          <Route path="/enroll" component={EnrollPage} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<PageFallback />}>
+          <Switch>
+            <Route path="/" component={SignInPage} />
+            <Route path="/sign-in/*?" component={SignInPage} />
+            <Route path="/auth-redirect" component={AuthRedirect} />
+            <Route path="/admin">
+              <ProtectedRoute component={AdminPortal} />
+            </Route>
+            <Route path="/principal">
+              <ProtectedRoute component={PrincipalDashboard} requiredRole="principal" />
+            </Route>
+            <Route path="/student">
+              <ProtectedRoute component={StudentDashboard} requiredRole="student" />
+            </Route>
+            <Route path="/tutor">
+              <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
+            </Route>
+            <Route path="/calendar" component={ClassCalendar} />
+            <Route path="/enroll" component={EnrollPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </QueryClientProvider>
     </ClerkProvider>
   );
