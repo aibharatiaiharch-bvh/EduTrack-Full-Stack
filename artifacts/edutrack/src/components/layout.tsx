@@ -1,7 +1,7 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
 import { LayoutDashboard, BookOpen, Settings, LogOut, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
-import { useUser, useClerk } from "@clerk/react";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getFeatures } from "@/config/features";
@@ -146,8 +146,10 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
 
 export function AppSidebar() {
   const [location] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
+  const userEmail = typeof window !== "undefined" ? localStorage.getItem("edutrack_user_email") || "" : "";
+  const userName = typeof window !== "undefined" ? localStorage.getItem("edutrack_user_name") || userEmail : "";
+  const initials = (userName || userEmail).slice(0, 2).toUpperCase();
   const features = getFeatures();
   const role = getStoredRole();
   const navigation = buildNavigation(role, features);
@@ -193,15 +195,14 @@ export function AppSidebar() {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={user?.imageUrl} />
-              <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{initials || "U"}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{user?.fullName || "User"}</span>
+              <span className="text-sm font-medium truncate">{userName || "User"}</span>
               <span className="text-xs text-sidebar-foreground/60 truncate capitalize">{getStoredRole()}</span>
             </div>
           </div>
-          <button onClick={() => signOut()} className="text-sidebar-foreground/60 hover:text-sidebar-foreground" title="Sign out">
+          <button onClick={signOut} className="text-sidebar-foreground/60 hover:text-sidebar-foreground" title="Sign out">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -232,8 +233,8 @@ function Breadcrumb() {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
+  const userEmail = typeof window !== "undefined" ? localStorage.getItem("edutrack_user_email") || "" : "";
   const [location] = useLocation();
   const role = getStoredRole();
   const showSidebar = role === "principal" || role === "developer" || role === "admin";
@@ -264,16 +265,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Breadcrumb />
                 </div>
               )}
-              {user?.primaryEmailAddress?.emailAddress && (
+              {userEmail && (
                 <span
                   className="hidden md:inline text-xs sm:text-sm text-muted-foreground truncate max-w-[200px] text-right"
-                  title={user.primaryEmailAddress.emailAddress}
+                  title={userEmail}
                 >
-                  {user.primaryEmailAddress.emailAddress}
+                  {userEmail}
                 </span>
               )}
               <button
-                onClick={() => signOut({ redirectUrl: `${BASE}/sign-in` })}
+                onClick={signOut}
                 className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors"
                 title="Sign out"
               >
