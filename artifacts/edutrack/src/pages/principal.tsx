@@ -1241,38 +1241,35 @@ function UsersTab() {
 
       {!loading && filtered.length > 0 && (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+          <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left font-medium px-3 py-2.5 w-36">Name</th>
-                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-40">Email</th>
-                <th className="text-left font-medium px-3 py-2.5 w-20">Role</th>
+                <th className="text-left font-medium px-3 py-2.5">Name</th>
+                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
+                <th className="text-left font-medium px-3 py-2.5 w-24">Role</th>
                 <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
-                <th className="px-3 py-2.5" />
+                <th className="px-3 py-2.5 w-28" />
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtered.map((u) => (
                 <tr key={u.userId} className="hover:bg-muted/20">
-                  <td className="px-3 py-2.5 truncate">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium truncate max-w-[8rem] sm:max-w-[11rem]">{u.name || u.displayName || u.email || "Unknown"}</span>
-                      {u.status?.toLowerCase() === "active" && (
-                        <Button
-                          size="sm" variant="outline"
-                          disabled={acting === u.userId}
-                          onClick={() => toggleStatus(u)}
-                          className="text-xs h-6 px-2 shrink-0 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                        >
-                          Deactivate
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+                  <td className="px-3 py-2.5 font-medium">{u.name || u.displayName || u.email || "Unknown"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{u.email || "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
                   <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
-                  <td className="px-3 py-2.5" />
+                  <td className="px-3 py-2.5">
+                    {u.status?.toLowerCase() === "active" && (
+                      <Button
+                        size="sm" variant="outline"
+                        disabled={acting === u.userId}
+                        onClick={() => toggleStatus(u)}
+                        className="text-xs h-7 px-2 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                      >
+                        {acting === u.userId ? "…" : "Deactivate"}
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
