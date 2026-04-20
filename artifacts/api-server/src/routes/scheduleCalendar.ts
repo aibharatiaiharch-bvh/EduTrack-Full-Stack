@@ -64,8 +64,8 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
     for (const t of teachers) {
       const tid = (t['TeacherID'] || '').trim();
       const name = (t['Name'] || '').trim();
-      // Fall back to Users tab for email if Teachers tab has none
-      const email = t['Email'] || tutorEmailByName[name.toLowerCase()] || '';
+      // Users tab is master data for email; Teachers tab is fallback only
+      const email = tutorEmailByName[name.toLowerCase()] || t['Email'] || '';
       const entry = { name, email, zoomLink: t['Zoom Link'] || '' };
       if (tid) teacherById[tid] = entry;
       if (name) teacherByName[name.toLowerCase()] = entry;
