@@ -195,13 +195,13 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
       }
     }
 
-    // Write to Students extension tab — Name at col C so sheet is always human-readable
+    // Write to Students extension tab — keep student name in col C
     const studentExtId = await generateTabId('STU', sheetId, SHEET_TABS.students);
     const isReEnroll = previousStudent === true || previousStudent === 'true' || previousStudent === 'yes';
     const subjectsStr = Array.isArray(subjectsInterested) ? subjectsInterested.join(', ') : (subjectsInterested || '');
     await appendRow(sheetId, SHEET_TABS.students, [
       studentExtId, studentId,
-      name.trim(),                    // col C = Name (denormalised for readability)
+      name.trim(),                    // col C = Student Name
       parentId,
       subjectsStr,
       (phone || '').trim(),

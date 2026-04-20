@@ -568,7 +568,7 @@ function RequestsTab() {
                         </td>
                         {/* Student — name only, no parent ID */}
                         <td className="px-3 py-2.5 align-middle">
-                          <div className="font-medium leading-tight">{row["Student Name"] || row["Name"] || row["UserID"] || "Unknown"}</div>
+                        <div className="font-medium leading-tight">{row["Student Name"] || row["Name"] || row["Full Name"] || row["UserID"] || "Unknown"}</div>
                           {/* Details inline on small screens */}
                           <div className="md:hidden mt-0.5">{details}</div>
                         </td>
@@ -1345,22 +1345,22 @@ function UsersTab() {
 
       {!loading && filtered.length > 0 && (
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left font-medium px-3 py-2.5">Name</th>
+                <th className="text-left font-medium px-3 py-2.5 w-1/2">Name</th>
                 <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
-                <th className="text-left font-medium px-3 py-2.5">Role</th>
-                <th className="text-left font-medium px-3 py-2.5">Status</th>
+                <th className="text-left font-medium px-3 py-2.5 w-20">Role</th>
+                <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                 <th className="px-3 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y">
               {filtered.map((u) => (
                 <tr key={u.userId} className="hover:bg-muted/20">
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 truncate">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{u.name}</span>
+                      <span className="font-medium truncate">{u.name || u.displayName || u.email || "Unknown"}</span>
                       <Button
                         size="sm" variant="outline"
                         disabled={acting === u.userId}
