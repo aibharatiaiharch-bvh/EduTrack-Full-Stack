@@ -210,9 +210,9 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
     const { enrollRow, users, extra } = await getEnrollRow(sheetId, rowNum);
     if (!enrollRow) { res.status(404).json({ error: "Enrollment row not found" }); return; }
 
-    const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
+    res.json({ ok: true, action: "paid" });
 
-    // Send welcome email now that the student is activated
+    const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
     if (isEmailConfigured()) {
       const studentEmail   = extra.studentEmail || "";
       const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
@@ -221,20 +221,16 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
       const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
       const uniqueRecipients = [...new Set(recipients)];
       if (uniqueRecipients.length > 0) {
-        try {
-          await sendEmail({
-            to: uniqueRecipients,
-            cc: ccRecipients.length > 0 ? ccRecipients : undefined,
-            subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
-            html: buildWelcomeEmail(studentName, classes, principalName),
-          });
-        } catch (emailErr: any) {
+        sendEmail({
+          to: uniqueRecipients,
+          cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+          subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
+          html: buildWelcomeEmail(studentName, classes, principalName),
+        }).catch((emailErr: any) => {
           console.error("Welcome email failed:", emailErr.message);
-        }
+        });
       }
     }
-
-    res.json({ ok: true, action: "paid" });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
