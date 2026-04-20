@@ -169,10 +169,19 @@ router.get('/analysis', async (req, res): Promise<void> => {
     const periodAttendancePct = periodTotal > 0 ? Math.round((periodAttendances / periodTotal) * 100) : null;
     const periodTotals = { sessions: periodSessions, attendances: periodAttendances, absences: periodAbsences, attendancePct: periodAttendancePct };
 
+    const uniqueStudentIds = new Set<string>();
+    for (const e of enrollments) {
+      const classId = (e['ClassID'] || '').trim();
+      const status = (e['Status'] || '').toLowerCase();
+      const userId = (e['UserID'] || '').trim();
+      if (!classId || !userId || ['inactive', 'cancelled', 'late cancellation', 'rejected'].includes(status)) continue;
+      uniqueStudentIds.add(userId);
+    }
+
     const totals = {
       subjects: bySubject.length,
       teachers: byTeacher.length,
-      students: bySubject.reduce((n, s) => n + s.students, 0),
+      students: uniqueStudentIds.size,
       hoursPerWeek: Math.round(bySubject.reduce((n, s) => n + s.hoursPerWeek, 0) * 100) / 100,
     };
 
