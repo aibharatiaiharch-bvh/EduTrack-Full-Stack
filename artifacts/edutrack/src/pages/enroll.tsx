@@ -16,8 +16,22 @@ type SubjectRow = {
   Teachers: string;
   Room: string;
   Days: string;
+  Time: string;
   Status: string;
 };
+
+// Build the dropdown / chip label for a subject row. Includes the day and
+// time so the student can pick a specific (Class, Day) — each Subject row
+// represents one day of the class in the new schema.
+function subjectLabel(s: SubjectRow): string {
+  const parts = [s.Name];
+  if (s.Days) parts.push(s.Days);
+  if (s.Time) parts.push(s.Time);
+  let label = parts.join(" — ");
+  label += ` (${s.Type})`;
+  if (s.Teachers) label += ` — ${s.Teachers}`;
+  return label;
+}
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const _apiBase = ((import.meta.env.VITE_API_BASE_URL as string) || BASE).replace(/\/$/, "");
@@ -305,11 +319,8 @@ export default function EnrollPage() {
                     <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
                     <select id="classesInterested" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" value="" onChange={e => addSubject(e.target.value)}>
                       <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "Select an option below..."}</option>
-                      {subjects.filter(s => {
-                        const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
-                        return !selectedSubjects.includes(label);
-                      }).map(s => {
-                        const label = `${s.Name} (${s.Type})${s.Teachers ? ` — ${s.Teachers}` : ""}`;
+                      {subjects.filter(s => !selectedSubjects.includes(subjectLabel(s))).map(s => {
+                        const label = subjectLabel(s);
                         return <option key={s._row} value={label}>{label}</option>;
                       })}
                       {!selectedSubjects.includes("Not in list — New Request") && (
