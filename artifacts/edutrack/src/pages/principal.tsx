@@ -597,21 +597,17 @@ function RequestsTab() {
                                     <Plus className="w-3.5 h-3.5" /> Assign Class
                                   </button>
                                 )}
-                                {status !== "approved" && (
-                                  <>
-                                    <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
-                                      <CheckCircle className="w-3.5 h-3.5" /> Approve
-                                    </Button>
-                                    <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
-                                      <XCircle className="w-3.5 h-3.5" /> Reject
-                                    </Button>
-                                  </>
-                                )}
+                                <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "approve")}>
+                                  <CheckCircle className="w-3.5 h-3.5" /> Approve
+                                </Button>
                                 {status === "approved" && (
                                   <Button size="sm" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "mark-paid")}>
                                     <CheckCircle2 className="w-3.5 h-3.5" /> App Paid
                                   </Button>
                                 )}
+                                <Button size="sm" variant="outline" className="h-9 sm:h-8 text-sm sm:text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto" disabled={isActingNow} onClick={() => actEnroll(row, "reject")}>
+                                  <XCircle className="w-3.5 h-3.5" /> Reject
+                                </Button>
                               </>
                             )}
                             {row._src === "fee-waiver" && !isDone && (

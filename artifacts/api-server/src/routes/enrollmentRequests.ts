@@ -216,7 +216,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
     if (isEmailConfigured()) {
       const studentEmail   = extra.studentEmail || "";
       const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
-      const principalEmail = process.env.PRINCIPAL_EMAIL || "";
+      const principalEmail = getSetting('PRINCIPAL_EMAIL') || process.env.PRINCIPAL_EMAIL || "";
       const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
       const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
       const uniqueRecipients = [...new Set(recipients)];
