@@ -381,7 +381,6 @@ function RequestsTab() {
   const filtered = allRows.filter(r => !isRowDone(r));
 
   const isEmpty = filtered.length === 0;
-  const openCount = filtered.length;
 
   return (
     <div>
@@ -1992,7 +1991,7 @@ function AnalysisTab() {
 }
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "requests",    label: `Requests (${openCount})`, icon: <ClipboardList className="w-4 h-4" /> },
+  { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
