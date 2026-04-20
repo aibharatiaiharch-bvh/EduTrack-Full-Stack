@@ -152,29 +152,35 @@ router.post('/subjects', async (req, res): Promise<void> => {
   }
 
   try {
-    // Resolve TeacherID from name if needed
+    // Resolve TeacherID and Teacher Name
     let resolvedTeacherId = teacherId || '';
+    let resolvedTeacherName = '';
+    const allUsers = await readUsersTab(spreadsheetId);
     if (!resolvedTeacherId && teachers) {
-      const users = await readUsersTab(spreadsheetId);
-      const t = users.find(u =>
+      const t = allUsers.find(u =>
         (u.role === 'tutor' || u.role === 'teacher') &&
         u.name.toLowerCase().includes(teachers.toLowerCase())
       );
       resolvedTeacherId = t?.userId || teachers;
+      resolvedTeacherName = t?.name || teachers;
+    } else if (resolvedTeacherId) {
+      const t = allUsers.find(u => u.userId === resolvedTeacherId);
+      resolvedTeacherName = t?.name || '';
     }
 
     const subjectId = await generateSubjectId(spreadsheetId);
     const sheets = await getUncachableGoogleSheetClient();
     const rowValues = HEADERS.map(h => {
-      if (h === 'SubjectID')   return subjectId;
-      if (h === 'Name')        return name.trim();
-      if (h === 'Type')        return type;
-      if (h === 'TeacherID')   return resolvedTeacherId;
-      if (h === 'Room')        return (room || '').trim();
-      if (h === 'Days')        return (days || '').trim();
-      if (h === 'Time')        return (time || '').trim();
-      if (h === 'Status')      return 'Active';
-      if (h === 'MaxCapacity') return type === 'Group' ? (maxCapacity || '8').trim() : (maxCapacity || '999').trim();
+      if (h === 'SubjectID')    return subjectId;
+      if (h === 'Name')         return name.trim();
+      if (h === 'Type')         return type;
+      if (h === 'TeacherID')    return resolvedTeacherId;
+      if (h === 'Teacher Name') return resolvedTeacherName;
+      if (h === 'Room')         return (room || '').trim();
+      if (h === 'Days')         return (days || '').trim();
+      if (h === 'Time')         return (time || '').trim();
+      if (h === 'Status')       return 'Active';
+      if (h === 'MaxCapacity')  return type === 'Group' ? (maxCapacity || '8').trim() : (maxCapacity || '999').trim();
       return '';
     });
     await sheets.spreadsheets.values.append({

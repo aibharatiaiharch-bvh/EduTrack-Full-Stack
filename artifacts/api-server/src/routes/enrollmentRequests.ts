@@ -161,7 +161,8 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
   let subjectLabels: string[] = [];
   if (selectedIds.length) {
     const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
-    const teacherCol  = colLetter("subjects", "TeacherID");
+    const teacherIdCol   = colLetter("subjects", "TeacherID");
+    const teacherNameCol = colLetter("subjects", "Teacher Name");
     for (const sid of selectedIds) {
       const sub = subjectRows.find((r: any) => r["SubjectID"] === sid);
       if (!sub) { subjectLabels.push(sid); continue; }
@@ -171,7 +172,8 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
       // overwrite an existing assignment.
       const currentTeacher = (sub["TeacherID"] || "").trim();
       if (!currentTeacher && tutorUserId) {
-        await updateCell(sheetId, `${SHEET_TABS.subjects}!${teacherCol}${sub._row}`, tutorUserId);
+        await updateCell(sheetId, `${SHEET_TABS.subjects}!${teacherIdCol}${sub._row}`, tutorUserId);
+        await updateCell(sheetId, `${SHEET_TABS.subjects}!${teacherNameCol}${sub._row}`, tutorName);
       }
     }
   }
@@ -291,11 +293,11 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
     const parentRows = await readTabRows(sheetId, SHEET_TABS.parents);
     const existingParentRow = parentRows.find(r => r["UserID"] === parentUserId || r["ParentID"] === parentUserId);
     if (existingParentRow) {
-      const currentChildren = existingParentRow["Children"] || "";
-      const names = currentChildren ? currentChildren.split(";").map((n: string) => n.trim()).filter(Boolean) : [];
+      const currentChildren = existingParentRow["Children Names"] || existingParentRow["Children"] || "";
+      const names = currentChildren ? currentChildren.split(/[,;]/).map((n: string) => n.trim()).filter(Boolean) : [];
       const childList = Array.from(new Set([...names, studentName])).filter(Boolean);
-      const col = colLetter("parents", "Children");
-      await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${existingParentRow._row}`, childList.join("; "));
+      const col = colLetter("parents", "Children Names");
+      await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${existingParentRow._row}`, childList.join(", "));
     } else {
       const parentTabId = await generateTabId("PAR", sheetId, SHEET_TABS.parents);
       await appendRow(sheetId, SHEET_TABS.parents, [
@@ -314,13 +316,14 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
         studentUserId,        // StudentID
         studentUserId,        // UserID
         studentName,          // Name
-        parentDisplayName,    // ParentID — show parent name for readability
+        parentUserId,         // ParentID — actual parent UserID (FK)
         classes,              // Classes — human-readable subject labels
         studentPhone,         // Phone
         "",                   // Notes
         currentSchool,        // CurrentSchool
         currentGrade,         // CurrentGrade
         "No",                 // PreviousStudent
+        parentDisplayName,    // Parent Name — human-readable
       ]);
     } else {
       // Update existing row's Classes and Phone if they're blank
@@ -332,8 +335,12 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
         const col = colLetter("students", "Phone");
         await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, studentPhone);
       }
-      if (!existing["ParentID"] && parentDisplayName) {
+      if (!existing["ParentID"] && parentUserId) {
         const col = colLetter("students", "ParentID");
+        await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, parentUserId);
+      }
+      if (!existing["Parent Name"] && parentDisplayName) {
+        const col = colLetter("students", "Parent Name");
         await updateCell(sheetId, `${SHEET_TABS.students}!${col}${existing._row}`, parentDisplayName);
       }
     }

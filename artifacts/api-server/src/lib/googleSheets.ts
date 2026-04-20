@@ -126,12 +126,12 @@ export const SHEET_HEADERS = {
   users: ['UserID', 'Email', 'Role', 'Name', 'Status', 'CreatedAt', 'UpdatedAt'],
 
   // EXTENSIONS — role-specific fields only, linked by UserID
-  students: ['StudentID', 'UserID', 'Name', 'ParentID', 'Classes', 'Phone', 'Notes', 'CurrentSchool', 'CurrentGrade', 'PreviousStudent'],
+  students: ['StudentID', 'UserID', 'Name', 'ParentID', 'Classes', 'Phone', 'Notes', 'CurrentSchool', 'CurrentGrade', 'PreviousStudent', 'Parent Name'],
   teachers: ['TeacherID', 'UserID', 'Name', 'Subjects', 'Zoom Link', 'Specialty', 'Notes'],
-  parents:  ['ParentID',  'UserID', 'Name', 'Children', 'Phone', 'Notes'],
+  parents:  ['ParentID',  'UserID', 'Name', 'Children Names', 'Phone', 'Notes'],
 
   // CLASSES — TeacherID FK links to Users; no Name/Email stored here
-  subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Time', 'Status', 'MaxCapacity'],
+  subjects: ['SubjectID', 'Name', 'Type', 'TeacherID', 'Room', 'Days', 'Time', 'Status', 'MaxCapacity', 'Teacher Name'],
 
   // TRANSACTIONS — UserIDs for all FKs; class date/time stored as session data
   // Status: Active | Inactive  (default Active)

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { getUncachableGoogleSheetClient, SHEET_TABS } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -46,6 +47,36 @@ router.get('/admin/github-sync', (_req, res): void => {
     res.json({ lastSyncedAt: syncedAt, branch: branchName, commitHash: hash, commitMessage: message });
   } catch {
     res.json({ lastSyncedAt: null, branch: null });
+  }
+});
+
+// POST /api/admin/migrate-columns?sheetId=
+// One-time migration: writes new column headers to row 1 of the affected tabs.
+// Safe to run multiple times — just overwrites the header cells.
+router.post('/admin/migrate-columns', async (req, res): Promise<void> => {
+  const sheetId = (req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || '') as string;
+  if (!sheetId) { res.status(400).json({ error: 'sheetId required' }); return; }
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+    const writes = [
+      // Students tab: col K (index 10) = "Parent Name"
+      { range: `${SHEET_TABS.students}!K1`, value: 'Parent Name' },
+      // Subjects tab: col J (index 9) = "Teacher Name"
+      { range: `${SHEET_TABS.subjects}!J1`, value: 'Teacher Name' },
+      // Parents tab: col D (index 3) rename "Children" → "Children Names"
+      { range: `${SHEET_TABS.parents}!D1`, value: 'Children Names' },
+    ];
+    for (const w of writes) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: w.range,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[w.value]] },
+      });
+    }
+    res.json({ ok: true, updated: writes.map(w => w.range) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
   }
 });
 
