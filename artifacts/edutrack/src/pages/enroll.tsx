@@ -114,17 +114,22 @@ export default function EnrollPage() {
     setTutorForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function addSubject(name: string) {
-    if (!name || selectedSubjects.includes(name)) return;
-    const next = [...selectedSubjects, name];
+  // selectedSubjects stores SubjectIDs (e.g. "SUB-ENG-TUE"); the special
+  // sentinel "__NEW_REQUEST__" represents the "Not in list" pick.
+  function subjectLabelById(id: string): string {
+    if (id === "__NEW_REQUEST__") return "Not in list — New Request";
+    const s = subjects.find(x => x.SubjectID === id);
+    return s ? subjectLabel(s) : id;
+  }
+  function addSubject(id: string) {
+    if (!id || selectedSubjects.includes(id)) return;
+    const next = [...selectedSubjects, id];
     setSelectedSubjects(next);
-    // Join with ";" — labels themselves can contain commas (e.g. teacher
-    // names, time ranges) so a comma separator splits one pick into many.
+    // Join with ";" — labels can contain commas, so "," would break parsing.
     setStudent("classesInterested", next.join("; "));
   }
-
-  function removeSubject(name: string) {
-    const next = selectedSubjects.filter(s => s !== name);
+  function removeSubject(id: string) {
+    const next = selectedSubjects.filter(s => s !== id);
     setSelectedSubjects(next);
     setStudent("classesInterested", next.join("; "));
   }
@@ -334,25 +339,27 @@ export default function EnrollPage() {
                     <Label htmlFor="classesInterested">Classes Interested In <span className="text-destructive">*</span></Label>
                     <select id="classesInterested" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" value="" onChange={e => addSubject(e.target.value)}>
                       <option value="" disabled>{subjects.length > 0 ? "Select a class..." : "Select an option below..."}</option>
-                      {subjects.filter(s => !selectedSubjects.includes(subjectLabel(s))).map(s => {
-                        const label = subjectLabel(s);
-                        return <option key={s._row} value={label}>{label}</option>;
-                      })}
-                      {!selectedSubjects.includes("Not in list — New Request") && (
-                        <option value="Not in list — New Request">➕ New Subject / Not in list</option>
+                      {subjects.filter(s => !selectedSubjects.includes(s.SubjectID)).map(s => (
+                        <option key={s._row} value={s.SubjectID}>{subjectLabel(s)}</option>
+                      ))}
+                      {!selectedSubjects.includes("__NEW_REQUEST__") && (
+                        <option value="__NEW_REQUEST__">➕ New Subject / Not in list</option>
                       )}
                     </select>
                     <p className="text-xs text-muted-foreground">Pick from the list to add classes. Selected classes appear below.</p>
                   </div>
                   {selectedSubjects.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {selectedSubjects.map(name => (
-                        <span key={name} className={`inline-flex items-center gap-1.5 rounded-full text-xs font-medium px-2.5 py-1 ${name === "Not in list — New Request" ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}>
-                          <BookOpen className="h-3 w-3" />
-                          {name}
-                          <button type="button" onClick={() => removeSubject(name)} className="ml-0.5 hover:text-destructive transition-colors" aria-label={`Remove ${name}`}>×</button>
-                        </span>
-                      ))}
+                      {selectedSubjects.map(id => {
+                        const isNew = id === "__NEW_REQUEST__";
+                        return (
+                          <span key={id} className={`inline-flex items-center gap-1.5 rounded-full text-xs font-medium px-2.5 py-1 ${isNew ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary"}`}>
+                            <BookOpen className="h-3 w-3" />
+                            {subjectLabelById(id)}
+                            <button type="button" onClick={() => removeSubject(id)} className="ml-0.5 hover:text-destructive transition-colors" aria-label="Remove">×</button>
+                          </span>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground">Select a class above to add it to the list.</div>

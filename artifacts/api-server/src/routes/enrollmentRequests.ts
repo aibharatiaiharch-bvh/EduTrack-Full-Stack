@@ -189,9 +189,11 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
         await updateCell(sheetId, `${SHEET_TABS.teachers}!${col}${existing._row}`, merged.join(", "));
       }
     } else {
-      const teacherTabId = await generateTabId("TCH", sheetId, SHEET_TABS.teachers);
+      // Use the tutor's Users-tab UserID as the Teachers-tab TeacherID too,
+      // so Subject.TeacherID === Teachers.TeacherID and the calendar's
+      // teacher-by-id lookup resolves the tutor's name on each class slot.
       await appendRow(sheetId, SHEET_TABS.teachers, [
-        teacherTabId, tutorUserId, tutorName, subjectsField, zoomLink, "", notesText || phone,
+        tutorUserId, tutorUserId, tutorName, subjectsField, zoomLink, "", notesText || phone,
       ]);
     }
   }
@@ -205,10 +207,33 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
   const studentName   = enrollRow["Student Name"] || extra.studentName || extra.applicantName || "";
   const parentEmail   = (extra.parentEmail || extra.applicantEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
   const parentPhone   = extra.parentPhone || extra.phone || "";
-  const classes       = enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "";
+  const rawClasses    = String(enrollRow["ClassID"] || extra.classesInterested || extra.subjects || "");
   const currentSchool = extra.currentSchool || "";
   const currentGrade  = extra.currentGrade || "";
   const now           = new Date().toISOString();
+
+  // Parse the picked items. New rows store SubjectIDs joined with ";"; legacy
+  // rows may store full labels joined with "," or "; ".
+  const picks = (rawClasses.includes(";") ? rawClasses.split(";") : rawClasses.split(","))
+    .map(s => s.trim()).filter(Boolean);
+
+  // Resolve picks against the Subjects tab. Anything that doesn't map to a
+  // SubjectID is treated as a "not in list" interest and only kept for the
+  // student's "Classes" column / welcome email — no enrollment row is created
+  // for it (the principal must add the class first).
+  const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
+  const resolved: { id: string; label: string }[] = [];
+  const interestOnly: string[] = [];
+  for (const p of picks) {
+    const sub = subjectRows.find((r: any) => r["SubjectID"] === p);
+    if (sub) {
+      const day = sub["Days"] ? ` (${sub["Days"]})` : "";
+      resolved.push({ id: sub["SubjectID"], label: `${sub["Name"]}${day}` });
+    } else {
+      interestOnly.push(p);
+    }
+  }
+  const classes = [...resolved.map(r => r.label), ...interestOnly].join("; ");
 
   // Activate student in Users tab
   if (studentUserId) {
@@ -266,7 +291,70 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
     }
   }
 
-  return { studentName, parentEmail, classes, extra };
+  return { studentName, parentEmail, classes, extra, parentUserId, resolved };
+}
+
+// Materialise one Enrollment row per resolved Subject so the calendar can
+// match by ClassID === SubjectID. The original request row is rewritten to
+// the first resolved SubjectID; any additional picks become new rows that
+// clone the request's Student/Parent/Type fields.
+async function materialiseStudentEnrollments(
+  sheetId: string, rowNum: number, enrollRow: any,
+  resolved: { id: string; label: string }[],
+  studentUserId: string, studentName: string, parentUserId: string,
+) {
+  if (!resolved.length) return;
+  const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
+  const teacherRows = await readTabRows(sheetId, SHEET_TABS.teachers);
+
+  // Rewrite the original row's ClassID + denormalised teacher fields to the first SubjectID
+  const first = resolved[0];
+  const firstSub = subjectRows.find((r: any) => r["SubjectID"] === first.id);
+  const firstTeacherId = (firstSub?.["TeacherID"] || "").trim();
+  const firstTeacher   = teacherRows.find((t: any) => t["TeacherID"] === firstTeacherId);
+  const classIdCol = colLetter("enrollments", "ClassID");
+  await updateCell(sheetId, `${SHEET_TABS.enrollments}!${classIdCol}${rowNum}`, first.id);
+  if (firstTeacherId) {
+    const tIdCol = colLetter("enrollments", "TeacherID");
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tIdCol}${rowNum}`, firstTeacherId);
+    if (firstTeacher) {
+      const tNameCol = colLetter("enrollments", "Teacher Name");
+      await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tNameCol}${rowNum}`, firstTeacher["Name"] || "");
+    }
+  }
+
+  // Append new rows for the remaining SubjectIDs
+  const now = new Date().toISOString();
+  const enrollmentSchema = [
+    "EnrollmentID","UserID","Student Name","ClassID","ParentID","Status","EnrolledAt",
+    "TeacherID","Teacher Name","TeacherEmail","Zoom Link","Class Type","ClassDate","ClassTime","Notes","Fee",
+  ];
+  for (let i = 1; i < resolved.length; i++) {
+    const r = resolved[i];
+    const sub = subjectRows.find((x: any) => x["SubjectID"] === r.id);
+    const tid = (sub?.["TeacherID"] || "").trim();
+    const teacher = teacherRows.find((t: any) => t["TeacherID"] === tid);
+    const enrollmentId = await generateTabId("ENR", sheetId, SHEET_TABS.enrollments);
+    const data: Record<string, string> = {
+      EnrollmentID: enrollmentId,
+      UserID: studentUserId,
+      "Student Name": studentName,
+      ClassID: r.id,
+      ParentID: parentUserId || "",
+      Status: "Active",
+      EnrolledAt: now,
+      TeacherID: tid,
+      "Teacher Name": teacher?.["Name"] || "",
+      TeacherEmail: "",
+      "Zoom Link": teacher?.["Zoom Link"] || "",
+      "Class Type": enrollRow["Class Type"] || sub?.["Type"] || "Group",
+      ClassDate: "",
+      ClassTime: sub?.["Time"] || "",
+      Notes: `Enrolled via request row ${rowNum}`,
+      Fee: enrollRow["Fee"] || "",
+    };
+    await appendRow(sheetId, SHEET_TABS.enrollments, enrollmentSchema.map(k => data[k] || ""));
+  }
 }
 
 // POST /api/enrollment-requests/:row/approve
@@ -319,7 +407,13 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
         });
       }
     } else {
-      const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
+      const { studentName, parentEmail, classes, parentUserId, resolved } = await activateStudent(sheetId, enrollRow, users, extra);
+      // Materialise one Enrollment row per Subject so the calendar shows this student on each class slot.
+      try {
+        await materialiseStudentEnrollments(sheetId, rowNum, enrollRow, resolved, enrollRow["UserID"] || "", studentName, parentUserId || "");
+      } catch (matErr: any) {
+        console.error("Materialise student enrollments failed:", matErr.message);
+      }
       if (isEmailConfigured()) {
         const studentEmail = extra.studentEmail || "";
         const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
