@@ -329,8 +329,7 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
 }
 
 function CalendarContent() {
-  const role = localStorage.getItem("edutrack_user_role") || "";
-  const canSeeStudents = role === "principal" || role === "developer" || role === "admin";
+  const canSeeStudents = true;
 
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["config"],
