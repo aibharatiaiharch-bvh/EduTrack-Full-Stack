@@ -1862,8 +1862,6 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function PrincipalDashboard() {
-  const signOut = useSignOut();
-  const name = localStorage.getItem("edutrack_user_name") || "Principal";
   const [tab, setTab] = useState<Tab>("requests");
 
   useEffect(() => {
@@ -1872,54 +1870,41 @@ export default function PrincipalDashboard() {
 
   return (
     <AppLayout>
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-semibold">EduTrack</span>
-          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Principal</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
-          <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-      </header>
-
-      <div className="border-b bg-card px-6">
-        <div className="flex gap-1 overflow-x-auto">
-          {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <main className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         <NotificationPrompt />
-        {tab === "requests"    && <RequestsTab />}
-        {tab === "students"    && <StudentsTab />}
-        {tab === "tutors"      && <TutorsTab />}
-        {tab === "classes"     && <ClassesTab />}
-        {tab === "attendance"  && <AttendanceTab />}
-        {tab === "analysis"    && <AnalysisTab />}
-        {tab === "users"       && <UsersTab />}
-        {tab === "upload"      && <BulkUploadCard />}
-      </main>
-    </div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>Calendar</Button>
+          <Button size="sm" variant={tab === "requests" ? "default" : "outline"} onClick={() => setTab("requests")}>Requests</Button>
+        </div>
+        <div className="border-b bg-card px-6 rounded-t-lg">
+          <div className="flex gap-1 overflow-x-auto">
+            {TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  tab === t.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.icon}{t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <main className="bg-background rounded-b-lg border border-t-0 px-6 py-8">
+          {tab === "classes"     && <ClassesTab />}
+          {tab === "requests"    && <RequestsTab />}
+          {tab === "students"    && <StudentsTab />}
+          {tab === "tutors"      && <TutorsTab />}
+          {tab === "attendance"  && <AttendanceTab />}
+          {tab === "analysis"    && <AnalysisTab />}
+          {tab === "users"       && <UsersTab />}
+          {tab === "upload"      && <BulkUploadCard />}
+        </main>
+      </div>
     </AppLayout>
   );
 }
