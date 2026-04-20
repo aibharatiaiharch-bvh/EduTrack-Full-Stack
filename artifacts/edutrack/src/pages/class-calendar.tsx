@@ -50,8 +50,8 @@ interface SubjectRow {
 
 function seatStyle(slot: Slot) {
   if (slot.type === "Individual") return "bg-emerald-50 text-emerald-900 border-emerald-200";
-  if (slot.enrolled >= slot.maxCapacity) return "bg-red-100 text-red-900 border-red-200";
-  if (slot.enrolled >= slot.maxCapacity * 0.7) return "bg-amber-100 text-amber-900 border-amber-200";
+  if (slot.enrolled >= 8) return "bg-red-100 text-red-900 border-red-200";
+  if (slot.enrolled >= 6) return "bg-amber-100 text-amber-900 border-amber-200";
   return "bg-emerald-50 text-emerald-900 border-emerald-200";
 }
 
