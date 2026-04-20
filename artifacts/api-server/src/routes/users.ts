@@ -3,6 +3,27 @@ import {
   getUncachableGoogleSheetClient, SHEET_TABS, colLetter,
   readTabRows, appendRow, updateCell, readUsersTab, touchUser,
 } from '../lib/googleSheets.js';
+import { sendEmail, isEmailConfigured } from '../lib/email.js';
+import { getSetting } from '../lib/settings.js';
+
+function buildDeactivationEmail(userName: string, principalName: string): string {
+  const appBase = (process.env.EDUTRACK_APP_URL || 'https://edutrack.app').replace(/\/$/, '');
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
+      <div style="background: #b91c1c; padding: 24px 32px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 22px;">Your EduTrack account has been deactivated</h1>
+      </div>
+      <div style="padding: 32px; background: #f9fafb; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
+        <p style="font-size: 16px;">Dear <strong>${userName}</strong>,</p>
+        <p>This is to let you know that your EduTrack account has been <strong>deactivated</strong>. You will no longer be able to sign in to <a href="${appBase}" style="color: #1d4ed8;">${appBase}</a>, and any upcoming class enrolments tied to your account have been removed.</p>
+        <p>If you believe this was done in error, or if you would like to be reactivated, please reply to this email and we will be in touch.</p>
+        <p style="margin-top: 32px;">Warm regards,<br/>
+        <strong>${principalName}</strong><br/>
+        <span style="color: #6b7280; font-size: 14px;">EduTrack</span></p>
+      </div>
+    </div>
+  `;
+}
 
 const router: IRouter = Router();
 
@@ -82,6 +103,21 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
     }
 
     res.json({ ok: true });
+
+    // Fire-and-forget deactivation email (after responding so the UI doesn't wait on SMTP)
+    if (isEmailConfigured() && user.email && user.email.includes('@')) {
+      const principalName  = getSetting('PRINCIPAL_NAME') || 'The Principal';
+      const principalEmail = getSetting('PRINCIPAL_EMAIL') || process.env.PRINCIPAL_EMAIL || '';
+      const ccRecipients = [principalEmail].filter(e => e && e.includes('@'));
+      sendEmail({
+        to: [user.email],
+        cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+        subject: 'Your EduTrack account has been deactivated',
+        html: buildDeactivationEmail(user.name || 'there', principalName),
+      }).catch((emailErr: any) => {
+        console.error('Deactivation email failed:', emailErr.message);
+      });
+    }
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
