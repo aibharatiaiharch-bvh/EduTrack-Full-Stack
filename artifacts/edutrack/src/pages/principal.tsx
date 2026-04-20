@@ -532,11 +532,15 @@ function RequestsTab() {
                                 className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background min-w-0"
                               >
                                 <option value="">Select a class…</option>
-                                {subjects.map(s => (
-                                  <option key={s["SubjectID"]} value={s["SubjectID"]}>
-                                    {s["Name"]} ({s["Type"]})
-                                  </option>
-                                ))}
+                                {subjects.map(s => {
+                                  const day = s["Days"] ? ` — ${s["Days"]}` : "";
+                                  const time = s["Time"] ? ` ${s["Time"]}` : "";
+                                  return (
+                                    <option key={s["SubjectID"]} value={s["SubjectID"]}>
+                                      {s["Name"]}{day}{time} ({s["Type"]})
+                                    </option>
+                                  );
+                                })}
                               </select>
                               <div className="flex gap-2 shrink-0">
                                 <Button size="sm" className="h-7 text-xs gap-1" disabled={!selectedClass || assignSaving} onClick={() => assignClass(row._row)}>
@@ -752,7 +756,18 @@ function StudentsTab() {
       if (Array.isArray(userData)) setStudents(userData);
       else setError("Could not load students.");
       if (Array.isArray(subjectData)) {
-        setSubjects(subjectData.map((s: any) => s["Name"] || s.Name).filter(Boolean));
+        // Build labels that include Day + Time so each (Class, Day) row is
+        // distinguishable in the Add-Student multiselect (the new schema has
+        // one Subject row per day).
+        const labels = subjectData.map((s: any) => {
+          const name = s["Name"] || s.Name;
+          if (!name) return "";
+          const day = s["Days"] ? ` — ${s["Days"]}` : "";
+          const time = s["Time"] ? ` ${s["Time"]}` : "";
+          const type = s["Type"] ? ` (${s["Type"]})` : "";
+          return `${name}${day}${time}${type}`;
+        }).filter(Boolean);
+        setSubjects(labels);
         setSubjectObjects(subjectData);
       }
       await loadAllStudentClasses();
