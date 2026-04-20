@@ -42,42 +42,6 @@ function isElevatedRole(role: string) {
 }
 
 function buildNavigation(role: string, features: ReturnType<typeof getFeatures>) {
-  if (role === "tutor") {
-    return [
-      {
-        label: "Pages",
-        items: [
-          { name: "Calendar", href: "/calendar", icon: CalendarDays },
-          { name: "Today's Classes", href: "/dashboard", icon: LayoutDashboard },
-        ],
-      },
-    ];
-  }
-
-  if (role === "student") {
-    return [
-      {
-        label: "Pages",
-        items: [
-          { name: "Calendar", href: "/calendar", icon: CalendarDays },
-          { name: "My Schedule", href: "/student", icon: LayoutDashboard },
-        ],
-      },
-    ];
-  }
-
-  if (role === "parent") {
-    return [
-      {
-        label: "Pages",
-        items: [
-          { name: "Calendar", href: "/calendar", icon: CalendarDays },
-          { name: "My Classes", href: "/parent", icon: BookOpen },
-        ],
-      },
-    ];
-  }
-
   if (role === "principal") {
     return [
       {
@@ -96,20 +60,31 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
     ];
   }
 
+  if (role === "developer" || role === "admin") {
+    return [
+      {
+        label: "Pages",
+        items: [
+          { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Account",
+        items: [
+          { name: "Settings", href: "/settings", icon: Settings },
+          { name: "Housekeeping", href: "/housekeeping", icon: Settings },
+          { name: "Developer Tools", href: "/admin", icon: FlaskConical },
+        ],
+      },
+    ];
+  }
+
   return [
-    {
-      label: "Pages",
-      items: [
-        { name: "Calendar", href: "/calendar", icon: CalendarDays },
-        { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
-      ],
-    },
     {
       label: "Account",
       items: [
         { name: "Settings", href: "/settings", icon: Settings },
-        { name: "Housekeeping", href: "/housekeeping", icon: Settings },
-        { name: "Developer Tools", href: "/admin", icon: FlaskConical },
       ],
     },
   ];
@@ -205,23 +180,29 @@ function Breadcrumb() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const role = getStoredRole();
+  const showSidebar = role === "principal" || role === "developer" || role === "admin";
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex bg-background w-full">
-        <AppSidebar />
+        {showSidebar ? <AppSidebar /> : null}
         <main className="flex-1 flex flex-col min-w-0 overflow-auto">
           <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background sticky top-0 z-10">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="md:hidden" />
+              {showSidebar && <SidebarTrigger className="md:hidden" />}
               <span className="text-sm font-semibold text-foreground md:hidden">EduTrack</span>
-              <div className="hidden md:flex">
-                <Breadcrumb />
-              </div>
+              {showSidebar && (
+                <div className="hidden md:flex">
+                  <Breadcrumb />
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex md:hidden">
-                <Breadcrumb />
-              </div>
+              {showSidebar && (
+                <div className="flex md:hidden">
+                  <Breadcrumb />
+                </div>
+              )}
               <button
                 onClick={() => signOut({ redirectUrl: `${BASE}/sign-in` })}
                 className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] text-right hover:text-foreground transition-colors"
