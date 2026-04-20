@@ -19,12 +19,14 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
   const appBase = (process.env.EDUTRACK_APP_URL || "https://edutrack.app").replace(/\/$/, "");
   const loginLink = `${appBase}/sign-in`;
 
-  // Render the comma-separated class list as a real bulleted list so each
-  // approved class is easy to read on its own line.
-  const classItems = (classes || "")
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean);
+  // Render the class list as a real bulleted list so each approved class is
+  // easy to read on its own line. We split on ";" first because individual
+  // labels can themselves contain commas (e.g. teacher names like "Smith, J."
+  // or time ranges) — splitting on "," would inflate one pick into several.
+  // Fall back to "," only when no ";" is present, so legacy rows still render.
+  const raw = classes || "";
+  const parts = raw.includes(";") ? raw.split(";") : raw.split(",");
+  const classItems = parts.map(s => s.trim()).filter(Boolean);
   const classBlock = classItems.length
     ? `
         <p style="margin-bottom: 8px;">You have been approved for the following:</p>
@@ -139,9 +141,11 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
   const zoomLink    = extra.zoomLink || "";
   const phone       = extra.phone || extra.parentPhone || "";
   const notesText   = extra.extra || "";
-  // Selected per-day Subject rows (comma-separated SubjectIDs from the form)
-  const selectedIds: string[] = String(enrollRow["ClassID"] || extra.subjects || "")
-    .split(",").map(s => s.trim()).filter(Boolean);
+  // Selected per-day Subject rows (";"-separated SubjectIDs from the form;
+  // fall back to "," for legacy rows).
+  const rawSel = String(enrollRow["ClassID"] || extra.subjects || "");
+  const selectedIds: string[] = (rawSel.includes(";") ? rawSel.split(";") : rawSel.split(","))
+    .map(s => s.trim()).filter(Boolean);
 
   // Activate tutor in Users tab
   if (tutorUserId) {

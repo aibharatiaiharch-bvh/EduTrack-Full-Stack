@@ -84,12 +84,12 @@ export default function EnrollPage() {
     if (!id || tutorSelectedSubjects.includes(id)) return;
     const next = [...tutorSelectedSubjects, id];
     setTutorSelectedSubjects(next);
-    setTutor("subjects", next.join(", "));
+    setTutor("subjects", next.join("; "));
   }
   function removeTutorSubject(id: string) {
     const next = tutorSelectedSubjects.filter(s => s !== id);
     setTutorSelectedSubjects(next);
-    setTutor("subjects", next.join(", "));
+    setTutor("subjects", next.join("; "));
   }
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -118,13 +118,15 @@ export default function EnrollPage() {
     if (!name || selectedSubjects.includes(name)) return;
     const next = [...selectedSubjects, name];
     setSelectedSubjects(next);
-    setStudent("classesInterested", next.join(", "));
+    // Join with ";" — labels themselves can contain commas (e.g. teacher
+    // names, time ranges) so a comma separator splits one pick into many.
+    setStudent("classesInterested", next.join("; "));
   }
 
   function removeSubject(name: string) {
     const next = selectedSubjects.filter(s => s !== name);
     setSelectedSubjects(next);
-    setStudent("classesInterested", next.join(", "));
+    setStudent("classesInterested", next.join("; "));
   }
 
   async function handleSubmit(e: React.FormEvent) {
