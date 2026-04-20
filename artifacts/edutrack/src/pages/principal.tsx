@@ -795,10 +795,6 @@ function StudentsTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
-  const [joiningStudent,  setJoiningStudent]  = useState<string | null>(null);
-  const [joinSubjectId,   setJoinSubjectId]   = useState("");
-  const [joinSaving,      setJoinSaving]      = useState(false);
-  const [joinError,       setJoinError]       = useState("");
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -812,31 +808,6 @@ function StudentsTab() {
         setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
       }
     } catch { /* ignore */ }
-  }
-
-  async function joinClass(userId: string) {
-    if (!joinSubjectId) return;
-    setJoinSaving(true); setJoinError("");
-    try {
-      const sub = subjectObjects.find(s => s["SubjectID"] === joinSubjectId);
-      const data = await apiFetch("/enrollments/join", {
-        method: "POST",
-        body: JSON.stringify({
-          studentUserId: userId,
-          subjectId: joinSubjectId,
-          subjectName: sub?.["Name"] || "",
-        }),
-      });
-      if (data.ok || data.enrollmentId) {
-        setJoiningStudent(null);
-        setJoinSubjectId("");
-        await loadStudentClasses(userId);
-        if (data.overCapacity) setJoinError("Added — note: class is over maximum capacity.");
-      } else {
-        setJoinError(data.error || "Failed to add to class.");
-      }
-    } catch { setJoinError("Connection error."); }
-    setJoinSaving(false);
   }
 
   async function load() {
@@ -1007,17 +978,7 @@ function StudentsTab() {
                             <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell truncate">{s.parentEmail || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground text-xs truncate">{classes}</td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
-                            <td className="px-3 py-2.5 text-right">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={!isActive}
-                                onClick={() => { setJoiningStudent(s.userId); setJoinSubjectId(""); setJoinError(""); }}
-                                className={`h-7 text-xs ${isActive ? "text-primary border-primary/30 hover:bg-primary/5" : "text-muted-foreground opacity-60 cursor-not-allowed"}`}
-                              >
-                                {isActive ? "Add to Class" : "Inactive"}
-                              </Button>
-                            </td>
+                            <td className="px-3 py-2.5" />
                           </tr>
                         </Fragment>
                       );
@@ -1027,39 +988,6 @@ function StudentsTab() {
               </div>
             )}
             <PaginationBar page={safePage} totalPages={totalPages} onPage={setPage} />
-            {joiningStudent && (
-              <Card className="mt-3">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm">Add student to class</CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                    <select
-                      value={joinSubjectId}
-                      onChange={e => setJoinSubjectId(e.target.value)}
-                      className="flex-1 border rounded-md px-2 py-1.5 text-sm bg-background"
-                      aria-label="Select class"
-                    >
-                      <option value="">Select a class…</option>
-                      {subjectObjects.map(sub => (
-                        <option key={sub["SubjectID"]} value={sub["SubjectID"]}>
-                          {sub["Name"]} ({sub["Type"] || "Group"})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="flex gap-1.5 shrink-0">
-                      <Button size="sm" className="h-8 text-xs" disabled={!joinSubjectId || joinSaving} onClick={() => joinClass(joiningStudent)}>
-                        {joinSaving ? "Adding…" : "Confirm"}
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => { setJoiningStudent(null); setJoinSubjectId(""); setJoinError(""); }}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                  {joinError && <p className="text-xs text-red-500 mt-2">{joinError}</p>}
-                </CardContent>
-              </Card>
-            )}
           </>
         );
       })()}
