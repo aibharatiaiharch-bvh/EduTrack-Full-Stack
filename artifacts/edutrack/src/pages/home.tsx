@@ -27,7 +27,7 @@ export default function Home() {
           </p>
         </div>
         <Button className="w-full" size="lg" onClick={goToPortal}>
-          {storedRole ? "Go to My Portal" : "Sign In"}
+          {storedRole ? "Go to Calendar" : "Sign In"}
         </Button>
       </div>
     </div>

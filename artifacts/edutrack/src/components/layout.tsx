@@ -1,6 +1,6 @@
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, BookOpen, Settings, LogOut, ShieldCheck, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
+import { LayoutDashboard, BookOpen, Settings, LogOut, FlaskConical, CalendarDays, Home, ChevronRight, GraduationCap } from "lucide-react";
 import { useUser, useClerk } from "@clerk/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ function getStoredRole(): string {
 }
 
 const ROLE_HOME: Record<string, string> = {
-  tutor:     "/dashboard",
-  student:   "/student",
-  parent:    "/parent",
+  tutor:     "/calendar",
+  student:   "/calendar",
+  parent:    "/calendar",
   principal: "/calendar",
   developer: "/admin",
   admin:     "/admin",
@@ -45,21 +45,10 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
   if (role === "tutor") {
     return [
       {
-        label: "My Portal",
+        label: "Pages",
         items: [
+          { name: "Calendar", href: "/calendar", icon: CalendarDays },
           { name: "Today's Classes", href: "/dashboard", icon: LayoutDashboard },
-        ],
-      },
-      {
-        label: "Academics",
-        items: [
-          { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
-        ],
-      },
-      {
-        label: "Account",
-        items: [
-          { name: "Settings", href: "/settings", icon: Settings },
         ],
       },
     ];
@@ -68,16 +57,10 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
   if (role === "student") {
     return [
       {
-        label: "My Portal",
+        label: "Pages",
         items: [
-          { name: "My Schedule", href: "/student", icon: CalendarDays },
-          { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
-        ],
-      },
-      {
-        label: "Account",
-        items: [
-          { name: "Settings", href: "/settings", icon: Settings },
+          { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "My Schedule", href: "/student", icon: LayoutDashboard },
         ],
       },
     ];
@@ -86,10 +69,22 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
   if (role === "parent") {
     return [
       {
-        label: "My Portal",
+        label: "Pages",
         items: [
+          { name: "Calendar", href: "/calendar", icon: CalendarDays },
           { name: "My Classes", href: "/parent", icon: BookOpen },
-          { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
+        ],
+      },
+    ];
+  }
+
+  if (role === "principal") {
+    return [
+      {
+        label: "Pages",
+        items: [
+          { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
         ],
       },
       {
@@ -103,21 +98,18 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
 
   return [
     {
-      label: "Academics",
+      label: "Pages",
       items: [
-        { name: "Class Calendar", href: "/calendar", icon: CalendarDays },
+        { name: "Calendar", href: "/calendar", icon: CalendarDays },
+        { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
       ],
     },
     {
       label: "Account",
       items: [
-        ...(isElevatedRole(role)
-          ? [
-              { name: "Settings", href: "/settings", icon: Settings },
-              { name: "Housekeeping", href: "/housekeeping", icon: Settings },
-              { name: "Developer Tools", href: "/admin", icon: FlaskConical },
-            ]
-          : [{ name: "Settings", href: "/settings", icon: Settings }]),
+        { name: "Settings", href: "/settings", icon: Settings },
+        { name: "Housekeeping", href: "/housekeeping", icon: Settings },
+        { name: "Developer Tools", href: "/admin", icon: FlaskConical },
       ],
     },
   ];

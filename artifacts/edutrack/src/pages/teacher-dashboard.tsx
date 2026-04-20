@@ -291,7 +291,7 @@ export default function TeacherDashboard() {
             <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white font-bold text-sm">E</div>
             <span className="font-semibold text-foreground">EduTrack</span>
             <span className="text-muted-foreground/60">·</span>
-            <span className="text-sm text-muted-foreground">Tutor Portal</span>
+            <span className="text-sm text-muted-foreground">Tutor</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
