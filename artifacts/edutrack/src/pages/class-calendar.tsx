@@ -96,8 +96,12 @@ function SlotBox({ slot, canSeeStudents }: { slot: Slot; canSeeStudents: boolean
 
   return (
     <Popover>
-      <PopoverTrigger asChild>{box}</PopoverTrigger>
-      <PopoverContent className="w-56 p-3" side="top">
+      <PopoverTrigger asChild>
+        <button type="button" className="w-full text-left">
+          {box}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-3 pointer-events-auto" side="top" align="start">
         <p className="text-xs font-semibold mb-2">
           {slot.className} — {slot.students.length} enrolled
         </p>
