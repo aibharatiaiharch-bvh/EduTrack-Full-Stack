@@ -14,6 +14,7 @@ function tryParseJson(val: string): Record<string, string> {
 }
 
 function buildWelcomeEmail(studentName: string, classes: string, principalName: string): string {
+  const enrollLink = process.env.EDUTRACK_ENROLL_URL || "https://edutrack.app/enroll";
   const classLine = classes
     ? `<p>You have expressed interest in: <strong>${classes}</strong>. Our team will be in touch shortly to confirm class placement and scheduling details.</p>`
     : `<p>Our team will be in touch shortly to confirm class placement and scheduling details.</p>`;
@@ -25,8 +26,10 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
       </div>
       <div style="padding: 32px; background: #f9fafb; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb;">
         <p style="font-size: 16px;">Dear Parent/Guardian of <strong>${studentName}</strong>,</p>
-        <p>We are delighted to welcome <strong>${studentName}</strong> to our tutoring program. Your enrolment request has been reviewed and <strong>approved</strong>.</p>
+        <p>We are delighted to welcome <strong>${studentName}</strong> to EduTrack. Your enrolment request has been reviewed and <strong>approved</strong>.</p>
+        <p>This email confirms that your account has been created and your class request is now active in our system.</p>
         ${classLine}
+        <p>You can review the enrolment form here: <a href="${enrollLink}" style="color: #1d4ed8; text-decoration: underline;">${enrollLink}</a></p>
         <p>If you have any questions in the meantime, please don't hesitate to reply to this email — we're happy to help.</p>
         <p style="margin-top: 32px;">Warm regards,<br/>
         <strong>${principalName}</strong><br/>
@@ -215,12 +218,13 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
       const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
       const principalEmail = process.env.PRINCIPAL_EMAIL || "";
       const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
+      const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
       const uniqueRecipients = [...new Set(recipients)];
       if (uniqueRecipients.length > 0) {
         try {
           await sendEmail({
             to: uniqueRecipients,
-            cc: principalEmail || undefined,
+            cc: ccRecipients.length > 0 ? ccRecipients : undefined,
             subject: `Welcome to EduTrack — ${studentName} is approved!`,
             html: buildWelcomeEmail(studentName, classes, principalName),
           });
