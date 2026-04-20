@@ -48,7 +48,6 @@ type DashboardData = {
 
 const ATTENDANCE_OPTIONS = [
   { value: "Present", icon: <CheckCircle2 className="h-3.5 w-3.5" />, color: "bg-green-100 text-green-700 border-green-200 hover:bg-green-200" },
-  { value: "Late",    icon: <Clock3       className="h-3.5 w-3.5" />, color: "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200" },
   { value: "Absent",  icon: <XCircle      className="h-3.5 w-3.5" />, color: "bg-red-100 text-red-700 border-red-200 hover:bg-red-200" },
 ];
 

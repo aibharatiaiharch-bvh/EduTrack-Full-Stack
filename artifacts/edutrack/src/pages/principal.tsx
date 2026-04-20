@@ -1326,7 +1326,6 @@ function AttendanceTab() {
   const tutors:   any[] = data?.tutors   ?? [];
 
   const totalPresent  = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0);
-  const totalLate     = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.late, 0), 0);
   const totalAbsent   = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0);
   const totalAttended = students.reduce((n: number, s: any) => n + s.totalAttended, 0);
 
@@ -1365,9 +1364,8 @@ function AttendanceTab() {
                 <tr>
                   <th className="text-left font-medium px-3 py-2.5 w-6" />
                   <th className="text-left font-medium px-3 py-2.5 w-32">Student</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-green-700 w-20 hidden sm:table-cell">Present</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-amber-700 w-16 hidden md:table-cell">Late</th>
-                  <th className="text-center font-medium px-3 py-2.5 text-red-700 w-16 hidden md:table-cell">Absent</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-green-700 w-20">Present</th>
+                  <th className="text-center font-medium px-3 py-2.5 text-red-700 w-20">Absent</th>
                   <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-28">Sessions Attended</th>
                 </tr>
               </thead>
@@ -1375,7 +1373,6 @@ function AttendanceTab() {
                 {students.map((s: any) => {
                   const isOpen = expandedStudents.has(s.studentId);
                   const sPresent = s.classes.reduce((n: number, c: any) => n + c.present, 0);
-                  const sLate   = s.classes.reduce((n: number, c: any) => n + c.late, 0);
                   const sAbsent = s.classes.reduce((n: number, c: any) => n + c.absent, 0);
                   return (
                     <Fragment key={s.studentId}>
@@ -1390,9 +1387,8 @@ function AttendanceTab() {
                             : <ChevronDown className="w-3.5 h-3.5 inline" />}
                         </td>
                         <td className="px-3 py-2.5 font-semibold">{s.studentName}</td>
-                        <td className="px-3 py-2.5 text-center text-green-700 font-medium hidden sm:table-cell">{sPresent}</td>
-                        <td className="px-3 py-2.5 text-center text-amber-700 hidden md:table-cell">{sLate}</td>
-                        <td className="px-3 py-2.5 text-center text-red-700 hidden md:table-cell">{sAbsent}</td>
+                        <td className="px-3 py-2.5 text-center text-green-700 font-medium">{sPresent}</td>
+                        <td className="px-3 py-2.5 text-center text-red-700">{sAbsent}</td>
                         <td className="px-3 py-2.5 text-center font-bold bg-primary/5">
                           {s.totalAttended}
                           <span className="text-xs font-normal text-muted-foreground"> / {s.classes.reduce((n: number, c: any) => n + c.totalSessions, 0)}</span>
@@ -1406,9 +1402,8 @@ function AttendanceTab() {
                             <span className="font-medium text-foreground">{c.className}</span>
                             <span className="ml-1.5 text-muted-foreground hidden sm:inline">— {c.teacherName}</span>
                           </td>
-                          <td className="px-3 py-1.5 text-center text-green-700 hidden sm:table-cell">{c.present}</td>
-                          <td className="px-3 py-1.5 text-center text-amber-700 hidden md:table-cell">{c.late}</td>
-                          <td className="px-3 py-1.5 text-center text-red-700 hidden md:table-cell">{c.absent}</td>
+                          <td className="px-3 py-1.5 text-center text-green-700">{c.present}</td>
+                          <td className="px-3 py-1.5 text-center text-red-700">{c.absent}</td>
                           <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">
                             {c.attended}
                             <span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
@@ -1424,9 +1419,8 @@ function AttendanceTab() {
                 <tr>
                   <td className="px-3 py-2" />
                   <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
-                  <td className="px-3 py-2 text-center font-semibold text-green-700 hidden sm:table-cell">{totalPresent}</td>
-                  <td className="px-3 py-2 text-center font-semibold text-amber-700 hidden md:table-cell">{totalLate}</td>
-                  <td className="px-3 py-2 text-center font-semibold text-red-700 hidden md:table-cell">{totalAbsent}</td>
+                  <td className="px-3 py-2 text-center font-semibold text-green-700">{totalPresent}</td>
+                  <td className="px-3 py-2 text-center font-semibold text-red-700">{totalAbsent}</td>
                   <td className="px-3 py-2 text-center font-bold bg-primary/10">{totalAttended}</td>
                 </tr>
               </tfoot>

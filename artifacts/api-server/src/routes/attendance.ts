@@ -167,8 +167,8 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
   if (!classId || !sessionDate || !userId || !status) {
     res.status(400).json({ error: 'classId, sessionDate, userId, and status are required' }); return;
   }
-  if (!['Present', 'Absent', 'Late'].includes(status)) {
-    res.status(400).json({ error: 'status must be Present, Absent, or Late' }); return;
+  if (!['Present', 'Absent'].includes(status)) {
+    res.status(400).json({ error: 'status must be Present or Absent' }); return;
   }
 
   try {
