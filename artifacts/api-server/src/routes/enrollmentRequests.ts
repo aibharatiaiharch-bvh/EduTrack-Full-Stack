@@ -275,14 +275,17 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
 
   // Ensure parent user in Users tab
   let parentUserId = "";
+  let parentDisplayName = "Parent";
   if (parentEmail) {
     const existingParent = users.find((u: any) => u.email === parentEmail && u.role === "parent");
     if (existingParent) {
       parentUserId = existingParent.userId;
+      parentDisplayName = existingParent.name || "Parent";
     } else {
       parentUserId = await generateUserId("parent", sheetId);
+      parentDisplayName = studentName ? `${studentName}'s Parent` : "Parent";
       await appendRow(sheetId, SHEET_TABS.users, [
-        parentUserId, parentEmail, "parent", "Parent", "Active", now, now,
+        parentUserId, parentEmail, "parent", parentDisplayName, "Active", now, now,
       ]);
     }
   }
@@ -300,12 +303,12 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
     } else {
       const parentTabId = await generateTabId("PAR", sheetId, SHEET_TABS.parents);
       await appendRow(sheetId, SHEET_TABS.parents, [
-        parentTabId, parentUserId, "Parent", studentName, parentPhone, "",
+        parentTabId, parentUserId, parentDisplayName, studentName, parentPhone, "",
       ]);
     }
   }
 
-  return { studentName, parentEmail, classes, extra, parentUserId, resolved };
+  return { studentName, parentEmail, classes, extra, parentUserId, parentDisplayName, resolved };
 }
 
 // Materialise one Enrollment row per resolved Subject so the calendar can
@@ -315,7 +318,7 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
 async function materialiseStudentEnrollments(
   sheetId: string, rowNum: number, enrollRow: any,
   resolved: { id: string; label: string }[],
-  studentUserId: string, studentName: string, parentUserId: string,
+  studentUserId: string, studentName: string, parentDisplayName: string,
 ) {
   if (!resolved.length) return;
   const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
@@ -354,7 +357,7 @@ async function materialiseStudentEnrollments(
       UserID: studentUserId,
       "Student Name": studentName,
       ClassID: r.id,
-      ParentID: parentUserId || "",
+      ParentID: parentDisplayName || "",
       Status: "Active",
       EnrolledAt: now,
       TeacherID: tid,
@@ -421,10 +424,10 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
         });
       }
     } else {
-      const { studentName, parentEmail, classes, parentUserId, resolved } = await activateStudent(sheetId, enrollRow, users, extra);
+      const { studentName, parentEmail, classes, parentDisplayName, resolved } = await activateStudent(sheetId, enrollRow, users, extra);
       // Materialise one Enrollment row per Subject so the calendar shows this student on each class slot.
       try {
-        await materialiseStudentEnrollments(sheetId, rowNum, enrollRow, resolved, enrollRow["UserID"] || "", studentName, parentUserId || "");
+        await materialiseStudentEnrollments(sheetId, rowNum, enrollRow, resolved, enrollRow["UserID"] || "", studentName, parentDisplayName || "");
       } catch (matErr: any) {
         console.error("Materialise student enrollments failed:", matErr.message);
       }
