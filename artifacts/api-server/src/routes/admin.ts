@@ -65,6 +65,9 @@ router.post('/admin/migrate-columns', async (req, res): Promise<void> => {
       { range: `${SHEET_TABS.subjects}!J1`, value: 'Teacher Name' },
       // Parents tab: col D (index 3) rename "Children" → "Children Names"
       { range: `${SHEET_TABS.parents}!D1`, value: 'Children Names' },
+      // Attendance tab: col J (index 9) = "Student Name", col K (index 10) = "Teacher Name"
+      { range: `${SHEET_TABS.attendance}!J1`, value: 'Student Name' },
+      { range: `${SHEET_TABS.attendance}!K1`, value: 'Teacher Name' },
     ];
     for (const w of writes) {
       await sheets.spreadsheets.values.update({

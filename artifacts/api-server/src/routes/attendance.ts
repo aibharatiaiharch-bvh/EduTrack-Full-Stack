@@ -196,7 +196,19 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
     const TAB = SHEET_TABS.attendance;
     const HEADERS = SHEET_HEADERS.attendance;
 
-    const existing = await readAttendanceRows(sheetId);
+    // Resolve student name and teacher name upfront
+    const [users, subjectRows, existing] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.subjects),
+      readAttendanceRows(sheetId),
+    ]);
+    const userMap = new Map(users.map(u => [u.userId, u]));
+    const subject = subjectRows.find(s => s['SubjectID'] === classId);
+    const studentName = userMap.get(userId)?.name || '';
+    const teacherId   = subject?.['TeacherID'] || '';
+    // Prefer stored Teacher Name column; fall back to Users tab lookup
+    const teacherName = subject?.['Teacher Name'] || userMap.get(teacherId)?.name || '';
+
     const found = existing.find(
       r => r['ClassID'] === classId && r['SessionDate'] === sessionDate && r['UserID'] === userId
     );
@@ -204,11 +216,13 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
 
     if (found) {
       const updatedValues = HEADERS.map(h => {
-        if (h === 'Status')      return status;
-        if (h === 'Notes')       return notes || found['Notes'] || '';
-        if (h === 'MarkedBy')    return markedBy || found['MarkedBy'] || '';
-        if (h === 'MarkedAt')    return now;
-        if (h === 'Within24Hrs') return within24HrsValue;
+        if (h === 'Status')        return status;
+        if (h === 'Notes')         return notes || found['Notes'] || '';
+        if (h === 'MarkedBy')      return markedBy || found['MarkedBy'] || '';
+        if (h === 'MarkedAt')      return now;
+        if (h === 'Within24Hrs')   return within24HrsValue;
+        if (h === 'Student Name')  return studentName || found['Student Name'] || '';
+        if (h === 'Teacher Name')  return teacherName || found['Teacher Name'] || '';
         return found[h] || '';
       });
       const colEnd = String.fromCharCode(64 + HEADERS.length);
@@ -222,15 +236,17 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
     } else {
       const attendanceId = `ATT-${Date.now()}`;
       const rowValues = HEADERS.map(h => {
-        if (h === 'AttendanceID') return attendanceId;
-        if (h === 'ClassID')      return classId;
-        if (h === 'UserID')       return userId;
-        if (h === 'SessionDate')  return sessionDate;
-        if (h === 'Status')       return status;
-        if (h === 'Notes')        return notes || '';
-        if (h === 'MarkedBy')     return markedBy || '';
-        if (h === 'MarkedAt')     return now;
-        if (h === 'Within24Hrs')  return within24HrsValue;
+        if (h === 'AttendanceID')  return attendanceId;
+        if (h === 'ClassID')       return classId;
+        if (h === 'UserID')        return userId;
+        if (h === 'SessionDate')   return sessionDate;
+        if (h === 'Status')        return status;
+        if (h === 'Notes')         return notes || '';
+        if (h === 'MarkedBy')      return markedBy || '';
+        if (h === 'MarkedAt')      return now;
+        if (h === 'Within24Hrs')   return within24HrsValue;
+        if (h === 'Student Name')  return studentName;
+        if (h === 'Teacher Name')  return teacherName;
         return '';
       });
       await sheets.spreadsheets.values.append({
