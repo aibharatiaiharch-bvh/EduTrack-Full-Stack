@@ -110,6 +110,73 @@ async function getEnrollRow(sheetId: string, rowNum: number) {
   return { enrollRow, users, extra };
 }
 
+// Helper: activate tutor — flip Users-tab status to Active, ensure Teachers-tab
+// row, and stamp the tutor's UserID onto each per-day Subject row they listed
+// (only if that row currently has no teacher assigned, so we never clobber an
+// existing assignment).
+async function activateTutor(sheetId: string, enrollRow: any, users: any[], extra: any) {
+  const tutorUserId = enrollRow["UserID"] || "";
+  const tutorName   = enrollRow["Student Name"] || extra.applicantName || extra.requesterName || "";
+  const tutorEmail  = (extra.applicantEmail || extra.requesterEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
+  const zoomLink    = extra.zoomLink || "";
+  const phone       = extra.phone || extra.parentPhone || "";
+  const notesText   = extra.extra || "";
+  // Selected per-day Subject rows (comma-separated SubjectIDs from the form)
+  const selectedIds: string[] = String(enrollRow["ClassID"] || extra.subjects || "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+
+  // Activate tutor in Users tab
+  if (tutorUserId) {
+    const tutorUser = users.find((u: any) => u.userId === tutorUserId);
+    if (tutorUser && (tutorUser as any)._row) {
+      const col = colLetter("users", "Status");
+      await updateCell(sheetId, `${SHEET_TABS.users}!${col}${(tutorUser as any)._row}`, "Active");
+    }
+  }
+
+  // Resolve human labels for the chosen Subject rows + assign teacher to each
+  let subjectLabels: string[] = [];
+  if (selectedIds.length) {
+    const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
+    const teacherCol  = colLetter("subjects", "TeacherID");
+    for (const sid of selectedIds) {
+      const sub = subjectRows.find((r: any) => r["SubjectID"] === sid);
+      if (!sub) { subjectLabels.push(sid); continue; }
+      const day = sub["Days"] ? ` (${sub["Days"]})` : "";
+      subjectLabels.push(`${sub["Name"]}${day}`);
+      // Only assign if the Subject row currently has no teacher, so we never
+      // overwrite an existing assignment.
+      const currentTeacher = (sub["TeacherID"] || "").trim();
+      if (!currentTeacher && tutorUserId) {
+        await updateCell(sheetId, `${SHEET_TABS.subjects}!${teacherCol}${sub._row}`, tutorUserId);
+      }
+    }
+  }
+  const subjectsField = subjectLabels.join(", ");
+
+  // Ensure Teachers-tab row
+  if (tutorUserId && tutorName) {
+    const teacherRows = await readTabRows(sheetId, SHEET_TABS.teachers);
+    const existing = teacherRows.find((r: any) => r["UserID"] === tutorUserId);
+    if (existing) {
+      // Append any new subject labels to the existing Subjects column.
+      const current = (existing["Subjects"] || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+      const merged = Array.from(new Set([...current, ...subjectLabels]));
+      if (merged.length !== current.length) {
+        const col = colLetter("teachers", "Subjects");
+        await updateCell(sheetId, `${SHEET_TABS.teachers}!${col}${existing._row}`, merged.join(", "));
+      }
+    } else {
+      const teacherTabId = await generateTabId("TCH", sheetId, SHEET_TABS.teachers);
+      await appendRow(sheetId, SHEET_TABS.teachers, [
+        teacherTabId, tutorUserId, tutorName, subjectsField, zoomLink, "", notesText || phone,
+      ]);
+    }
+  }
+
+  return { tutorName, tutorEmail, subjectsField };
+}
+
 // Helper: activate student, create parent user + extension rows
 async function activateStudent(sheetId: string, enrollRow: any, users: any[], extra: any) {
   const studentUserId = enrollRow["UserID"] || "";
@@ -206,29 +273,46 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
     const col = colLetter("enrollments", "Status");
     await updateCell(sheetId, `${SHEET_TABS.enrollments}!${col}${rowNum}`, "Active");
 
-    // Read enrollment row then activate student + create parent records
+    // Read enrollment row then activate based on Class Type
     const { enrollRow, users, extra } = await getEnrollRow(sheetId, rowNum);
     if (!enrollRow) { res.status(404).json({ error: "Enrollment row not found" }); return; }
 
     res.json({ ok: true, action: "paid" });
 
-    const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
-    if (isEmailConfigured()) {
-      const studentEmail   = extra.studentEmail || "";
-      const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
-      const principalEmail = getSetting('PRINCIPAL_EMAIL') || process.env.PRINCIPAL_EMAIL || "";
-      const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
-      const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
-      const uniqueRecipients = [...new Set(recipients)];
-      if (uniqueRecipients.length > 0) {
+    const classType = (enrollRow["Class Type"] || "").toLowerCase().trim();
+    const principalName  = getSetting('PRINCIPAL_NAME') || "The Principal";
+    const principalEmail = getSetting('PRINCIPAL_EMAIL') || process.env.PRINCIPAL_EMAIL || "";
+
+    if (classType === "tutor") {
+      const { tutorName, tutorEmail, subjectsField } = await activateTutor(sheetId, enrollRow, users, extra);
+      if (isEmailConfigured() && tutorEmail.includes("@")) {
+        const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
         sendEmail({
-          to: uniqueRecipients,
+          to: [tutorEmail],
           cc: ccRecipients.length > 0 ? ccRecipients : undefined,
-          subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
-          html: buildWelcomeEmail(studentName, classes, principalName),
+          subject: `Welcome to EduTrack — your tutor account is active`,
+          html: buildWelcomeEmail(tutorName, subjectsField, principalName),
         }).catch((emailErr: any) => {
           console.error("Welcome email failed:", emailErr.message);
         });
+      }
+    } else {
+      const { studentName, parentEmail, classes } = await activateStudent(sheetId, enrollRow, users, extra);
+      if (isEmailConfigured()) {
+        const studentEmail = extra.studentEmail || "";
+        const recipients = [parentEmail, studentEmail].filter(e => e && e.includes("@"));
+        const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
+        const uniqueRecipients = [...new Set(recipients)];
+        if (uniqueRecipients.length > 0) {
+          sendEmail({
+            to: uniqueRecipients,
+            cc: ccRecipients.length > 0 ? ccRecipients : undefined,
+            subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
+            html: buildWelcomeEmail(studentName, classes, principalName),
+          }).catch((emailErr: any) => {
+            console.error("Welcome email failed:", emailErr.message);
+          });
+        }
       }
     }
   } catch (err: any) {

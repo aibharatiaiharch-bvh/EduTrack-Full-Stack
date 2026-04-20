@@ -68,6 +68,7 @@ export default function EnrollPage() {
   });
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [tutorSelectedSubjects, setTutorSelectedSubjects] = useState<string[]>([]);
   const [tutorForm, setTutorForm] = useState({
     applicantName: "",
     applicantEmail: "",
@@ -78,6 +79,18 @@ export default function EnrollPage() {
     subjects: "",
     notes: "",
   });
+
+  function addTutorSubject(id: string) {
+    if (!id || tutorSelectedSubjects.includes(id)) return;
+    const next = [...tutorSelectedSubjects, id];
+    setTutorSelectedSubjects(next);
+    setTutor("subjects", next.join(", "));
+  }
+  function removeTutorSubject(id: string) {
+    const next = tutorSelectedSubjects.filter(s => s !== id);
+    setTutorSelectedSubjects(next);
+    setTutor("subjects", next.join(", "));
+  }
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -448,8 +461,30 @@ export default function EnrollPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="subjects">Subjects / Areas You Teach <span className="text-destructive">*</span></Label>
-                    <Input id="subjects" value={tutorForm.subjects} onChange={e => setTutor("subjects", e.target.value)} placeholder="e.g. Mathematics, Physics, Chemistry" required />
+                    <Label htmlFor="tutorSubjects">Classes You Can Teach <span className="text-destructive">*</span></Label>
+                    <select id="tutorSubjects" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" value="" onChange={e => addTutorSubject(e.target.value)}>
+                      <option value="">Add a class…</option>
+                      {subjects
+                        .filter(s => !tutorSelectedSubjects.includes(s.SubjectID))
+                        .map(s => (
+                          <option key={s.SubjectID} value={s.SubjectID}>{subjectLabel(s)}</option>
+                        ))}
+                    </select>
+                    {tutorSelectedSubjects.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {tutorSelectedSubjects.map(id => {
+                          const s = subjects.find(x => x.SubjectID === id);
+                          return (
+                            <Badge key={id} variant="secondary" className="gap-1.5 pr-1">
+                              <BookOpen className="w-3 h-3" />
+                              <span>{s ? subjectLabel(s) : id}</span>
+                              <button type="button" onClick={() => removeTutorSubject(id)} className="ml-1 rounded-full hover:bg-background/50 w-4 h-4 flex items-center justify-center text-xs">×</button>
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">Pick the specific class + day combinations you can teach. A Monday English and a Wednesday English are separate options.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tutorNotes">Experience & Qualifications</Label>
