@@ -1255,6 +1255,25 @@ export default function AdminPortal() {
 
   return (
     <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-10 border-b bg-card px-6 py-3 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <GraduationCap className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <span className="font-semibold">EduTrack</span>
+          <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
+            Developer
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
+          <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
+        </div>
+      </header>
+
       <div className="border-b bg-card px-6">
         <div className="flex gap-1 overflow-x-auto max-w-4xl mx-auto">
           {TABS.map(t => (

@@ -248,15 +248,15 @@ function ClassesTab() {
             )}
 
             <div className="rounded-md border overflow-x-auto">
-              <table className="w-full text-sm table-fixed">
+              <table className="w-full text-sm">
                 <thead className="bg-muted/50 border-b">
                   <tr>
-                    <th className="text-left font-medium px-3 py-2.5 w-1/3">Class</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-20">Type</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell w-1/5">Teacher</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/4">Schedule</th>
-                    <th className="text-left font-medium px-3 py-2.5 w-24">Enrolled</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell w-1/4">Students</th>
+                    <th className="text-left font-medium px-3 py-2.5">Class</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Type</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Schedule</th>
+                    <th className="text-left font-medium px-3 py-2.5">Enrolled</th>
+                    <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Students</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                 </thead>
@@ -271,7 +271,7 @@ function ClassesTab() {
                     return (
                       <Fragment key={subjectId}>
                         <tr className={`hover:bg-muted/20 ${isOpen ? "bg-amber-50/60" : ""}`}>
-                          <td className="px-3 py-2.5 font-medium truncate">
+                          <td className="px-3 py-2.5 font-medium">
                             <span>{s.Name || s["Name"]}</span>
                             {didSucceed && !isOpen && (
                               <span className="ml-2 text-xs text-green-600 font-normal inline-flex items-center gap-1">
@@ -280,12 +280,12 @@ function ClassesTab() {
                             )}
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell truncate">{currentTeacher}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
                           <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
                             {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground">{currentEnrolled} / {s.MaxCapacity ?? "∞"}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs truncate">
+                          <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
                             {s.enrolledNames || "—"}
                           </td>
                           <td className="px-3 py-2.5 text-right">
@@ -1350,8 +1350,8 @@ function UsersTab() {
           <table className="w-full text-sm table-fixed">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left font-medium px-3 py-2.5 w-1/3">Name</th>
-                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell w-1/4">Email</th>
+                <th className="text-left font-medium px-3 py-2.5 w-1/2">Name</th>
+                <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Email</th>
                 <th className="text-left font-medium px-3 py-2.5 w-20">Role</th>
                 <th className="text-left font-medium px-3 py-2.5 w-24">Status</th>
                 <th className="px-3 py-2.5" />
@@ -1373,7 +1373,7 @@ function UsersTab() {
                       </Button>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell truncate">{u.email || "—"}</td>
+                  <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{u.email || "—"}</td>
                   <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
                   <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
                   <td className="px-3 py-2.5" />
@@ -1865,8 +1865,8 @@ export default function PrincipalDashboard() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         <NotificationPrompt />
         <div className="flex flex-wrap gap-2 mb-4">
-          <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>Calendar</Button>
           <Button size="sm" variant={tab === "requests" ? "default" : "outline"} onClick={() => setTab("requests")}>Requests</Button>
+          <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>Manage Classes</Button>
         </div>
         <div className="border-b bg-card px-6 rounded-t-lg">
           <div className="flex gap-1 overflow-x-auto">

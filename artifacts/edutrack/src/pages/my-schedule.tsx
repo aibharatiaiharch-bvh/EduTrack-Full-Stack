@@ -194,7 +194,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
       <div className="grid gap-3 overflow-x-auto">
         <div className="min-w-[900px] grid grid-cols-[160px_repeat(5,minmax(0,1fr))] gap-2">
           <div className="rounded-lg border bg-muted/40 px-3 py-2 text-[11px] font-semibold text-center">Class / Subject</div>
-          {daySummary.map(({ day }) => (
+                {daySummary.map(({ day }) => (
             <div key={day} className="rounded-lg border bg-muted/40 px-3 py-2 text-[11px] font-semibold text-center">
               {day}
             </div>
@@ -207,7 +207,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
             const teacherNames = Array.from(new Set(relatedClasses.map(c => c["Teacher"]).filter(Boolean)));
             const rowCount = relatedClasses.length;
             return (
-              <Fragment key={rowName}>
+                <Fragment key={rowName}>
                 <div className="rounded-lg border bg-background px-3 py-2 text-sm font-medium">
                   <div className="truncate text-[11px]">{rowName}</div>
                   <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{teacherNames.join(", ") || "No teacher"}</div>
@@ -219,7 +219,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                   const tone = dayClass ? (dayClass["Class Type"] === "Group" ? "red" : dayClass["Class Type"] === "Both" ? "yellow" : "green") : "green";
                   return (
                     <div
-                      key={`${rowName}-${day}`}
+                      key={`${subject._row}-${day}`}
                       className={
                         `min-h-[72px] rounded-lg border px-2 py-1.5 text-[9px] leading-tight ${tone === "red" ? "bg-red-50 border-red-200" : tone === "yellow" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`
                       }
@@ -243,7 +243,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                     </div>
                   );
                 })}
-              </Fragment>
+                </Fragment>
             );
           })}
         </div>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { AppLayout } from "@/components/layout";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -284,7 +283,26 @@ export default function TeacherDashboard() {
   }
 
   return (
-    <AppLayout>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-white border-b border-border shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-primary flex items-center justify-center text-white font-bold text-sm">E</div>
+            <span className="font-semibold text-foreground">EduTrack</span>
+            <span className="text-muted-foreground/60">·</span>
+            <span className="text-sm text-muted-foreground">Tutor Portal</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
+          </div>
+        </div>
+      </header>
+
       <main className="max-w-5xl mx-auto px-4 md:px-8 py-6 space-y-6">
         {/* Page heading */}
         <div className="space-y-1">
@@ -383,6 +401,6 @@ export default function TeacherDashboard() {
           </>
         )}
       </main>
-    </AppLayout>
+    </div>
   );
 }
