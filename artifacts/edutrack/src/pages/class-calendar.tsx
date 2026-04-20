@@ -185,13 +185,16 @@ interface ContactRow {
   students: Student[];
 }
 
+const DAY_ORDER: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+
 function buildContactRows(days: ApiDay[]): ContactRow[] {
+  // One row per (className, day) — matches what the calendar hover shows for that day.
   const seen = new Set<string>();
   const rows: ContactRow[] = [];
   for (const day of days) {
     const short = SHORT_DAY[day.dayName] ?? day.dayName.slice(0, 3);
     for (const slot of day.slots) {
-      const key = `${slot.className}||${slot.teacherEmail}||${slot.time}`;
+      const key = `${slot.className}||${short}||${slot.time}`;
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push({
@@ -204,7 +207,10 @@ function buildContactRows(days: ApiDay[]): ContactRow[] {
       });
     }
   }
-  return rows.sort((a, b) => a.className.localeCompare(b.className) || a.day.localeCompare(b.day));
+  return rows.sort((a, b) =>
+    a.className.localeCompare(b.className) ||
+    (DAY_ORDER[a.day] ?? 99) - (DAY_ORDER[b.day] ?? 99)
+  );
 }
 
 function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail: string }) {
