@@ -1,5 +1,4 @@
 import { useState, useEffect, Fragment } from "react";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
@@ -68,7 +67,9 @@ function ClassesTab() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function handleAddSubject(e: React.FormEvent) {
     e.preventDefault();
@@ -419,7 +420,9 @@ function RequestsTab() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function actEnroll(row: any, action: "approve" | "reject" | "mark-paid") {
     setActing(`e-${row._row}`);
@@ -876,7 +879,9 @@ function StudentsTab() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   function openForm() { setForm({ ...BLANK_STUDENT }); setFormError(""); setShowForm(true); }
 
@@ -1154,7 +1159,9 @@ function TutorsTab() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -1283,7 +1290,9 @@ function UsersTab() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function toggleStatus(user: any) {
     setActing(user.userId);

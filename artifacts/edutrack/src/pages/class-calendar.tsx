@@ -6,12 +6,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarDays, Clock, Users, BookOpen, UserRound, AlertCircle } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-function cacheBuster(url: string) {
-  const u = new URL(url, window.location.origin);
-  u.searchParams.set("_ts", String(Date.now()));
-  return u.toString();
-}
-
 
 const SHORT_DAY: Record<string, string> = {
   Monday: "Mon", Tuesday: "Tue", Wednesday: "Wed",
@@ -179,7 +173,7 @@ function CalendarContent() {
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["config"],
     queryFn: async () => {
-      const res = await fetch(cacheBuster(apiUrl("/config")), { cache: "no-store" });
+      const res = await fetch(apiUrl("/config"));
       if (!res.ok) throw new Error("config unavailable");
       const d = await res.json();
       if (d.sheetId) localStorage.setItem("edutrack_sheet_id", d.sheetId);
@@ -195,15 +189,13 @@ function CalendarContent() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["calendar", sheetId],
     queryFn: async () => {
-      const url = cacheBuster(apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId)}&weeks=1`));
-      const res = await fetch(url, { cache: "no-store" });
+      const url = apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId)}&weeks=1`);
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`API error ${res.status}`);
       return res.json() as Promise<{ days: ApiDay[] }>;
     },
     enabled: !!sheetId,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (configLoading || isLoading || (!sheetId && !isError)) {

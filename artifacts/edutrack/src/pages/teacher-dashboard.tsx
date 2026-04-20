@@ -272,7 +272,9 @@ export default function TeacherDashboard() {
     setLoading(false);
   }
 
-  useAutoRefresh(load);
+  useEffect(() => {
+    load();
+  }, []);
 
   // Redirect if not a tutor
   if (role && role !== "tutor" && role !== "teacher" && role !== "developer") {
