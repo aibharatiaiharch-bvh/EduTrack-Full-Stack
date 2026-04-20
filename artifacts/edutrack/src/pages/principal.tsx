@@ -1653,55 +1653,6 @@ function AnalysisTab() {
         ))}
       </div>
 
-      {/* By Subject */}
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Subject</h3>
-        <div className="rounded-lg border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-                <th className="px-3 py-2.5 text-left">Subject</th>
-                <th className="px-3 py-2.5 text-left">Type</th>
-                <th className="px-3 py-2.5 text-left">Teacher</th>
-                <th className="px-3 py-2.5 text-center">Days/Wk</th>
-                <th className="px-3 py-2.5 text-center">Hrs/Wk</th>
-                <th className="px-3 py-2.5 text-center">Students</th>
-                <th className="px-3 py-2.5 text-left min-w-[100px]">Fill</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bySubject.map((s, i) => (
-                <tr key={s.subjectId} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
-                  <td className="px-3 py-2.5 font-medium">{s.name}</td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.type.toLowerCase() === "group" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
-                      {s.type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{s.teacherName}</td>
-                  <td className="px-3 py-2.5 text-center font-semibold">{s.sessionsPerWeek}</td>
-                  <td className="px-3 py-2.5 text-center font-semibold">{s.hoursPerWeek}</td>
-                  <td className="px-3 py-2.5 text-center">
-                    <div className="flex flex-col items-center">
-                      <span className="font-bold">{s.students}</span>
-                      <MiniBar pct={(s.students / maxStudents) * 100} color="bg-green-500" />
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {s.maxCapacity > 0 ? (
-                      <div>
-                        <span className="text-xs text-muted-foreground">{s.students}/{s.maxCapacity} ({s.fillPct}%)</span>
-                        <MiniBar pct={s.fillPct} color={s.fillPct >= 90 ? "bg-red-500" : s.fillPct >= 70 ? "bg-amber-500" : "bg-green-500"} />
-                      </div>
-                    ) : <span className="text-xs text-muted-foreground">—</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* By Teacher */}
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Teacher</h3>
@@ -1726,37 +1677,6 @@ function AnalysisTab() {
                   <td className="px-3 py-2.5">
                     <MiniBar pct={(t.students / maxTeacherStudents) * 100} color="bg-violet-500" />
                     <p className="text-xs text-muted-foreground mt-0.5">{t.classes.join(", ")}</p>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* By Weekday */}
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Weekday</h3>
-        <div className="rounded-lg border overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
-                <th className="px-3 py-2.5 text-left">Day</th>
-                <th className="px-3 py-2.5 text-center">Classes</th>
-                <th className="px-3 py-2.5 text-center">Students</th>
-                <th className="px-3 py-2.5 text-center">Hrs</th>
-                <th className="px-3 py-2.5 text-left min-w-[140px]">Activity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byWeekday.map((d, i) => (
-                <tr key={d.day} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
-                  <td className="px-3 py-2.5 font-semibold">{d.day}</td>
-                  <td className="px-3 py-2.5 text-center">{d.classCount}</td>
-                  <td className="px-3 py-2.5 text-center font-bold">{d.students}</td>
-                  <td className="px-3 py-2.5 text-center font-semibold">{d.hoursTotal}</td>
-                  <td className="px-3 py-2.5">
-                    <MiniBar pct={(d.students / maxDayStudents) * 100} color="bg-amber-500" />
                   </td>
                 </tr>
               ))}
@@ -1807,6 +1727,86 @@ function AnalysisTab() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* By Weekday */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Weekday</h3>
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-left">Day</th>
+                <th className="px-3 py-2.5 text-center">Classes</th>
+                <th className="px-3 py-2.5 text-center">Students</th>
+                <th className="px-3 py-2.5 text-center">Hrs</th>
+                <th className="px-3 py-2.5 text-left min-w-[140px]">Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byWeekday.map((d, i) => (
+                <tr key={d.day} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <td className="px-3 py-2.5 font-semibold">{d.day}</td>
+                  <td className="px-3 py-2.5 text-center">{d.classCount}</td>
+                  <td className="px-3 py-2.5 text-center font-bold">{d.students}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{d.hoursTotal}</td>
+                  <td className="px-3 py-2.5">
+                    <MiniBar pct={(d.students / maxDayStudents) * 100} color="bg-amber-500" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* By Subject */}
+      <div>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">By Subject</h3>
+        <div className="rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                <th className="px-3 py-2.5 text-left">Subject</th>
+                <th className="px-3 py-2.5 text-left">Type</th>
+                <th className="px-3 py-2.5 text-left">Teacher</th>
+                <th className="px-3 py-2.5 text-center">Days/Wk</th>
+                <th className="px-3 py-2.5 text-center">Hrs/Wk</th>
+                <th className="px-3 py-2.5 text-center">Students</th>
+                <th className="px-3 py-2.5 text-left min-w-[100px]">Fill</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bySubject.map((s, i) => (
+                <tr key={s.subjectId} className={`border-t ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <td className="px-3 py-2.5 font-medium">{s.name}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${s.type.toLowerCase() === "group" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
+                      {s.type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-muted-foreground">{s.teacherName}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{s.sessionsPerWeek}</td>
+                  <td className="px-3 py-2.5 text-center font-semibold">{s.hoursPerWeek}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="font-bold">{s.students}</span>
+                      <MiniBar pct={(s.students / maxStudents) * 100} color="bg-green-500" />
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {s.maxCapacity > 0 ? (
+                      <div>
+                        <span className="text-xs text-muted-foreground">{s.students}/{s.maxCapacity} ({s.fillPct}%)</span>
+                        <MiniBar pct={s.fillPct} color={s.fillPct >= 90 ? "bg-red-500" : s.fillPct >= 70 ? "bg-amber-500" : "bg-green-500"} />
+                      </div>
+                    ) : <span className="text-xs text-muted-foreground">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
