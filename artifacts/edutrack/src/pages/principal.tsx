@@ -1862,7 +1862,7 @@ export default function PrincipalDashboard() {
 
   return (
     <AppLayout>
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-6 py-8 overflow-x-hidden">
         <NotificationPrompt />
         <div className="flex flex-wrap gap-2 mb-4">
           <Button size="sm" variant={tab === "classes" ? "default" : "outline"} onClick={() => setTab("classes")}>Calendar</Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AppLayout } from "@/components/layout";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -168,23 +169,7 @@ export default function StudentDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-semibold">EduTrack</span>
-          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Student</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
-          <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
-            <LogOut className="w-4 h-4" /> Sign Out
-          </Button>
-        </div>
-      </header>
-
+    <AppLayout>
       <main className="max-w-2xl mx-auto px-6 py-8">
         <NotificationPrompt />
 
@@ -303,6 +288,6 @@ export default function StudentDashboard() {
           />
         );
       })()}
-    </div>
+    </AppLayout>
   );
 }
