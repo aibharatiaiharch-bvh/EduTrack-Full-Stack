@@ -98,17 +98,23 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
     // ── Cancellations (absent rows) for principal view ───────────────────────
     const cancellationRows = monthRows.filter(r => (r['Status'] || '').toLowerCase() === 'absent');
     const cancellations = cancellationRows.map(r => {
-      const user = userMap.get(r['UserID'] || '');
-      const cls  = classMap.get(r['SubjectID'] || '');
+      const subjectId   = r['SubjectID']     || '';
+      const cls         = classMap.get(subjectId);
+      // Use pre-stored names from the attendance row first; fall back to lookups
+      const studentName = r['Student Name']  || userMap.get(r['UserID'] || '')?.name || r['UserID'] || '';
+      const teacherName = r['Teacher Name']  || '';
+      // Class name: Subjects JOIN → SubjectID as last resort
+      const className   = cls?.['Name']      || subjectId;
       return {
         attendanceId: r['AttendanceID'] || '',
-        classId:      r['SubjectID']    || '',
+        classId:      subjectId,
         userId:       r['UserID']       || '',
         sessionDate:  r['SessionDate']  || '',
         within24Hrs:  r['Within24Hrs']  || 'Yes',
         notes:        r['Notes']        || '',
-        studentName:  user?.name        || r['UserID'] || '',
-        className:    cls?.['Name']     || r['SubjectID'] || '',
+        studentName,
+        teacherName,
+        className,
       };
     }).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
 
