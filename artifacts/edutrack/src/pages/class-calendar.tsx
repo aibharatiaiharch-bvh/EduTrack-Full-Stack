@@ -355,7 +355,7 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
   );
 }
 
-function CalendarContent() {
+export function CalendarContent() {
   const canSeeStudents = true;
 
   const { data: configData, isLoading: configLoading } = useQuery({

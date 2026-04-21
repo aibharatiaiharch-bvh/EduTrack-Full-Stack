@@ -4,6 +4,7 @@ import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { BulkUploadCard } from "@/components/BulkUploadCard";
+import { CalendarContent } from "@/pages/class-calendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -397,7 +398,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "student-attendance" | "tutor-attendance" | "upload" | "analysis";
+type Tab = "calendar" | "requests" | "students" | "tutors" | "users" | "classes" | "student-attendance" | "tutor-attendance" | "upload" | "analysis";
 
 
 function StatusBadge({ status }: { status: string }) {
@@ -2286,6 +2287,7 @@ function AnalysisTab() {
 }
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
@@ -2298,7 +2300,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function PrincipalDashboard() {
-  const [tab, setTab] = useState<Tab>("requests");
+  const [tab, setTab] = useState<Tab>("calendar");
 
   useEffect(() => {
     localStorage.setItem("edutrack_user_role", "principal");
@@ -2327,6 +2329,7 @@ export default function PrincipalDashboard() {
         </div>
 
         <main className="bg-background rounded-b-lg border border-t-0 px-6 py-8">
+          {tab === "calendar"    && <CalendarContent />}
           {tab === "classes"     && <ClassesTab />}
           {tab === "requests"    && <RequestsTab />}
           {tab === "students"    && <StudentsTab />}
