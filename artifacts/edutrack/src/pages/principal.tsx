@@ -2290,7 +2290,7 @@ function AnalysisTab() {
   );
 }
 
-const ELEVATED_ONLY: Tab[] = ["requests", "upload"];
+const ELEVATED_ONLY: Tab[] = ["requests", "upload", "settings"];
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },

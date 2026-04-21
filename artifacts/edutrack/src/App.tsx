@@ -46,11 +46,13 @@ function PageFallback() {
   );
 }
 
-function ProtectedRoute({ component: Component, requiredRole }: { component: React.ComponentType; requiredRole?: string }) {
-  const storedRole = localStorage.getItem("edutrack_user_role");
+function ProtectedRoute({ component: Component, requiredRole, elevatedOnly }: { component: React.ComponentType; requiredRole?: string; elevatedOnly?: boolean }) {
+  const storedRole = (localStorage.getItem("edutrack_user_role") || "").toLowerCase();
+  const elevated = storedRole === "developer" || storedRole === "principal" || storedRole === "admin" || storedRole === "staff";
 
   if (!storedRole) return <Redirect to="/" />;
-  if (storedRole === "developer" || storedRole === "principal") return <Component />;
+  if (elevatedOnly && !elevated) return <Redirect to="/principal" />;
+  if (elevated) return <Component />;
   if (requiredRole && storedRole !== requiredRole) return <Redirect to="/" />;
   return <Component />;
 }
@@ -82,10 +84,10 @@ function AppRoutes() {
               <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
             </Route>
             <Route path="/settings">
-              <ProtectedRoute component={SettingsPage} />
+              <ProtectedRoute component={SettingsPage} elevatedOnly />
             </Route>
             <Route path="/housekeeping">
-              <ProtectedRoute component={HousekeepingPage} />
+              <ProtectedRoute component={HousekeepingPage} elevatedOnly />
             </Route>
             <Route path="/calendar" component={ClassCalendar} />
             <Route path="/enroll" component={EnrollPage} />
