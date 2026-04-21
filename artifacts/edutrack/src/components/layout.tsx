@@ -17,12 +17,13 @@ function getStoredRole(): string {
 }
 
 const ROLE_HOME: Record<string, string> = {
-  tutor:     "/calendar",
-  student:   "/calendar",
-  parent:    "/calendar",
-  principal: "/calendar",
-  developer: "/admin",
-  admin:     "/admin",
+  tutor:     "/principal",
+  student:   "/principal",
+  parent:    "/principal",
+  principal: "/principal",
+  staff:     "/principal",
+  developer: "/principal",
+  admin:     "/principal",
 };
 
 const PAGE_NAMES: Record<string, string> = {
@@ -78,46 +79,12 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
     ];
   }
 
-  if (role === "student") {
+  if (role === "student" || role === "parent" || role === "tutor") {
     return [
       {
         label: "Pages",
         items: [
-          { name: "My Classes", href: "/student", icon: BookOpen },
-        ],
-      },
-      {
-        label: "Account",
-        items: [
-          { name: "Settings", href: "/settings", icon: Settings },
-        ],
-      },
-    ];
-  }
-
-  if (role === "parent") {
-    return [
-      {
-        label: "Pages",
-        items: [
-          { name: "My Children's Classes", href: "/parent", icon: BookOpen },
-        ],
-      },
-      {
-        label: "Account",
-        items: [
-          { name: "Settings", href: "/settings", icon: Settings },
-        ],
-      },
-    ];
-  }
-
-  if (role === "tutor") {
-    return [
-      {
-        label: "Pages",
-        items: [
-          { name: "My Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { name: "Dashboard", href: "/principal", icon: LayoutDashboard },
         ],
       },
       {
