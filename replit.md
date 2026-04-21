@@ -1,55 +1,115 @@
 # EduTrack — Tutor & Coaching Management Platform
 
 ## Overview
-EduTrack is a multi-role management platform for tutoring and coaching businesses. It streamlines enrolments, scheduling, attendance, and late-cancellation handling. The platform provides distinct portals for Developer, Principal, Tutor, Parent, and Student roles. Google Sheets serves as the live data store, so administrators retain familiar spreadsheet access alongside the app. The platform is intended to be sellable as a base app to multiple schools, with key behavioural thresholds (capacity targets, attendance benchmarks, fill-rate flags) configurable per deployment.
+EduTrack is a multi-role management platform for tutoring and coaching businesses. It streamlines enrolments, scheduling, attendance, and late-cancellation handling. Distinct portals for Developer, Principal, Tutor, Parent, and Student. Google Sheets is the live data store, so administrators retain familiar spreadsheet access alongside the app. Intended to be sellable as a base app to multiple schools, with configurable thresholds per deployment.
 
 ## User Preferences
-The user prefers iterative development with concise, non-repetitive responses. Keep replies short. Confirm before major changes. Do not reference Netlify (deployment is Replit-only); GitHub auto-push is optional and can be stopped/started as needed.
+- Keep replies concise. Confirm before making changes.
+- Dates stay as YYYY-MM-DD.
+- Deployment is Replit-only (no Netlify).
+- GitHub auto-push workflow is optional and can be stopped anytime.
+
+---
 
 ## System Architecture
 Monorepo using `pnpm workspaces`.
 
-**Frontend:**
-- React + Vite, located in `artifacts/edutrack/`.
-- Distinct portals for Developer, Principal, Tutor, Parent, Student + a public enrolment form (`/enroll`).
-- Auto-refresh every 30s on key dashboards.
+**Frontend** — `artifacts/edutrack/`
+- React + Vite
+- Portals: Developer (`/admin`), Principal (`/principal`), Tutor (`/dashboard`), Parent (`/parent`), Student (`/student`), public enrolment (`/enroll`)
+- Auto-refresh every 30 s on key dashboards
 
-**Backend API:**
-- Express 5 on Node.js, in `artifacts/api-server/`.
-- Reads `DEFAULT_SHEET_ID` env var as a fallback when the client hasn't supplied a `sheetId` (used by `/roles/check` during sign-in).
+**Backend API** — `artifacts/api-server/`  (port 8080)
+- Express 5 on Node.js
+- Reads `DEFAULT_SHEET_ID` env var as fallback when client hasn't supplied `sheetId` (used by `/roles/check` at sign-in)
+- Key route files: `attendance.ts`, `enrollments.ts`, `analysis.ts`, `admin.ts`, `tutors.ts`, `subjects.ts`
 
-**Data Store — Google Sheets:**
-- Schema lives in `artifacts/api-server/src/lib/googleSheets.ts`. Tabs include Users, Students, Teachers, Subjects, Enrollments, Attendance, Parents, Announcements, Settings, Archive.
-- **Subjects schema (Option A — per-day rows):** each Subject row represents one (Class, Day) combination. SubjectIDs follow the pattern `SUB-<CLASS3>-<DAY3>`, e.g. `SUB-ENG-TUE`, `SUB-ENG-THU`, `SUB-ENG-FRI`. The `Days` column on each row contains a single weekday. Per-day rows are the source of truth for capacity / attendance / colour-coding.
-- UserIDs are role-prefixed and sequential (e.g., `STU-001`, `TCH-001`).
-- Enrollment Status: `Active`, `Cancelled`, `Late Cancellation`, `Fee Waived`, `Fee Confirmed`, `Pending`.
-- Attendance Status: `Present`, `Absent`, `Late`.
+**Data Store — Google Sheets**
+- Sheet ID (current): `1CwS-vj_Qb2gc3VQ5bwpONCNKjibwMCqMOZD_HLT8rQo`
+- Schema in `artifacts/api-server/src/lib/googleSheets.ts`
+- `readTabRows` reads headers from actual sheet row 1 — any schema migration must update BOTH code `SHEET_HEADERS` AND the physical sheet header row
 
-**Authentication & Authorization:**
-- Custom email-only login. **No Clerk UI is used.**
-- `GET /api/roles/check?email=` looks the email up in the Users tab (falling back to `DEFAULT_SHEET_ID` because the sign-in page has no sheetId yet) and returns the user's role, name, userId, and sheetId.
-- Sign-in stores `edutrack_user_email`, `edutrack_user_role`, `edutrack_user_name`, `edutrack_user_id`, and `edutrack_sheet_id` in `localStorage`.
-- Sign-out is handled by `useSignOut()` — clears all `edutrack_*` localStorage keys and routes to `/`.
-- Env-var bypasses: `DEVELOPER_EMAIL` and `PRINCIPAL_EMAIL` grant their roles even without a Users tab row.
+---
 
-**Deployment:**
-- Frontend + API both run on Replit. The user deploys via Replit's "Publish" flow only.
-- `scripts/github-push.sh` syncs to GitHub on a workflow timer, but this workflow can be stopped at any time and is not required for deployment.
+## Sheet Schema
 
-**Key Features:**
-- **Developer Portal (`/admin`):** API health, sheet linking, GitHub sync status, data browser, dev tools (sheet creation/seeding/validation), CSV bulk upload.
-- **Principal Dashboard (`/principal`):** Tabs for Requests, Students, Tutors, Users, Classes, Attendance, Bulk Upload, Analysis. Class-selection dropdowns now show day + time (e.g. `English — Tue — 11:00 AM (Group)`) because per-day Subject rows would otherwise look identical.
-- **Tutor Dashboard (`/dashboard`):** Class list, students, attendance marking.
-- **Parent / Student Portals:** Schedule view, cancellation (24-hour rule).
-- **Public Enrolment Form (`/enroll`):** Class dropdown uses `subjectLabel()` to combine Name + Day + Time + Type + Teacher.
-- **Class Calendar (`/calendar`):** Weekday columns with green / amber / red seat indicators per (Subject, Day). Hover popover uses Radix `Popover` (renders into a Portal so it escapes the table's `overflow-x-auto`).
-- **Analysis Tab (Principal):** Section order is **By Teacher → By Month → By Weekday → By Subject**. The "By Teacher" Load column renders a `StackedDayBar` — one segment per (Subject, Day), colour-coded by weekday, with hover tooltips showing student counts; below it, day chips show per-day totals.
+| Tab | Key Columns |
+|-----|-------------|
+| Users | UserID, Name, Email, Role, Phone, SheetID, Status |
+| Students | StudentID, UserID, Parent Name, … |
+| Teachers | TeacherID, UserID, … |
+| Subjects | SubjectID, Name, Type, TeacherID, Room, Days, Time, Status, MaxCapacity, Teacher Name |
+| Enrollments | EnrollmentID, StudentID, ClassID (→SubjectID), Status, … |
+| Attendance | AttendanceID, SubjectID, UserID, SessionDate, Status, Notes, MarkedBy, MarkedAt, Within24Hrs, Student Name, Teacher Name |
+| Parents | ParentID, UserID, … |
+| Announcements | … |
+| Settings | Key, Value |
+| Archive | … |
 
-**Planned (not yet built):**
-- **Assumptions tab (Developer-only):** A settings page for editable thresholds (group fill red/amber/low %, individual tutor target hrs/week and util %, attendance target %, default group capacity). Backed by the Settings sheet tab; analysis page reads via `/assumptions`.
-- Additional Analysis charts: KPI strip split by Type (Group vs Individual), Demand-vs-Supply table with auto-flagged actions, ranked Subject bar coloured by Type, Subject × Weekday heatmap, Group-vs-Individual hours split per teacher, Present/Absent stacked bars + attendance % line vs target, auto-insights callout.
+**SubjectID format:** `SUB-<CLASS3>-<DAY3>` e.g. `SUB-MAT-MON`, `SUB-ENG-FRI`  
+**UserID format:** role-prefixed sequential e.g. `STU-001`, `TCH-001`
+
+**Enrollment Status values:** Active, Cancelled, Late Cancellation, Fee Waived, Fee Confirmed, Pending  
+**Attendance Status values:** Present, Absent, Late
+
+---
+
+## Authentication
+- Custom email-only login. No Clerk UI.
+- `GET /api/roles/check?email=` looks up Users tab → returns role, name, userId, sheetId.
+- Sign-in stores `edutrack_user_*` and `edutrack_sheet_id` in localStorage.
+- `useSignOut()` clears all `edutrack_*` keys and routes to `/`.
+- Env-var bypasses: `DEVELOPER_EMAIL`, `PRINCIPAL_EMAIL`.
+
+---
+
+## Billing & Cancellation Rules
+- Students billed per **scheduled weekday** (e.g. 4 Mondays in a month = 4 sessions).
+- **Late fee rule:** cancel on the class day → Within24Hrs = `Yes` (fee applies). Cancel before class day → `No` (no fee).
+- Principal manually toggles Within24Hrs Yes/No on the Attendance tab (via toggle button in the Cancellations table).
+- Tutor attendance marking exists but is optional — billing is driven by scheduled weekdays, not tutor marks.
+
+---
+
+## Cancellations Data Flow
+1. Student/Parent cancels via app → `enrollments.ts` writes an `Absent` row to Attendance tab with SubjectID, UserID, SessionDate, Student Name, Teacher Name pre-filled.
+2. Principal sees cancellations on the **Attendance tab → Cancellations table**: Student | Class | Teacher | Date | Within 24 hrs.
+3. Class name is resolved via Subjects JOIN on SubjectID; SubjectID itself is the fallback.
+4. Student Name & Teacher Name are read **directly from the Attendance row** (no join needed).
+5. Principal toggles Within24Hrs → `PATCH /api/attendance/:id/within24hrs`.
+
+---
+
+## Key Features
+
+| Portal | Features |
+|--------|----------|
+| Developer (`/admin`) | API health, sheet linking, GitHub sync, data browser, sheet creation/seeding/validation, CSV bulk upload, backfill-names endpoint |
+| Principal (`/principal`) | Requests, Students, Tutors, Users, Classes, Attendance (with Cancellations table), Bulk Upload, Analysis tabs |
+| Tutor (`/dashboard`) | Class list, student list, optional attendance marking |
+| Parent/Student | Schedule view, cancellation flow with same-day late-fee detection |
+| Public (`/enroll`) | Enrolment form; class dropdown uses `subjectLabel()` (Name + Day + Time + Type + Teacher) |
+| Calendar (`/calendar`) | Weekday columns, green/amber/red seat indicators; Radix Popover escapes overflow |
+
+**Analysis Tab (Principal):** By Teacher → By Month → By Weekday → By Subject.  
+"By Teacher" shows a `StackedDayBar` with per-day segments coloured by weekday + hover tooltips.
+
+---
+
+## Admin Utilities
+- `POST /api/admin/backfill-names` — fills blank Student Name / Teacher Name cells across Students, Subjects, Attendance tabs.
+- `POST /api/admin/migrate-columns` — schema migration helper.
+- `scripts/seed-attendance.mjs` — seeds realistic April 2026 attendance (126 rows, 6 absences).
+
+---
 
 ## External Dependencies
-- **Google Sheets:** Primary data storage. Requires `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_PRIVATE_KEY`.
-- **Nodemailer:** Daily email backups, GitHub sync alerts. Configured via `SMTP_USER` / `SMTP_PASS` (and host/port if non-default).
-- **node-cron:** Schedules daily backups.
+- **Google Sheets** — primary data store (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`)
+- **Nodemailer** — daily email backups, GitHub sync alerts (`SMTP_USER`, `SMTP_PASS`)
+- **node-cron** — schedules daily backups
+
+---
+
+## Planned (not yet built)
+- **Assumptions tab (Developer-only):** editable thresholds (fill-rate red/amber %, tutor target hrs, attendance target %). Backed by Settings tab; analysis reads via `/assumptions`.
+- Additional Analysis charts: KPI strip by Type, Demand-vs-Supply table, Subject bar, Subject×Weekday heatmap, Present/Absent stacked bars, auto-insights callout.
