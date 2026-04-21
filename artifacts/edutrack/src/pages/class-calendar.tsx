@@ -357,8 +357,6 @@ function ContactTable({ days, principalEmail }: { days: ApiDay[]; principalEmail
 
 export function CalendarContent() {
   const canSeeStudents = true;
-  const role = (localStorage.getItem("edutrack_user_role") || "").toLowerCase();
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: configData, isLoading: configLoading } = useQuery({
     queryKey: ["config"],
@@ -376,7 +374,7 @@ export function CalendarContent() {
   const sheetId = localStorage.getItem("edutrack_sheet_id") || configData?.sheetId || "";
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["calendar", sheetId, refreshKey],
+    queryKey: ["calendar", sheetId],
     queryFn: async () => {
       const url = apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId)}&weeks=1`);
       const res = await fetch(url);
@@ -386,10 +384,6 @@ export function CalendarContent() {
     enabled: !!sheetId,
     staleTime: 5 * 60 * 1000,
   });
-
-  useEffect(() => {
-    setRefreshKey(k => k + 1);
-  }, [role]);
 
   if (configLoading || isLoading || (!sheetId && !isError)) {
     return (
