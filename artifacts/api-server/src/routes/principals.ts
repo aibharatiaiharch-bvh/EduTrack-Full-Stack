@@ -79,10 +79,18 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
 
-  const { name, email, subjects, specialty, zoomLink } = req.body as {
-    name?: string; email?: string; subjects?: string; specialty?: string; zoomLink?: string;
+  const { name, email, subjects, specialty, zoomLink, role } = req.body as {
+    name?: string; email?: string; subjects?: string; specialty?: string; zoomLink?: string; role?: string;
   };
   if (!name) { res.status(400).json({ error: 'name is required' }); return; }
+
+  // Allowed staff roles. Defaults to "tutor" for back-compat.
+  const ALLOWED_ROLES = new Set(['principal', 'tutor', 'staff']);
+  const roleNorm = (role || 'tutor').trim().toLowerCase();
+  if (!ALLOWED_ROLES.has(roleNorm)) {
+    res.status(400).json({ error: `role must be one of: principal, tutor, staff` });
+    return;
+  }
 
   const now      = new Date().toISOString();
   const today    = new Date().toLocaleDateString('en-AU');
@@ -97,10 +105,10 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
       // Reuse existing UserID — person already in Users tab
       userId = existing.userId;
     } else {
-      // New person — write to Users tab FIRST
-      userId = await generateUserId('tutor', sheetId);
+      // New person — write to Users tab FIRST with the requested role
+      userId = await generateUserId(roleNorm, sheetId);
       await appendRow(sheetId, SHEET_TABS.users, [
-        userId, emailNorm, 'tutor', name.trim(), 'Active', today, now,
+        userId, emailNorm, roleNorm, name.trim(), 'Active', today, now,
       ]);
     }
 

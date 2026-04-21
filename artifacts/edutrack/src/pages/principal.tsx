@@ -1202,7 +1202,7 @@ function TutorsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
+  const [form, setForm] = useState({ name: "", email: "", role: "tutor", subjects: "", specialty: "", zoomLink: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [addedInfo, setAddedInfo] = useState<{ name: string; teacherId: string; userId: string } | null>(null);
@@ -1265,7 +1265,7 @@ function TutorsTab() {
       const data = await apiFetch("/principals/add-teacher", { method: "POST", body: JSON.stringify(form) });
       if (data.ok) {
         setAddedInfo({ name: form.name.trim(), teacherId: data.teacherId || "", userId: data.userId || "" });
-        setForm({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
+        setForm({ name: "", email: "", role: "tutor", subjects: "", specialty: "", zoomLink: "" });
         setShowForm(false);
         await load();
       } else {
@@ -1308,7 +1308,18 @@ function TutorsTab() {
                 <div><label className="text-xs font-medium mb-1 block">Name *</label>
                   <Input placeholder="Full name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
                 <div><label className="text-xs font-medium mb-1 block">Email</label>
-                  <Input type="email" placeholder="tutor@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                  <Input type="email" placeholder="staff@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                <div><label className="text-xs font-medium mb-1 block">Role *</label>
+                  <select
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={form.role}
+                    onChange={e => setForm({ ...form, role: e.target.value })}
+                  >
+                    <option value="tutor">Tutor</option>
+                    <option value="principal">Principal</option>
+                    <option value="staff">Staff</option>
+                  </select>
+                </div>
                 <div><label className="text-xs font-medium mb-1 block">Subjects</label>
                   <Input placeholder="e.g. Maths, English" value={form.subjects} onChange={e => setForm({ ...form, subjects: e.target.value })} /></div>
                 <div><label className="text-xs font-medium mb-1 block">Specialty</label>
