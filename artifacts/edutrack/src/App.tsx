@@ -16,6 +16,8 @@ const TutorDashboard = lazy(() => import("@/pages/teacher-dashboard"));
 const ClassCalendar = lazy(() => import("@/pages/class-calendar"));
 const EnrollPage = lazy(() => import("@/pages/enroll"));
 const NotFound = lazy(() => import("@/pages/not-found"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const HousekeepingPage = lazy(() => import("@/pages/housekeeping"));
 
 async function ensureSheetId() {
   if (localStorage.getItem("edutrack_sheet_id")) return;
@@ -78,6 +80,12 @@ function AppRoutes() {
             </Route>
             <Route path="/tutor">
               <ProtectedRoute component={TutorDashboard} requiredRole="tutor" />
+            </Route>
+            <Route path="/settings">
+              <ProtectedRoute component={SettingsPage} />
+            </Route>
+            <Route path="/housekeeping">
+              <ProtectedRoute component={HousekeepingPage} />
             </Route>
             <Route path="/calendar" component={ClassCalendar} />
             <Route path="/enroll" component={EnrollPage} />
