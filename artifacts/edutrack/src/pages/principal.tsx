@@ -260,7 +260,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "attendance" | "upload" | "analysis";
+type Tab = "requests" | "students" | "tutors" | "users" | "classes" | "student-attendance" | "tutor-attendance" | "upload" | "analysis";
 
 
 function StatusBadge({ status }: { status: string }) {
@@ -1322,20 +1322,38 @@ function UsersTab() {
   );
 }
 
-// ─── Attendance monthly summary ──────────────────────────────────────────────
-function AttendanceTab() {
+// ─── Attendance Tabs ──────────────────────────────────────────────────────────
+function MonthPicker({ month, onChange, label, monthLabel, loading, onRefresh }: {
+  month: string; onChange: (m: string) => void; label: string;
+  monthLabel: string; loading: boolean; onRefresh: () => void;
+}) {
+  return (
+    <>
+      <SectionHeader title={label} onRefresh={onRefresh} loading={loading} />
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Month</span>
+        <input
+          type="month" value={month} onChange={e => onChange(e.target.value)}
+          className="border rounded-md px-3 py-1.5 text-sm bg-background"
+        />
+        {monthLabel && <span className="text-sm text-muted-foreground">{monthLabel}</span>}
+      </div>
+    </>
+  );
+}
+
+// ─── Student Attendance Tab ────────────────────────────────────────────────────
+function StudentAttendanceTab() {
   const now = new Date();
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [month, setMonth] = useState(defaultMonth);
-  const [data, setData] = useState<any>(null);
+  const [month, setMonth]   = useState(defaultMonth);
+  const [data, setData]     = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]   = useState("");
   const [expandedStudents, setExpandedStudents] = useState<Set<string>>(new Set());
-  const [expandedTutors, setExpandedTutors] = useState<Set<string>>(new Set());
 
   async function load(m: string) {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const result = await apiFetch(`/attendance/summary?month=${encodeURIComponent(m)}`);
       if (result.error) setError(result.error);
@@ -1343,92 +1361,41 @@ function AttendanceTab() {
     } catch { setError("Connection error."); }
     setLoading(false);
   }
-
   useEffect(() => { load(month); }, [month]);
 
-  function toggleStudent(id: string) {
-    setExpandedStudents(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-  function toggleTutor(id: string) {
-    setExpandedTutors(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
+  const monthLabel = month ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" }) : "";
 
-  const monthLabel = month
-    ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
-    : "";
-
-  const [cancellations,   setCancellations]   = useState<any[]>([]);
-  const [tutorAttendance, setTutorAttendance] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (data?.cancellations)   setCancellations(data.cancellations);
-    if (data?.tutorAttendance) setTutorAttendance(data.tutorAttendance);
-  }, [data]);
+  const [cancellations, setCancellations] = useState<any[]>([]);
+  useEffect(() => { if (data?.cancellations) setCancellations(data.cancellations); }, [data]);
 
   async function toggleWithin24hrs(attendanceId: string, current: string) {
     const next = current.toLowerCase() === "no" ? "Yes" : "No";
     setCancellations(prev => prev.map(c => c.attendanceId === attendanceId ? { ...c, within24Hrs: next } : c));
     try {
-      await apiFetch("/attendance/within24hrs", {
-        method: "PATCH",
-        body: JSON.stringify({ attendanceId, within24Hrs: next }),
-      });
+      await apiFetch("/attendance/within24hrs", { method: "PATCH", body: JSON.stringify({ attendanceId, within24Hrs: next }) });
     } catch {
       setCancellations(prev => prev.map(c => c.attendanceId === attendanceId ? { ...c, within24Hrs: current } : c));
     }
   }
 
-  async function toggleTutorStatus(attendanceId: string, current: string) {
-    const next = current.toLowerCase() === "absent" ? "Present" : "Absent";
-    setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: next } : r));
-    try {
-      await apiFetch("/attendance/tutor-status", {
-        method: "PATCH",
-        body: JSON.stringify({ attendanceId, status: next }),
-      });
-    } catch {
-      setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: current } : r));
-    }
+  function toggleStudent(id: string) {
+    setExpandedStudents(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
-  const students: any[] = data?.students ?? [];
-  const tutors:   any[] = data?.tutors   ?? [];
-
-  const totalPresent  = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0);
-  const totalAbsent   = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0);
-  const totalAttended = students.reduce((n: number, s: any) => n + s.totalAttended, 0);
-  const cancelCount   = cancellations.length;
-  const within24Yes   = cancellations.filter(c => c.within24Hrs?.toLowerCase() !== "no").length;
-  const within24No    = cancellations.filter(c => c.within24Hrs?.toLowerCase() === "no").length;
+  const students: any[]  = data?.students ?? [];
+  const cancelCount      = cancellations.length;
+  const within24Yes      = cancellations.filter(c => c.within24Hrs?.toLowerCase() !== "no").length;
+  const within24No       = cancellations.filter(c => c.within24Hrs?.toLowerCase() === "no").length;
+  const totalPresent     = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.present, 0), 0);
+  const totalAbsent      = students.reduce((n: number, s: any) => n + s.classes.reduce((m: number, c: any) => m + c.absent, 0), 0);
+  const totalAttended    = students.reduce((n: number, s: any) => n + s.totalAttended, 0);
 
   return (
     <div>
-      <SectionHeader title="Attendance Summary" onRefresh={() => load(month)} loading={loading} />
-
-      {/* Month picker */}
-      <div className="flex items-center gap-3 mb-6">
-        <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">Month</label>
-        <input
-          type="month"
-          value={month}
-          onChange={e => setMonth(e.target.value)}
-          className="border rounded-md px-3 py-1.5 text-sm bg-background"
-        />
-        {monthLabel && <span className="text-sm text-muted-foreground">{monthLabel}</span>}
-      </div>
-
+      <MonthPicker month={month} onChange={m => { setMonth(m); }} label="Student Attendance" monthLabel={monthLabel} loading={loading} onRefresh={() => load(month)} />
       {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-
-      {!loading && data && students.length === 0 && tutors.length === 0 && (
-        <p className="text-sm text-muted-foreground py-6 text-center">No attendance records found for {monthLabel}.</p>
+      {!loading && data && students.length === 0 && (
+        <p className="text-sm text-muted-foreground py-6 text-center">No student attendance records for {monthLabel}.</p>
       )}
 
       {/* ── Student Billing Summary ── */}
@@ -1452,21 +1419,15 @@ function AttendanceTab() {
               </thead>
               <tbody>
                 {students.map((s: any) => {
-                  const isOpen = expandedStudents.has(s.studentId);
-                  const sPresent = s.classes.reduce((n: number, c: any) => n + c.present, 0);
-                  const sAbsent = s.classes.reduce((n: number, c: any) => n + c.absent, 0);
+                  const isOpen     = expandedStudents.has(s.studentId);
+                  const sPresent   = s.classes.reduce((n: number, c: any) => n + c.present, 0);
+                  const sAbsent    = s.classes.reduce((n: number, c: any) => n + c.absent, 0);
                   const sCancelled = cancellations.filter((c: any) => c.userId === s.studentId);
                   return (
                     <Fragment key={s.studentId}>
-                      {/* ── Student subtotal row ── */}
-                      <tr
-                        className="border-t hover:bg-muted/40 cursor-pointer select-none"
-                        onClick={() => toggleStudent(s.studentId)}
-                      >
+                      <tr className="border-t hover:bg-muted/40 cursor-pointer select-none" onClick={() => toggleStudent(s.studentId)}>
                         <td className="px-2 py-2.5 text-muted-foreground text-center">
-                          {isOpen
-                            ? <ChevronUp className="w-3.5 h-3.5 inline" />
-                            : <ChevronDown className="w-3.5 h-3.5 inline" />}
+                          {isOpen ? <ChevronUp className="w-3.5 h-3.5 inline" /> : <ChevronDown className="w-3.5 h-3.5 inline" />}
                         </td>
                         <td className="px-3 py-2.5 font-semibold">{s.studentName}</td>
                         <td className="px-3 py-2.5 text-center text-green-700 font-medium">{sPresent}</td>
@@ -1477,7 +1438,6 @@ function AttendanceTab() {
                           <span className="text-xs font-normal text-muted-foreground"> / {s.classes.reduce((n: number, c: any) => n + c.totalSessions, 0)}</span>
                         </td>
                       </tr>
-                      {/* ── Per-class breakdown (collapsed by default) ── */}
                       {isOpen && s.classes.map((c: any) => {
                         const classCancelled = cancellations.filter((x: any) => x.userId === s.studentId && x.classId === c.classId);
                         const w24 = classCancelled.filter((x: any) => x.within24Hrs?.toLowerCase() !== "no").length;
@@ -1492,15 +1452,11 @@ function AttendanceTab() {
                             <td className="px-3 py-1.5 text-center text-red-700">{c.absent}</td>
                             <td className="px-3 py-1.5 text-center text-amber-700">
                               {classCancelled.length > 0 ? (
-                                <span>
-                                  {classCancelled.length}
-                                  {w24 > 0 && <span className="ml-1 text-amber-500">({w24} &lt;24h)</span>}
-                                </span>
+                                <span>{classCancelled.length}{w24 > 0 && <span className="ml-1 text-amber-500">({w24} &lt;24h)</span>}</span>
                               ) : "—"}
                             </td>
                             <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">
-                              {c.attended}
-                              <span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
+                              {c.attended}<span className="text-xs font-normal text-muted-foreground"> / {c.totalSessions}</span>
                             </td>
                           </tr>
                         );
@@ -1509,7 +1465,6 @@ function AttendanceTab() {
                   );
                 })}
               </tbody>
-              {/* Grand total */}
               <tfoot className="bg-muted/60 border-t-2">
                 <tr>
                   <td className="px-3 py-2" />
@@ -1525,75 +1480,10 @@ function AttendanceTab() {
         </div>
       )}
 
-      {/* ── Tutor Payment Summary ── */}
-      {tutors.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Tutor Payment Summary
-            <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
-          </h3>
-          <div className="border rounded-lg overflow-x-auto">
-            <table className="w-full text-sm min-w-[300px]">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left font-medium px-3 py-2.5 w-6" />
-                  <th className="text-left font-medium px-3 py-2.5">Tutor</th>
-                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-32">Sessions Taught</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tutors.map((t: any) => {
-                  const isOpen = expandedTutors.has(t.teacherId);
-                  return (
-                    <Fragment key={t.teacherId}>
-                      <tr
-                        className="border-t hover:bg-muted/40 cursor-pointer select-none"
-                        onClick={() => toggleTutor(t.teacherId)}
-                      >
-                        <td className="px-2 py-2.5 text-muted-foreground text-center">
-                          {isOpen
-                            ? <ChevronUp className="w-3.5 h-3.5 inline" />
-                            : <ChevronDown className="w-3.5 h-3.5 inline" />}
-                        </td>
-                        <td className="px-3 py-2.5 font-semibold">{t.teacherName}</td>
-                        <td className="px-3 py-2.5 text-center font-bold bg-primary/5">{t.totalSessions}</td>
-                      </tr>
-                      {isOpen && t.classes.map((c: any) => (
-                        <tr key={`${t.teacherId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
-                          <td className="px-2 py-1.5" />
-                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
-                            <span className="font-medium text-foreground">{c.className}</span>
-                          </td>
-                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
-                        </tr>
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-muted/60 border-t-2">
-                <tr>
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
-                  <td className="px-3 py-2 text-center font-bold bg-primary/10">
-                    {tutors.reduce((n: number, t: any) => n + t.totalSessions, 0)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Cancellations + Tutor Attendance ── */}
+      {/* ── Cancellations ── */}
       {data && (
-        <>
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Cancellations
-          </h3>
-
-          {/* Summary chips */}
+        <div className="mt-2">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Cancellations</h3>
           <div className="flex flex-wrap gap-3 mb-4">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-muted/40 text-sm">
               <span className="font-semibold">{cancelCount}</span>
@@ -1608,7 +1498,6 @@ function AttendanceTab() {
               <span className="text-blue-700">not within 24 hrs</span>
             </div>
           </div>
-
           {cancellations.length === 0 ? (
             <p className="text-sm text-muted-foreground">No cancellations recorded for {monthLabel}.</p>
           ) : (
@@ -1649,52 +1538,157 @@ function AttendanceTab() {
             </div>
           )}
         </div>
-
-        {/* ── Tutor Attendance ── */}
-        <div className="mt-8">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Tutor Attendance
-          </h3>
-          {tutorAttendance.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tutor attendance records for {monthLabel}.</p>
-          ) : (
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left font-medium px-3 py-2.5">Tutor</th>
-                    <th className="text-left font-medium px-3 py-2.5">Class</th>
-                    <th className="text-left font-medium px-3 py-2.5">Date</th>
-                    <th className="text-center font-medium px-3 py-2.5 w-32">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {tutorAttendance.map((r: any) => (
-                    <tr key={r.attendanceId} className="hover:bg-muted/20">
-                      <td className="px-3 py-2.5 font-medium">{r.teacherName || "—"}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{r.className || "—"}</td>
-                      <td className="px-3 py-2.5 text-muted-foreground">{r.sessionDate || "—"}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        <button
-                          onClick={() => toggleTutorStatus(r.attendanceId, r.status)}
-                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                            r.status?.toLowerCase() === "absent"
-                              ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                              : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                          }`}
-                        >
-                          {r.status?.toLowerCase() === "absent" ? "Absent" : "Present"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-        </>
       )}
+    </div>
+  );
+}
+
+// ─── Tutor Attendance Tab ──────────────────────────────────────────────────────
+function TutorAttendanceTab() {
+  const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [month, setMonth]   = useState(defaultMonth);
+  const [data, setData]     = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState("");
+  const [expandedTutors, setExpandedTutors] = useState<Set<string>>(new Set());
+
+  async function load(m: string) {
+    setLoading(true); setError("");
+    try {
+      const result = await apiFetch(`/attendance/summary?month=${encodeURIComponent(m)}`);
+      if (result.error) setError(result.error);
+      else setData(result);
+    } catch { setError("Connection error."); }
+    setLoading(false);
+  }
+  useEffect(() => { load(month); }, [month]);
+
+  const monthLabel = month ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" }) : "";
+
+  const [tutorAttendance, setTutorAttendance] = useState<any[]>([]);
+  useEffect(() => { if (data?.tutorAttendance) setTutorAttendance(data.tutorAttendance); }, [data]);
+
+  async function toggleTutorStatus(attendanceId: string, current: string) {
+    const next = current.toLowerCase() === "absent" ? "Present" : "Absent";
+    setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: next } : r));
+    try {
+      await apiFetch("/attendance/tutor-status", { method: "PATCH", body: JSON.stringify({ attendanceId, status: next }) });
+    } catch {
+      setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: current } : r));
+    }
+  }
+
+  function toggleTutor(id: string) {
+    setExpandedTutors(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  const tutors: any[] = data?.tutors ?? [];
+
+  return (
+    <div>
+      <MonthPicker month={month} onChange={m => { setMonth(m); }} label="Tutor Attendance" monthLabel={monthLabel} loading={loading} onRefresh={() => load(month)} />
+      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {!loading && data && tutors.length === 0 && tutorAttendance.length === 0 && (
+        <p className="text-sm text-muted-foreground py-6 text-center">No tutor records for {monthLabel}.</p>
+      )}
+
+      {/* ── Tutor Payment Summary (top) ── */}
+      {tutors.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Tutor Payment Summary
+            <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
+          </h3>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[300px]">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5 w-6" />
+                  <th className="text-left font-medium px-3 py-2.5">Tutor</th>
+                  <th className="text-center font-medium px-3 py-2.5 bg-primary/5 w-32">Sessions Taught</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tutors.map((t: any) => {
+                  const isOpen = expandedTutors.has(t.teacherId);
+                  return (
+                    <Fragment key={t.teacherId}>
+                      <tr className="border-t hover:bg-muted/40 cursor-pointer select-none" onClick={() => toggleTutor(t.teacherId)}>
+                        <td className="px-2 py-2.5 text-muted-foreground text-center">
+                          {isOpen ? <ChevronUp className="w-3.5 h-3.5 inline" /> : <ChevronDown className="w-3.5 h-3.5 inline" />}
+                        </td>
+                        <td className="px-3 py-2.5 font-semibold">{t.teacherName}</td>
+                        <td className="px-3 py-2.5 text-center font-bold bg-primary/5">{t.totalSessions}</td>
+                      </tr>
+                      {isOpen && t.classes.map((c: any) => (
+                        <tr key={`${t.teacherId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
+                          <td className="px-2 py-1.5" />
+                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
+                            <span className="font-medium text-foreground">{c.className}</span>
+                          </td>
+                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-muted/60 border-t-2">
+                <tr>
+                  <td className="px-3 py-2" />
+                  <td className="px-3 py-2 font-semibold text-xs uppercase tracking-wide">Total</td>
+                  <td className="px-3 py-2 text-center font-bold bg-primary/10">
+                    {tutors.reduce((n: number, t: any) => n + t.totalSessions, 0)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tutor Attendance Detail ── */}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Session Detail</h3>
+        {tutorAttendance.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No session records for {monthLabel}.</p>
+        ) : (
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Tutor</th>
+                  <th className="text-left font-medium px-3 py-2.5">Class</th>
+                  <th className="text-left font-medium px-3 py-2.5">Date</th>
+                  <th className="text-center font-medium px-3 py-2.5 w-32">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {tutorAttendance.map((r: any) => (
+                  <tr key={r.attendanceId} className="hover:bg-muted/20">
+                    <td className="px-3 py-2.5 font-medium">{r.teacherName || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.className || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.sessionDate || "—"}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button
+                        onClick={() => toggleTutorStatus(r.attendanceId, r.status)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                          r.status?.toLowerCase() === "absent"
+                            ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        }`}
+                      >
+                        {r.status?.toLowerCase() === "absent" ? "Absent" : "Present"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2057,7 +2051,8 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
   { id: "tutors",      label: "Tutors",             icon: <UserCheck className="w-4 h-4" /> },
   { id: "classes",     label: "Classes",            icon: <BookOpen className="w-4 h-4" /> },
-  { id: "attendance",  label: "Attendance",         icon: <CalendarDays className="w-4 h-4" /> },
+  { id: "student-attendance", label: "Student Attendance", icon: <CalendarDays className="w-4 h-4" /> },
+  { id: "tutor-attendance",  label: "Tutor Attendance",   icon: <CalendarDays className="w-4 h-4" /> },
   { id: "analysis",   label: "Analysis",           icon: <BarChart2 className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
   { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
@@ -2097,7 +2092,8 @@ export default function PrincipalDashboard() {
           {tab === "requests"    && <RequestsTab />}
           {tab === "students"    && <StudentsTab />}
           {tab === "tutors"      && <TutorsTab />}
-          {tab === "attendance"  && <AttendanceTab />}
+          {tab === "student-attendance" && <StudentAttendanceTab />}
+          {tab === "tutor-attendance"  && <TutorAttendanceTab />}
           {tab === "analysis"    && <AnalysisTab />}
           {tab === "users"       && <UsersTab />}
           {tab === "upload"      && <BulkUploadCard />}
