@@ -2602,6 +2602,10 @@ export default function PrincipalDashboard() {
   const TABS = ALL_TABS.filter(t => isElevated || !["requests", "users", "upload", "settings"].includes(t.id));
   const requestCount = 0;
 
+  useEffect(() => {
+    resetViewerScope();
+  }, [role]);
+
   return (
     <AppLayout>
       <div className="max-w-6xl mx-auto px-6 py-8">
