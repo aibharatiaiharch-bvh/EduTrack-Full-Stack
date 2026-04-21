@@ -1603,6 +1603,7 @@ function AttendanceTab() {
                   <tr>
                     <th className="text-left font-medium px-3 py-2.5">Student</th>
                     <th className="text-left font-medium px-3 py-2.5">Class</th>
+                    <th className="text-left font-medium px-3 py-2.5">Teacher</th>
                     <th className="text-left font-medium px-3 py-2.5">Date</th>
                     <th className="text-center font-medium px-3 py-2.5 w-32">Within 24 hrs</th>
                   </tr>
@@ -1612,6 +1613,7 @@ function AttendanceTab() {
                     <tr key={c.attendanceId} className="hover:bg-muted/20">
                       <td className="px-3 py-2.5 font-medium">{c.studentName || "—"}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{c.className || "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{c.teacherName || "—"}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{c.sessionDate || "—"}</td>
                       <td className="px-3 py-2.5 text-center">
                         <button
