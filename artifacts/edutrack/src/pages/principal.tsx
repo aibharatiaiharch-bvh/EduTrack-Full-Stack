@@ -2372,6 +2372,8 @@ const TAB_ACCESS_RULES = {
   settings: "Principal/Dev only",
 } as const;
 
+const FULL_ACCESS_ROLES = new Set(["principal", "developer", "admin", "staff"]);
+
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
@@ -2598,8 +2600,8 @@ async function scopeAnalysisForViewer(data: any): Promise<any> {
 export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
-  const isElevated = isElevatedRole(role);
-  const TABS = ALL_TABS.filter(t => isElevated || !["requests", "users", "upload", "settings"].includes(t.id));
+  const isElevated = FULL_ACCESS_ROLES.has(role);
+  const TABS = ALL_TABS;
   const requestCount = 0;
 
   useEffect(() => {
