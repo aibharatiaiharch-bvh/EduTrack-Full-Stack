@@ -307,7 +307,7 @@ router.post('/enrollments/join', async (req, res): Promise<void> => {
       if (h === 'Zoom Link')    return zoomLink    || '';
       if (h === 'Class Type')   return subjectType || '';
       if (h === 'ClassDate')    return 'TBD';
-      if (h === 'ClassTime')    return 'TBD';
+      if (h === 'ClassTime')    return subjectType || subject?.['Time'] || 'TBD';
       return '';
     });
     // Append Fee at end (cols.feeCol is already ensured to exist)

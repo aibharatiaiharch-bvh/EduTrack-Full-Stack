@@ -212,7 +212,7 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
     const subjectsStr = Array.isArray(subjectsInterested) ? subjectsInterested.join(', ') : (subjectsInterested || '');
     await appendRow(sheetId, SHEET_TABS.students, [
       studentExtId, studentId,
-      name.trim(),                    // col C = Student Name
+      parentNorm || parentName?.trim() || '', // col C = Parent Email
       parentId,
       subjectsStr,
       (phone || '').trim(),
