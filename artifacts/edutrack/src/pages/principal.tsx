@@ -1594,11 +1594,23 @@ function TutorAttendanceTab() {
       )}
 
       {/* ── Tutor Payment Summary (top) ── */}
-      {tutors.length > 0 && (
+      {tutors.length > 0 && (() => {
+        const DAY_ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+        // Build teacherId → weekday → count from individual session rows
+        const byDay: Record<string, Record<string, number>> = {};
+        for (const r of tutorAttendance) {
+          if (!r.teacherName) continue;
+          const [yr, mo, dy] = r.sessionDate.split("-").map(Number);
+          const day = DAY_ORDER[new Date(yr, mo - 1, dy).getDay() === 0 ? 6 : new Date(yr, mo - 1, dy).getDay() - 1];
+          const key = r.teacherName;
+          byDay[key] ??= {};
+          byDay[key][day] = (byDay[key][day] ?? 0) + 1;
+        }
+        return (
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Tutor Payment Summary
-            <span className="ml-2 text-xs font-normal normal-case">(click a row to see class breakdown)</span>
+            <span className="ml-2 text-xs font-normal normal-case">(click a row to see day breakdown)</span>
           </h3>
           <div className="border rounded-lg overflow-x-auto">
             <table className="w-full text-sm min-w-[300px]">
@@ -1612,6 +1624,7 @@ function TutorAttendanceTab() {
               <tbody>
                 {tutors.map((t: any) => {
                   const isOpen = expandedTutors.has(t.teacherId);
+                  const days = DAY_ORDER.filter(d => byDay[t.teacherName]?.[d]);
                   return (
                     <Fragment key={t.teacherId}>
                       <tr className="border-t hover:bg-muted/40 cursor-pointer select-none" onClick={() => toggleTutor(t.teacherId)}>
@@ -1621,13 +1634,11 @@ function TutorAttendanceTab() {
                         <td className="px-3 py-2.5 font-semibold">{t.teacherName}</td>
                         <td className="px-3 py-2.5 text-center font-bold bg-primary/5">{t.totalSessions}</td>
                       </tr>
-                      {isOpen && t.classes.map((c: any) => (
-                        <tr key={`${t.teacherId}-${c.classId}`} className="border-t bg-muted/20 text-xs">
+                      {isOpen && days.map(day => (
+                        <tr key={`${t.teacherId}-${day}`} className="border-t bg-muted/20 text-xs">
                           <td className="px-2 py-1.5" />
-                          <td className="px-3 py-1.5 pl-7 text-muted-foreground">
-                            <span className="font-medium text-foreground">{c.className}</span>
-                          </td>
-                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">{c.sessionsTaught}</td>
+                          <td className="px-3 py-1.5 pl-7 font-medium text-foreground">{day}</td>
+                          <td className="px-3 py-1.5 text-center font-semibold bg-primary/5">{byDay[t.teacherName][day]}</td>
                         </tr>
                       ))}
                     </Fragment>
@@ -1646,7 +1657,8 @@ function TutorAttendanceTab() {
             </table>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Tutor Attendance Detail ── */}
       <div>
