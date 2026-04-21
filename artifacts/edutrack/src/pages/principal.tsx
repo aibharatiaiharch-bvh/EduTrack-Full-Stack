@@ -2588,7 +2588,7 @@ export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
   const isElevated = isElevatedRole(role);
-  const TABS = ALL_TABS.filter(t => t.id !== "analysis" || isElevated || role === "principal");
+  const TABS = ALL_TABS.filter(t => t.id !== "settings" && t.id !== "upload" && t.id !== "requests");
 
   return (
     <AppLayout>
