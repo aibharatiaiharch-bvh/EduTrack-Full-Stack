@@ -86,7 +86,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "Pages",
         items: [
           { name: "My Classes", href: "/student", icon: BookOpen },
-          { name: "Calendar", href: "/calendar", icon: CalendarDays },
         ],
       },
       {
@@ -104,7 +103,6 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         label: "Pages",
         items: [
           { name: "My Children's Classes", href: "/parent", icon: BookOpen },
-          { name: "Calendar", href: "/calendar", icon: CalendarDays },
         ],
       },
       {
