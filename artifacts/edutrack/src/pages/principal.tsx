@@ -2525,12 +2525,12 @@ function getViewerScope(): Promise<ViewerScope> {
 // Convenience filters used by tab loaders.
 async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role)) return students;
+  if (FULL_ACCESS_ROLES.has(sc.role)) return students;
   return students.filter(s => sc.studentIds.has(s.userId) || sc.studentIds.has(s.id) || sc.studentIds.has(s.UserID));
 }
 async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role)) return tutors;
+  if (FULL_ACCESS_ROLES.has(sc.role)) return tutors;
   return tutors.filter(t => {
     const id = t.UserID || t.userId || t.TeacherID;
     if (id && sc.tutorIds.has(id)) return true;
@@ -2541,12 +2541,12 @@ async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
 }
 async function scopeSubjectsForViewer(subjects: any[]): Promise<any[]> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role)) return subjects;
+  if (FULL_ACCESS_ROLES.has(sc.role)) return subjects;
   return subjects.filter(s => sc.classIds.has(s.SubjectID || s.ClassID || s.subjectId || s.classId));
 }
 async function scopeUsersForViewer(users: any[]): Promise<any[]> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role)) return users;
+  if (FULL_ACCESS_ROLES.has(sc.role)) return users;
   // Show: self + related students + related tutors.
   return users.filter(u => {
     const uid = u.userId;
@@ -2559,7 +2559,7 @@ async function scopeUsersForViewer(users: any[]): Promise<any[]> {
 }
 async function scopeAttendanceSummary(data: any): Promise<any> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role) || !data) return data;
+  if (FULL_ACCESS_ROLES.has(sc.role) || !data) return data;
   const out = { ...data };
   if (Array.isArray(data.students)) {
     out.students = data.students.filter((s: any) => sc.studentIds.has(s.studentId));
@@ -2580,7 +2580,7 @@ async function scopeAttendanceSummary(data: any): Promise<any> {
 }
 async function scopeAnalysisForViewer(data: any): Promise<any> {
   const sc = await getViewerScope();
-  if (sc.elevated || FULL_ACCESS_ROLES.has(sc.role) || !data) return data;
+  if (FULL_ACCESS_ROLES.has(sc.role) || !data) return data;
   const out = { ...data };
   if (Array.isArray(data.bySubject)) {
     out.bySubject = data.bySubject.filter((s: any) => sc.classIds.has(s.subjectId));
