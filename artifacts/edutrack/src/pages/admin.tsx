@@ -942,11 +942,21 @@ function SettingsCard() {
   );
 }
 
+const SCHEDULE_PRESETS: { value: string; label: string }[] = [
+  { value: "0 7 * * *",   label: "Daily at 7:00 AM" },
+  { value: "0 7 * * 1-5", label: "Weekdays at 7:00 AM" },
+  { value: "0 7 * * 1",   label: "Weekly — Monday 7:00 AM" },
+  { value: "0 7 * * 0",   label: "Weekly — Sunday 7:00 AM" },
+  { value: "0 7 1 * *",   label: "Monthly — 1st at 7:00 AM" },
+];
+
 function BackupCard() {
   const [status, setStatus] = useState<any>(null);
   const [toggling, setToggling] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendResult, setSendResult] = useState("");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleError, setScheduleError] = useState("");
 
   async function load() {
     try {
@@ -969,6 +979,27 @@ function BackupCard() {
       setStatus((s: any) => ({ ...s, enabled: data.enabled }));
     } catch {}
     setToggling(false);
+  }
+
+  async function changeSchedule(expr: string) {
+    setSavingSchedule(true);
+    setScheduleError("");
+    try {
+      const res = await fetch(apiUrl("/backup/schedule"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schedule: expr }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setStatus((s: any) => ({ ...s, schedule: data.schedule, scheduleHuman: data.scheduleHuman }));
+      } else {
+        setScheduleError(data.error || "Failed to update schedule.");
+      }
+    } catch (e: any) {
+      setScheduleError(e.message || "Failed to update schedule.");
+    }
+    setSavingSchedule(false);
   }
 
   async function sendNow() {
@@ -1008,6 +1039,26 @@ function BackupCard() {
           </p>
           {emailOk && recipients.length > 0 && (
             <p className="text-xs font-mono text-foreground">{recipients.join(", ")}</p>
+          )}
+          {emailOk && (
+            <div className="pt-2 flex items-center gap-2 flex-wrap">
+              <label className="text-xs text-muted-foreground">Schedule:</label>
+              <select
+                className="h-7 rounded border border-input bg-background px-2 text-xs"
+                value={SCHEDULE_PRESETS.some(p => p.value === status?.schedule) ? status?.schedule : "__custom"}
+                onChange={(e) => { if (e.target.value !== "__custom") changeSchedule(e.target.value); }}
+                disabled={savingSchedule}
+              >
+                {SCHEDULE_PRESETS.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+                {!SCHEDULE_PRESETS.some(p => p.value === status?.schedule) && status?.schedule && (
+                  <option value="__custom">Custom: {status.schedule}</option>
+                )}
+              </select>
+              {savingSchedule && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
+              {scheduleError && <span className="text-xs text-red-600">{scheduleError}</span>}
+            </div>
           )}
           {sendResult && (
             <p className={`text-xs mt-1 ${sendResult.includes("✓") ? "text-green-600" : "text-red-600"}`}>{sendResult}</p>

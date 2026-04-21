@@ -1,7 +1,10 @@
 import { Router, type IRouter } from 'express';
 import { sendDailyBackup } from '../lib/backup.js';
 import { isEmailConfigured } from '../lib/email.js';
-import { isBackupEnabled, setBackupEnabled } from '../lib/scheduler.js';
+import {
+  isBackupEnabled, setBackupEnabled,
+  getBackupSchedule, setBackupSchedule, describeSchedule,
+} from '../lib/scheduler.js';
 
 const router: IRouter = Router();
 
@@ -22,12 +25,13 @@ function getRecipients(): string[] {
 router.get('/backup/status', (_req, res): void => {
   const configured = isEmailConfigured();
   const recipients = [...new Set(getRecipients())];
+  const schedule = getBackupSchedule();
   res.json({
     enabled: isBackupEnabled(),
     emailConfigured: configured,
     recipients,
-    schedule: process.env.BACKUP_CRON || '0 7 * * *',
-    scheduleHuman: 'Daily at 7:00 AM',
+    schedule,
+    scheduleHuman: describeSchedule(schedule),
     sheetId: process.env.DEFAULT_SHEET_ID || null,
     missing: [
       !process.env.SMTP_HOST && 'SMTP_HOST',
@@ -43,6 +47,22 @@ router.post('/backup/toggle', (req, res): void => {
   const next = typeof enabled === 'boolean' ? enabled : !isBackupEnabled();
   setBackupEnabled(next);
   res.json({ ok: true, enabled: next });
+});
+
+// POST /api/backup/schedule — change cadence (cron expression)
+router.post('/backup/schedule', (req, res): void => {
+  const { schedule } = req.body ?? {};
+  if (typeof schedule !== 'string' || !schedule.trim()) {
+    res.status(400).json({ error: 'Missing schedule (cron expression).' });
+    return;
+  }
+  const result = setBackupSchedule(schedule.trim());
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  const next = getBackupSchedule();
+  res.json({ ok: true, schedule: next, scheduleHuman: describeSchedule(next) });
 });
 
 // POST /api/backup/send — manual trigger
