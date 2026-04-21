@@ -1160,16 +1160,20 @@ function TutorsTab() {
     const mine = subjects.filter(s => (s.TeacherID || "") === tid);
     const days = new Set<string>();
     const types = new Set<string>();
+    const names = new Set<string>();
     for (const s of mine) {
       String(s.Days || "").split(/[,/;|]/).map(normDay).filter(Boolean).forEach(d => days.add(d));
       const t = (s.Type || "").trim();
       if (t) types.add(t);
+      const n = (s.Name || "").trim();
+      if (n) names.add(n);
     }
     const orderedDays = DAY_ORDER.filter(d => days.has(d));
     const otherDays = Array.from(days).filter(d => !DAY_ORDER.includes(d)).sort();
     return {
       days: [...orderedDays, ...otherDays].join(", ") || "—",
       types: Array.from(types).sort().join(", ") || "—",
+      classes: Array.from(names).sort().join(", ") || "—",
     };
   }
 
@@ -1272,7 +1276,7 @@ function TutorsTab() {
                       <tr key={t.UserID} className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{t.Name || t.name || t.Email || "Unknown"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{t.Email || "—"}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{t.Subjects || t.Classes || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{sched.classes !== "—" ? sched.classes : (t.Subjects || t.Classes || "—")}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{sched.types}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{sched.days}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">
