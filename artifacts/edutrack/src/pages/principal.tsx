@@ -2604,10 +2604,10 @@ export default function PrincipalDashboard() {
                   tab === t.id
                     ? "border-primary text-primary"
                     : t.id === "requests"
-                      ? "border-transparent text-red-600 font-semibold hover:text-red-700"
+                      ? "border-transparent text-[#dc2626] font-bold hover:text-[#b91c1c]"
                       : t.id === "users"
-                        ? "border-transparent text-slate-700 font-semibold hover:text-slate-900"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                        ? "border-transparent text-[#dc2626] font-bold hover:text-[#b91c1c]"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {t.icon}{t.label}
