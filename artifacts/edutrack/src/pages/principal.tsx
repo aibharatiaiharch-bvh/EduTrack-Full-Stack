@@ -373,7 +373,9 @@ function ClassesTab() {
                             >
                               <option value="">Select teacher</option>
                               {tutors.map(t => (
-                                <option key={t.UserID} value={t.UserID}>{t.Name}</option>
+                                <option key={t.UserID} value={t.UserID}>
+                                  {t.Name}{t.Specialty ? ` — ${t.Specialty}` : ""}
+                                </option>
                               ))}
                             </select>
                             <Button size="sm" onClick={() => handleReassignSubject(rowNum)} disabled={reassignSaving || !reassignTeacherId}>
