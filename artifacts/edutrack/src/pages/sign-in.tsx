@@ -35,19 +35,9 @@ export default function SignInPage() {
       if (data.userId) localStorage.setItem("edutrack_user_id", data.userId);
       if (data.sheetId) localStorage.setItem("edutrack_sheet_id", data.sheetId);
 
-      if (data.role === "developer" || data.role === "admin") {
-        setLocation("/admin");
-      } else if (data.role === "principal") {
-        setLocation("/principal");
-      } else if (data.role === "student") {
-        setLocation("/student");
-      } else if (data.role === "tutor") {
-        setLocation("/tutor");
-      } else if (data.role === "parent") {
-        setLocation("/calendar");
-      } else {
-        setLocation("/calendar");
-      }
+      // Unified landing: everyone goes to the dashboard (Calendar tab by default).
+      // Dev/Admin still has access to /admin via the Dev Tools page.
+      setLocation("/principal");
     } catch {
       setError("Could not reach the server. Please try again.");
       setLoading(false);
