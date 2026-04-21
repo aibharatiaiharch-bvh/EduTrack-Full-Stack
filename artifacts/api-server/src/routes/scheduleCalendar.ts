@@ -76,7 +76,10 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
     for (const e of enrollments) {
       const classId = (e['ClassID'] || '').trim();
       const status = (e['Status'] || 'active').toLowerCase().trim();
+      const type   = (e['Class Type'] || '').toLowerCase().trim();
       if (!classId || status === 'inactive' || status === 'cancelled' || status === 'late cancellation') continue;
+      // Skip non-student rows (e.g. tutor application rows assigned a ClassID)
+      if (type === 'tutor' || type === 'teacher' || type === 'new-class') continue;
       if (!enrolledBySubject[classId]) enrolledBySubject[classId] = { count: 0, students: [] };
       enrolledBySubject[classId].count++;
       const userId = (e['UserID'] || '').trim();

@@ -44,12 +44,21 @@ router.get('/subjects/with-capacity', async (req, res): Promise<void> => {
       subjects = subjects.filter(s => statuses.includes((s['Status'] || '').toLowerCase()));
     }
 
-    // Read enrollments to count active seats per class (using ClassID FK)
+    // Read enrollments to count active seats per class (using ClassID FK).
+    // Exclude tutor application rows + non-student class types so a tutor whose
+    // application row was assigned a ClassID is never counted as a student.
     let enrollmentRows: any[] = [];
     try {
       enrollmentRows = await readTabRows(spreadsheetId, SHEET_TABS.enrollments);
       const INACTIVE = ['inactive','cancelled','canceled','rejected','late cancellation'];
-      enrollmentRows = enrollmentRows.filter(r => !INACTIVE.includes((r['Status'] || '').toLowerCase()));
+      const NON_STUDENT_TYPES = ['tutor','teacher','new-class'];
+      enrollmentRows = enrollmentRows.filter(r => {
+        const status = (r['Status'] || '').toLowerCase();
+        const type   = (r['Class Type'] || '').toLowerCase().trim();
+        if (INACTIVE.includes(status)) return false;
+        if (NON_STUDENT_TYPES.includes(type)) return false;
+        return true;
+      });
     } catch {}
 
     // Join Teachers extension + Users for display name
