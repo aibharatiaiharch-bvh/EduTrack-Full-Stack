@@ -237,7 +237,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const userEmail = typeof window !== "undefined" ? localStorage.getItem("edutrack_user_email") || "" : "";
   const [location] = useLocation();
   const role = getStoredRole();
-  const showSidebar = role === "principal" || role === "developer" || role === "admin";
+  const showSidebar = role === "principal" || role === "developer" || role === "admin" || role === "parent" || role === "student" || role === "tutor";
   const showReturnLink = showSidebar && location !== "/principal" && location !== "/admin" && location !== "/housekeeping";
   return (
     <SidebarProvider defaultOpen={true}>
