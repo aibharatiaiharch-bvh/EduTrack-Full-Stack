@@ -73,8 +73,8 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
   }
   const rows = Array.from(map.values()).sort((a, b) => a.className.localeCompare(b.className));
   return {
-    group: rows.filter(r => r.type !== "Individual"),
-    individual: rows.filter(r => r.type === "Individual"),
+    group: rows,
+    individual: [],
   };
 }
 
@@ -419,12 +419,12 @@ export function CalendarContent() {
         </p>
       </header>
 
-      {group.length === 0 && individual.length === 0 ? (
+      {group.length === 0 ? (
         <p className="text-muted-foreground text-sm py-8 text-center">No active classes found for this week.</p>
       ) : (
         <>
           <CalendarGrid rows={group} title="Group Classes" canSeeStudents={canSeeStudents} />
-          <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />
+          {false && <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />}
           {/* Contact Directory moved to Principal → Requests tab for data privacy. */}
           {false && <ContactTable days={days} principalEmail={principalEmail} />}
         </>
