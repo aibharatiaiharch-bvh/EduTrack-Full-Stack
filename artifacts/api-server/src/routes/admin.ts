@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { getUncachableGoogleSheetClient, SHEET_TABS } from '../lib/googleSheets.js';
+import { getUncachableGoogleSheetClient, SHEET_TABS, colLetter } from '../lib/googleSheets.js';
 
 const router: IRouter = Router();
 
@@ -79,6 +79,100 @@ router.post('/admin/migrate-columns', async (req, res): Promise<void> => {
       });
     }
     res.json({ ok: true, updated: writes.map(w => w.range) });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/backfill-names?sheetId=
+// Fills blank "Parent Name", "Teacher Name", "Student Name" columns from existing IDs.
+// Safe to run multiple times — only writes where the cell is currently empty.
+router.post('/admin/backfill-names', async (req, res): Promise<void> => {
+  const sheetId = (req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || '') as string;
+  if (!sheetId) { res.status(400).json({ error: 'sheetId required' }); return; }
+
+  try {
+    const sheets = await getUncachableGoogleSheetClient();
+
+    // ── 1. Build lookup maps from Users tab ──────────────────────────────────
+    const usersResp = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: `${SHEET_TABS.users}!A2:G` });
+    const userRows  = usersResp.data.values || [];
+    const userIdToName: Record<string, string> = {};
+    for (const row of userRows) {
+      const id   = (row[0] || '').toString().trim();
+      const name = (row[3] || '').toString().trim();
+      if (id) userIdToName[id] = name;
+    }
+
+    // ── 2. Build SubjectID → TeacherID map from Subjects tab ─────────────────
+    const subjectsResp = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: `${SHEET_TABS.subjects}!A2:J` });
+    const subjectRows  = subjectsResp.data.values || [];
+    const subjectIdToTeacherId: Record<string, string> = {};
+    for (const row of subjectRows) {
+      const sid = (row[0] || '').toString().trim();
+      const tid = (row[3] || '').toString().trim();
+      if (sid) subjectIdToTeacherId[sid] = tid;
+    }
+
+    const writes: { range: string; value: string }[] = [];
+
+    // ── 3. Students: fill blank "Parent Name" (col K = index 10) ─────────────
+    const studentsResp = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: `${SHEET_TABS.students}!A2:K` });
+    const studentRows  = studentsResp.data.values || [];
+    const parentNameCol = colLetter('students', 'Parent Name');
+    for (let i = 0; i < studentRows.length; i++) {
+      const row       = studentRows[i];
+      const parentId  = (row[3] || '').toString().trim();
+      const existing  = (row[10] || '').toString().trim();
+      if (!existing && parentId && userIdToName[parentId]) {
+        writes.push({ range: `${SHEET_TABS.students}!${parentNameCol}${i + 2}`, value: userIdToName[parentId] });
+      }
+    }
+
+    // ── 4. Subjects: fill blank "Teacher Name" (col J = index 9) ─────────────
+    const teacherNameCol = colLetter('subjects', 'Teacher Name');
+    for (let i = 0; i < subjectRows.length; i++) {
+      const row      = subjectRows[i];
+      const teacherId = (row[3] || '').toString().trim();
+      const existing  = (row[9] || '').toString().trim();
+      if (!existing && teacherId && userIdToName[teacherId]) {
+        writes.push({ range: `${SHEET_TABS.subjects}!${teacherNameCol}${i + 2}`, value: userIdToName[teacherId] });
+      }
+    }
+
+    // ── 5. Attendance: fill blank Student Name (col J=9) & Teacher Name (col K=10) ──
+    const attResp = await sheets.spreadsheets.values.get({ spreadsheetId: sheetId, range: `${SHEET_TABS.attendance}!A2:K` });
+    const attRows = attResp.data.values || [];
+    const attStuCol = colLetter('attendance', 'Student Name');
+    const attTchCol = colLetter('attendance', 'Teacher Name');
+    for (let i = 0; i < attRows.length; i++) {
+      const row       = attRows[i];
+      const classId   = (row[1] || '').toString().trim();
+      const userId    = (row[2] || '').toString().trim();
+      const stuName   = (row[9]  || '').toString().trim();
+      const tchName   = (row[10] || '').toString().trim();
+      if (!stuName && userId && userIdToName[userId]) {
+        writes.push({ range: `${SHEET_TABS.attendance}!${attStuCol}${i + 2}`, value: userIdToName[userId] });
+      }
+      if (!tchName && classId) {
+        const tid = subjectIdToTeacherId[classId];
+        if (tid && userIdToName[tid]) {
+          writes.push({ range: `${SHEET_TABS.attendance}!${attTchCol}${i + 2}`, value: userIdToName[tid] });
+        }
+      }
+    }
+
+    // ── 6. Write all updates ──────────────────────────────────────────────────
+    for (const w of writes) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: w.range,
+        valueInputOption: 'RAW',
+        requestBody: { values: [[w.value]] },
+      });
+    }
+
+    res.json({ ok: true, filled: writes.length, updates: writes.map(w => w.range) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
