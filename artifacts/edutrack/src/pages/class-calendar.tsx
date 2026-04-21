@@ -64,7 +64,8 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
   for (const day of days) {
     const short = SHORT_DAY[day.dayName] ?? day.dayName.slice(0, 3);
     for (const slot of day.slots) {
-      const key = `${slot.className}||${slot.type}`;
+      const normalizedType = (slot.type || "").toLowerCase().trim();
+      const key = `${slot.className}||${normalizedType}`;
       if (!map.has(key)) {
         map.set(key, { className: slot.className, type: slot.type, daySlots: {} });
       }
@@ -73,8 +74,8 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
   }
   const rows = Array.from(map.values()).sort((a, b) => a.className.localeCompare(b.className));
   return {
-    group: rows.filter((row) => row.type !== "Individual"),
-    individual: rows.filter((row) => row.type === "Individual"),
+    group: rows.filter((row) => (row.type || "").toLowerCase().trim() !== "individual"),
+    individual: rows.filter((row) => (row.type || "").toLowerCase().trim() === "individual"),
   };
 }
 
