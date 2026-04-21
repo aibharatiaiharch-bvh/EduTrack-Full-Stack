@@ -9,8 +9,39 @@ function getSheetId(req: any): string {
   return req.query.sheetId || req.body?.sheetId || process.env.DEFAULT_SHEET_ID || "";
 }
 
+// Reads either legacy JSON blobs OR the new "Key: Value" multi-line format
+// produced by packNotes(). Maps human labels back to the camelCase keys the
+// activation code expects.
 function tryParseJson(val: string): Record<string, string> {
-  try { return val.startsWith("{") ? JSON.parse(val) : {}; } catch { return {}; }
+  if (!val) return {};
+  if (val.startsWith("{")) {
+    try { return JSON.parse(val); } catch { return {}; }
+  }
+  const labelToKey: Record<string, string> = {
+    "student name": "studentName", "student email": "studentEmail",
+    "parent email": "parentEmail", "parent phone": "parentPhone",
+    "applicant name": "applicantName", "applicant email": "applicantEmail",
+    "requester name": "requesterName", "requester email": "requesterEmail",
+    "class wanted": "classWanted", "preferred days": "preferredDays",
+    "preferred time": "preferredTime", "subjects": "subjects",
+    "phone": "phone", "zoom link": "zoomLink",
+    "previously enrolled": "previouslyEnrolled", "current school": "currentSchool",
+    "current grade": "currentGrade", "age": "age",
+    "classes interested": "classesInterested", "reference": "reference",
+    "promo code": "promoCode", "submission date": "submissionDate",
+    "notes": "extra",
+  };
+  const out: Record<string, string> = {};
+  for (const line of val.split(/\r?\n/)) {
+    const idx = line.indexOf(":");
+    if (idx < 0) continue;
+    const label = line.slice(0, idx).trim().toLowerCase();
+    const value = line.slice(idx + 1).trim();
+    if (!value) continue;
+    const key = labelToKey[label] || label;
+    out[key] = value;
+  }
+  return out;
 }
 
 function buildWelcomeEmail(studentName: string, classes: string, principalName: string, loginEmail?: string): string {

@@ -35,8 +35,31 @@ function isPrincipalEmail(email: string): boolean {
   return getPrincipalEmails().includes(email.toLowerCase().trim());
 }
 
+// Human-readable "Key: Value" lines (one per field). Skips empty values so the
+// Notes column stays scannable in the sheet. Reading code (tryParseJson) accepts
+// both this format and legacy JSON blobs.
 function packNotes(obj: Record<string, string>): string {
-  return JSON.stringify(obj);
+  const labels: Record<string, string> = {
+    studentName: "Student Name", studentEmail: "Student Email",
+    parentEmail: "Parent Email", parentPhone: "Parent Phone",
+    applicantName: "Applicant Name", applicantEmail: "Applicant Email",
+    requesterName: "Requester Name", requesterEmail: "Requester Email",
+    classWanted: "Class Wanted", preferredDays: "Preferred Days",
+    preferredTime: "Preferred Time", subjects: "Subjects",
+    phone: "Phone", zoomLink: "Zoom Link",
+    previouslyEnrolled: "Previously Enrolled", currentSchool: "Current School",
+    currentGrade: "Current Grade", age: "Age",
+    classesInterested: "Classes Interested", reference: "Reference",
+    promoCode: "Promo Code", submissionDate: "Submission Date",
+    extra: "Notes",
+  };
+  const lines: string[] = [];
+  for (const [key, val] of Object.entries(obj)) {
+    if (!val || !String(val).trim()) continue;
+    const label = labels[key] || key;
+    lines.push(`${label}: ${val}`);
+  }
+  return lines.join("\n");
 }
 
 function unpackNotes(notes: string): Record<string, string> {
