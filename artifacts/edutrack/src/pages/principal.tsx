@@ -2588,7 +2588,7 @@ export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
   const isElevated = isElevatedRole(role);
-  const TABS = ALL_TABS.filter(t => isElevated || !ELEVATED_ONLY.includes(t.id));
+  const TABS = ALL_TABS.filter(t => t.id !== "upload" && t.id !== "settings");
 
   return (
     <AppLayout>
@@ -2603,9 +2603,7 @@ export default function PrincipalDashboard() {
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   tab === t.id
                     ? "border-primary text-primary"
-                    : (t.id === "requests" || t.id === "users")
-                      ? "border-transparent text-slate-700 font-semibold hover:text-slate-900"
-                      : "border-transparent text-muted-foreground hover:text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {t.icon}{t.label}
