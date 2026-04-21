@@ -13,6 +13,7 @@ const tabMap = {
   users: 'Users',
   teachers: 'Teachers',
   subjects: 'Subjects',
+  students: 'Students',
   enrollments: 'Enrollments',
   attendance: 'Attendance',
 };
@@ -63,6 +64,7 @@ async function writeRange(tab, startRow, rows) {
 
 const teacherRows = await read(tabMap.teachers);
 const subjectRows = await read(tabMap.subjects);
+const studentRows = await read(tabMap.students).catch(() => []);
 const enrollmentRows = await read(tabMap.enrollments);
 const attendanceRows = await read(tabMap.attendance);
 
@@ -131,6 +133,29 @@ const updatedEnrollments = enrollmentRows.map(row => {
   ];
 });
 
+const updatedStudents = studentRows.map(row => {
+  const oldList = normalize(row.Classes);
+  const remapped = oldList
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(id => subjectIdMap.get(id) || id)
+    .join(', ');
+  return [
+    normalize(row.StudentID),
+    normalize(row.UserID),
+    normalize(row.Name),
+    normalize(row.ParentID),
+    remapped,
+    normalize(row.Phone),
+    normalize(row.Notes),
+    normalize(row.CurrentSchool),
+    normalize(row.CurrentGrade),
+    normalize(row.PreviousStudent),
+    normalize(row['Parent Name']),
+  ];
+});
+
 const updatedAttendance = attendanceRows.map(row => {
   const classId = normalize(row.SubjectID);
   return [
@@ -152,6 +177,7 @@ console.log(JSON.stringify({
   dryRun,
   teachersRenumbered: teacherIdMap.size,
   subjectsRenumbered: subjectIdMap.size,
+  studentsUpdated: updatedStudents.length,
   enrollmentsUpdated: updatedEnrollments.length,
   attendanceUpdated: updatedAttendance.length,
   sampleTeacherMap: Array.from(teacherIdMap.entries()).slice(0, 3),
@@ -160,5 +186,6 @@ console.log(JSON.stringify({
 
 await writeRange(tabMap.teachers, 2, newTeacherRows);
 await writeRange(tabMap.subjects, 2, newSubjectRows);
+await writeRange(tabMap.students, 2, updatedStudents);
 await writeRange(tabMap.enrollments, 2, updatedEnrollments);
 await writeRange(tabMap.attendance, 2, updatedAttendance);
