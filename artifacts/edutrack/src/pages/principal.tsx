@@ -65,9 +65,9 @@ function ClassesTab() {
         apiFetch("/subjects/with-capacity?status=active"),
         apiFetch("/principals/teachers"),
       ]);
-      if (Array.isArray(subjectData)) setSubjects(subjectData);
+      if (Array.isArray(subjectData)) setSubjects(await scopeSubjectsForViewer(subjectData));
       else setError("Could not load classes.");
-      if (Array.isArray(tutorData)) setTutors(tutorData);
+      if (Array.isArray(tutorData)) setTutors(await scopeTutorsForViewer(tutorData));
     } catch { setError("Connection error."); }
     setLoading(false);
   }
@@ -1223,9 +1223,9 @@ function TutorsTab() {
         apiFetch("/principals/teachers"),
         apiFetch("/subjects/with-capacity?status=active"),
       ]);
-      if (Array.isArray(tutorData)) setTutors(tutorData);
+      if (Array.isArray(tutorData)) setTutors(await scopeTutorsForViewer(tutorData));
       else setError("Could not load tutors.");
-      if (Array.isArray(subjData)) setSubjects(subjData);
+      if (Array.isArray(subjData)) setSubjects(await scopeSubjectsForViewer(subjData));
     } catch { setError("Connection error."); }
     setLoading(false);
   }
@@ -1423,7 +1423,7 @@ function UsersTab() {
     setError("");
     try {
       const data = await apiFetch("/users");
-      if (Array.isArray(data)) setUsers(data);
+      if (Array.isArray(data)) setUsers(await scopeUsersForViewer(data));
       else setError("Could not load users.");
     } catch { setError("Connection error."); }
     setLoading(false);
@@ -1589,7 +1589,7 @@ function StudentAttendanceTab() {
     try {
       const result = await apiFetch(`/attendance/summary?month=${encodeURIComponent(m)}`);
       if (result.error) setError(result.error);
-      else setData(result);
+      else setData(await scopeAttendanceSummary(result));
     } catch { setError("Connection error."); }
     setLoading(false);
   }
@@ -1790,7 +1790,7 @@ function TutorAttendanceTab() {
     try {
       const result = await apiFetch(`/attendance/summary?month=${encodeURIComponent(m)}`);
       if (result.error) setError(result.error);
-      else setData(result);
+      else setData(await scopeAttendanceSummary(result));
     } catch { setError("Connection error."); }
     setLoading(false);
   }
@@ -2037,7 +2037,7 @@ function AnalysisTab() {
       if (t) params.set("to", t);
       const res = await fetch(apiUrl(`/analysis?${params.toString()}`));
       const json = await res.json();
-      if (json.error) { setError(json.error); } else { setData(json); }
+      if (json.error) { setError(json.error); } else { setData(await scopeAnalysisForViewer(json)); }
     } catch { setError("Could not load analysis data."); }
     setLoading(false);
   }
@@ -2324,54 +2324,192 @@ function getViewerEmail(): string {
   return (localStorage.getItem("edutrack_user_email") || "").toLowerCase().trim();
 }
 
-// Filter a students[] array down to only those visible to the current viewer.
-// principal/developer/admin/staff: see all. student: only self. parent: only their children.
-// tutor: only students enrolled in classes they teach.
-async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
-  const role = getViewerRole();
-  if (isElevatedRole(role)) return students;
+// ─── Viewer Scope ──────────────────────────────────────────────────────────────
+// Computes the set of student IDs, class IDs, tutor IDs and tutor names visible
+// to the current viewer. Results are cached for the session to avoid repeated
+// fetches across tabs. Elevated roles get ALL ids (effectively unscoped).
+type ViewerScope = {
+  role: string;
+  elevated: boolean;
+  viewerId: string;
+  viewerEmail: string;
+  studentIds: Set<string>;
+  classIds: Set<string>;
+  tutorIds: Set<string>;
+  tutorNames: Set<string>;
+};
 
-  const vid = getViewerId();
-  const vemail = getViewerEmail();
+let _scopeCache: Promise<ViewerScope> | null = null;
+function resetViewerScope() { _scopeCache = null; }
 
-  if (role === "student") {
-    return students.filter(s =>
-      (s.userId && s.userId === vid) ||
-      (s.email && String(s.email).toLowerCase() === vemail)
-    );
-  }
+function getViewerScope(): Promise<ViewerScope> {
+  if (_scopeCache) return _scopeCache;
+  _scopeCache = (async () => {
+    const role = getViewerRole();
+    const elevated = isElevatedRole(role);
+    const viewerId = getViewerId();
+    const viewerEmail = getViewerEmail();
 
-  if (role === "parent") {
-    return students.filter(s =>
-      (s.parentId && s.parentId === vid) ||
-      (s.parentEmail && String(s.parentEmail).toLowerCase() === vemail)
-    );
-  }
+    const empty: ViewerScope = {
+      role, elevated, viewerId, viewerEmail,
+      studentIds: new Set(), classIds: new Set(),
+      tutorIds: new Set(), tutorNames: new Set(),
+    };
+    if (elevated) return empty; // elevated callers should bypass filtering
 
-  if (role === "tutor") {
     try {
-      const [subjects, enrollments] = await Promise.all([
+      const [students, subjects, enrollments] = await Promise.all([
+        apiFetch("/principals/students"),
         apiFetch("/subjects"),
         apiFetch("/enrollments"),
       ]);
-      const myClassIds = new Set(
-        (Array.isArray(subjects) ? subjects : [])
-          .filter((s: any) => (s.TeacherID || s.teacherId) === vid ||
-                              (s["Teacher Email"] && String(s["Teacher Email"]).toLowerCase() === vemail))
-          .map((s: any) => s.ClassID || s.classId)
-      );
-      const myStudentIds = new Set(
-        (Array.isArray(enrollments) ? enrollments : [])
-          .filter((e: any) => myClassIds.has(e.ClassID || e.classId))
-          .map((e: any) => e.UserID || e.userId)
-      );
-      return students.filter(s => myStudentIds.has(s.userId));
-    } catch {
-      return [];
-    }
-  }
+      const subjArr = Array.isArray(subjects) ? subjects : [];
+      const enrArr = Array.isArray(enrollments) ? enrollments : [];
+      const stuArr = Array.isArray(students) ? students : [];
 
-  return [];
+      const studentIds = new Set<string>();
+      const classIds = new Set<string>();
+      const tutorIds = new Set<string>();
+      const tutorNames = new Set<string>();
+
+      if (role === "student") {
+        const me = stuArr.find(s =>
+          (s.userId && s.userId === viewerId) ||
+          (s.email && String(s.email).toLowerCase() === viewerEmail)
+        );
+        if (me?.userId) studentIds.add(me.userId);
+      } else if (role === "parent") {
+        for (const s of stuArr) {
+          if ((s.parentId && s.parentId === viewerId) ||
+              (s.parentEmail && String(s.parentEmail).toLowerCase() === viewerEmail)) {
+            if (s.userId) studentIds.add(s.userId);
+          }
+        }
+      } else if (role === "tutor") {
+        for (const sub of subjArr) {
+          const tid = sub.TeacherID || sub.teacherId || "";
+          const temail = String(sub["Teacher Email"] || "").toLowerCase();
+          if (tid === viewerId || (temail && temail === viewerEmail)) {
+            const cid = sub.ClassID || sub.classId;
+            if (cid) classIds.add(cid);
+          }
+        }
+        for (const e of enrArr) {
+          const cid = e.ClassID || e.classId;
+          if (cid && classIds.has(cid)) {
+            const uid = e.UserID || e.userId;
+            if (uid) studentIds.add(uid);
+          }
+        }
+        if (viewerId) tutorIds.add(viewerId);
+      }
+
+      // For student/parent: derive class IDs from their student IDs.
+      if (role === "student" || role === "parent") {
+        for (const e of enrArr) {
+          const uid = e.UserID || e.userId;
+          if (uid && studentIds.has(uid)) {
+            const cid = e.ClassID || e.classId;
+            if (cid) classIds.add(cid);
+          }
+        }
+        // Tutors = teachers of those classes.
+        for (const sub of subjArr) {
+          const cid = sub.ClassID || sub.classId;
+          if (cid && classIds.has(cid)) {
+            const tid = sub.TeacherID || sub.teacherId;
+            if (tid) tutorIds.add(tid);
+            const tname = (sub["Teacher Name"] || sub.teacherName || "").trim();
+            if (tname) tutorNames.add(tname);
+          }
+        }
+      } else if (role === "tutor") {
+        if (viewerId) {
+          // Try to find own name from subjects we teach.
+          const own = subjArr.find(s =>
+            (s.TeacherID || s.teacherId) === viewerId
+          );
+          const tname = (own?.["Teacher Name"] || own?.teacherName || "").trim();
+          if (tname) tutorNames.add(tname);
+        }
+      }
+
+      return { role, elevated, viewerId, viewerEmail, studentIds, classIds, tutorIds, tutorNames };
+    } catch {
+      return empty;
+    }
+  })();
+  return _scopeCache;
+}
+
+// Convenience filters used by tab loaders.
+async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
+  const sc = await getViewerScope();
+  if (sc.elevated) return students;
+  return students.filter(s => sc.studentIds.has(s.userId));
+}
+async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
+  const sc = await getViewerScope();
+  if (sc.elevated) return tutors;
+  return tutors.filter(t => sc.tutorIds.has(t.UserID || t.userId || t.TeacherID));
+}
+async function scopeSubjectsForViewer(subjects: any[]): Promise<any[]> {
+  const sc = await getViewerScope();
+  if (sc.elevated) return subjects;
+  return subjects.filter(s => sc.classIds.has(s.ClassID || s.classId));
+}
+async function scopeUsersForViewer(users: any[]): Promise<any[]> {
+  const sc = await getViewerScope();
+  if (sc.elevated) return users;
+  // Show: self + related students + related tutors.
+  return users.filter(u => {
+    const uid = u.userId;
+    if (!uid) return false;
+    if (uid === sc.viewerId) return true;
+    if (sc.studentIds.has(uid)) return true;
+    if (sc.tutorIds.has(uid)) return true;
+    return false;
+  });
+}
+async function scopeAttendanceSummary(data: any): Promise<any> {
+  const sc = await getViewerScope();
+  if (sc.elevated || !data) return data;
+  const out = { ...data };
+  if (Array.isArray(data.students)) {
+    out.students = data.students.filter((s: any) => sc.studentIds.has(s.studentId));
+  }
+  if (Array.isArray(data.cancellations)) {
+    out.cancellations = data.cancellations.filter((c: any) =>
+      sc.studentIds.has(c.userId) || sc.classIds.has(c.classId)
+    );
+  }
+  if (Array.isArray(data.tutors)) {
+    out.tutors = data.tutors.filter((t: any) => sc.tutorIds.has(t.teacherId));
+  }
+  if (Array.isArray(data.tutorAttendance)) {
+    out.tutorAttendance = data.tutorAttendance.filter((r: any) =>
+      sc.classIds.has(r.classId) || (r.teacherName && sc.tutorNames.has(r.teacherName))
+    );
+  }
+  return out;
+}
+async function scopeAnalysisForViewer(data: any): Promise<any> {
+  const sc = await getViewerScope();
+  if (sc.elevated || !data) return data;
+  const out = { ...data };
+  if (Array.isArray(data.bySubject)) {
+    out.bySubject = data.bySubject.filter((s: any) => sc.classIds.has(s.subjectId));
+  }
+  if (Array.isArray(data.byTeacher)) {
+    out.byTeacher = data.byTeacher.filter((t: any) => sc.tutorNames.has(t.teacherName));
+  }
+  // Recompute coarse totals from the scoped slices.
+  const teachers = out.byTeacher?.length ?? 0;
+  const subjectsCount = out.bySubject?.length ?? 0;
+  const studentsCount = sc.studentIds.size;
+  const hoursPerWeek = (out.bySubject || []).reduce((n: number, s: any) => n + (s.hoursPerWeek || 0), 0);
+  out.totals = { subjects: subjectsCount, teachers, students: studentsCount, hoursPerWeek };
+  return out;
 }
 
 export default function PrincipalDashboard() {
