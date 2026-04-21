@@ -372,19 +372,11 @@ function CalendarContent() {
   });
 
   const sheetId = localStorage.getItem("edutrack_sheet_id") || configData?.sheetId || "";
-  const viewerId    = localStorage.getItem("edutrack_user_id")    || "";
-  const viewerEmail = localStorage.getItem("edutrack_user_email") || "";
-  const viewerRole  = localStorage.getItem("edutrack_dev_role_override")
-                    || localStorage.getItem("edutrack_user_role") || "";
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["calendar", sheetId, viewerId, viewerRole],
+    queryKey: ["calendar", sheetId],
     queryFn: async () => {
-      const params = new URLSearchParams({ sheetId, weeks: "1" });
-      if (viewerId)    params.set("userId", viewerId);
-      if (viewerEmail) params.set("email",  viewerEmail);
-      if (viewerRole)  params.set("role",   viewerRole);
-      const url = apiUrl(`/schedule/calendar?${params.toString()}`);
+      const url = apiUrl(`/schedule/calendar?sheetId=${encodeURIComponent(sheetId)}&weeks=1`);
       const res = await fetch(url);
       if (!res.ok) throw new Error(`API error ${res.status}`);
       return res.json() as Promise<CalendarApiResponse>;
