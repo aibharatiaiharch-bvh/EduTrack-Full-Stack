@@ -87,6 +87,7 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         items: [
           { name: "My Classes", href: "/student", icon: BookOpen },
           { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
         ],
       },
       {
@@ -105,6 +106,7 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         items: [
           { name: "My Children's Classes", href: "/parent", icon: BookOpen },
           { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
         ],
       },
       {
@@ -123,6 +125,7 @@ function buildNavigation(role: string, features: ReturnType<typeof getFeatures>)
         items: [
           { name: "My Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { name: "Calendar", href: "/calendar", icon: CalendarDays },
+          { name: "Principal Dashboard", href: "/principal", icon: LayoutDashboard },
         ],
       },
       {
