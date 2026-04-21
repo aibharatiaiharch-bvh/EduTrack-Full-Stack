@@ -2511,7 +2511,7 @@ function getViewerScope(): Promise<ViewerScope> {
 async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
   const sc = await getViewerScope();
   if (sc.elevated) return students;
-  return students.filter(s => sc.studentIds.has(s.userId));
+  return students.filter(s => sc.studentIds.has(s.userId) || sc.studentIds.has(s.id) || sc.studentIds.has(s.UserID));
 }
 async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
   const sc = await getViewerScope();
