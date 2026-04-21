@@ -85,7 +85,7 @@ Monorepo using `pnpm workspaces`.
 | Portal | Features |
 |--------|----------|
 | Developer (`/admin`) | API health, sheet linking, GitHub sync, data browser, sheet creation/seeding/validation, CSV bulk upload, backfill-names endpoint |
-| Principal (`/principal`) | Requests, Students, Tutors, Users, Classes, Attendance (with Cancellations table), Bulk Upload, Analysis tabs |
+| Principal (`/principal`) | Requests, Students, Tutors, Users, Classes (with **Reassign Teacher** action), Attendance (with Cancellations table), Bulk Upload, Analysis tabs |
 | Tutor (`/dashboard`) | Class list, student list, optional attendance marking |
 | Parent/Student | Schedule view, cancellation flow with same-day late-fee detection |
 | Public (`/enroll`) | Enrolment form; class dropdown uses `subjectLabel()` (Name + Day + Time + Type + Teacher) |
@@ -99,7 +99,10 @@ Monorepo using `pnpm workspaces`.
 ## Admin Utilities
 - `POST /api/admin/backfill-names` — fills blank Student Name / Teacher Name cells across Students, Subjects, Attendance tabs.
 - `POST /api/admin/migrate-columns` — schema migration helper.
+- `POST /api/subjects/:row/reassign` — reassigns a Subject row to a different teacher. Body: `{ teacherId }`. Updates `TeacherID` + `Teacher Name` columns. Used by the Classes tab Reassign button (Principal/Developer only).
 - `scripts/seed-attendance.mjs` — seeds realistic April 2026 attendance (126 rows, 6 absences).
+- `scripts/renumber-subjects-and-teachers.mjs` — renumbers SubjectIDs (`SUB-001..`) and propagates IDs to Enrollments, Attendance, Students. Supports `--dry-run`.
+- `scripts/rebuild-student-classes.mjs` — rebuilds the Students.Classes column from active Enrollments (e.g. "Art, English, Mathematics").
 
 ---
 

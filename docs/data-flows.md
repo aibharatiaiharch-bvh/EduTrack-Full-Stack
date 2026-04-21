@@ -112,7 +112,26 @@ POST /api/enrollments  { studentId, subjectId, … }
 
 ---
 
-## 9. Backfill Names (Admin Utility)
+## 9. Reassign Class Teacher (Principal/Developer)
+```
+Principal opens Classes tab → clicks Reassign on a row
+  → popover opens ABOVE the button (so it stays in view)
+  → selects teacher from dropdown ("Name — Specialty")
+
+POST /api/subjects/:row/reassign  { teacherId }
+  → looks up teacher in Users tab → gets Name
+  → updates Subjects row:
+      TeacherID    = new teacherId
+      Teacher Name = new teacher's name
+  → returns updated row
+
+Frontend reloads Subjects → Classes/Tutors/Calendar reflect new teacher.
+Past Attendance rows are NOT modified (Teacher Name is a snapshot at write time).
+```
+
+---
+
+## 10. Backfill Names (Admin Utility)
 ```
 POST /api/admin/backfill-names  { sheetId }
   → reads Students, Subjects (Teacher Name col), Attendance tabs

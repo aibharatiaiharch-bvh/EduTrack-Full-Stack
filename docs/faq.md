@@ -33,6 +33,25 @@ Count the scheduled weekday occurrences in the billing month per Subject. E.g. 4
 
 ---
 
+## Reassigning a Class to a Different Teacher
+
+**Q: How do I reassign a class to a different teacher?**  
+On the Principal portal, open the **Classes** tab. Each row has a **Reassign** button in the Action column. Clicking it opens a teacher dropdown (showing "Name — Specialty") that floats *above* the button so it's always visible. Pick a teacher and click **Save**.
+
+**Q: Who can see the Reassign button?**  
+Only users with role `principal` or `developer`. Other roles see "—" in the Action column.
+
+**Q: What does Reassign actually update?**  
+It calls `POST /api/subjects/:row/reassign { teacherId }`, which updates the `TeacherID` and `Teacher Name` columns on that Subject row. The next refresh on the Classes, Tutors, Calendar, and Analysis views will reflect the new owner.
+
+**Q: A teacher teaches multiple classes — do I have to reassign each one?**  
+Yes. One teacher = one TeacherID, but each Subject row (one per class+day) is independent. Reassign each row you want to move.
+
+**Q: Will reassigning affect existing attendance or enrollment history?**  
+No. Past Attendance rows keep the original `Teacher Name` snapshot they were written with. Only future class views and analysis (which read live from Subjects) reflect the new teacher.
+
+---
+
 ## Subjects & SubjectIDs
 
 **Q: What is a SubjectID?**  
