@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
 import { BulkUploadCard } from "@/components/BulkUploadCard";
+import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1245,56 +1246,33 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function AdminPortal() {
-  const signOut = useSignOut();
-  const name = localStorage.getItem("edutrack_user_name") || "Developer";
   const [tab, setTab] = useState<Tab>("overview");
 
-  useEffect(() => {
-    localStorage.setItem("edutrack_user_role", "developer");
-  }, []);
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 border-b bg-card px-6 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-primary-foreground" />
+    <AppLayout>
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="border-b bg-card px-6 rounded-t-lg">
+          <div className="flex gap-1 overflow-x-auto">
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  tab === t.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}>
+                {t.icon}{t.label}
+              </button>
+            ))}
           </div>
-          <span className="font-semibold">EduTrack</span>
-          <span className="text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full font-medium">
-            Developer
-          </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground hidden sm:block">{name}</span>
-          <Button variant="ghost" size="sm" className="gap-2" onClick={signOut}>
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-      </header>
 
-      <div className="border-b bg-card px-6">
-        <div className="flex gap-1 overflow-x-auto max-w-4xl mx-auto">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}>
-              {t.icon}{t.label}
-            </button>
-          ))}
-        </div>
+        <main className="bg-background rounded-b-lg border border-t-0 px-6 py-8">
+          {tab === "overview" && <OverviewTab />}
+          {tab === "data" && <DataTab />}
+          {tab === "tools" && <ToolsTab />}
+          {tab === "upload" && <BulkUploadCard />}
+        </main>
       </div>
-
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {tab === "overview" && <OverviewTab />}
-        {tab === "data" && <DataTab />}
-        {tab === "tools" && <ToolsTab />}
-        {tab === "upload" && <BulkUploadCard />}
-      </main>
-    </div>
+    </AppLayout>
   );
 }
