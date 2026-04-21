@@ -120,13 +120,19 @@ router.get('/subjects', async (req, res): Promise<void> => {
     const userMap = new Map(users.map(u => [u.userId, u]));
 
     const enriched = rows.map(s => {
-      const teacher = userMap.get(s['TeacherID'] || '');
-      const teacherName = teacher?.name || s['TeacherID'] || '';
+      const rawTeacherId = s['TeacherID'] || '';
+      const teacher = userMap.get(rawTeacherId);
+      const teacherName = (s['Teacher Name'] || teacher?.name || rawTeacherId || '').toString();
+      const teacherEmail = (teacher?.email || '').toString();
       return {
         ...s,
+        TeacherIdRaw: rawTeacherId,
         TeacherID: teacherName,
         Teachers: teacherName,
         TeacherName: teacherName,
+        'Teacher Name': teacherName,
+        'Teacher Email': teacherEmail,
+        TeacherEmail: teacherEmail,
       };
     });
 
