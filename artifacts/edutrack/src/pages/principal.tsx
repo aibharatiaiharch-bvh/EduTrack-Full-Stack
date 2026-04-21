@@ -1914,7 +1914,7 @@ function TutorAttendanceTab() {
       {tutorAttendance.length > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Attendance Summary by Type
+            Attendance Summary by Subject
           </h3>
           <div className="border rounded-lg overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
