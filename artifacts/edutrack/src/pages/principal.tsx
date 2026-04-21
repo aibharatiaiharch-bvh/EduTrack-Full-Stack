@@ -1365,10 +1365,12 @@ function AttendanceTab() {
     ? new Date(`${month}-01`).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
     : "";
 
-  const [cancellations, setCancellations] = useState<any[]>([]);
+  const [cancellations,   setCancellations]   = useState<any[]>([]);
+  const [tutorAttendance, setTutorAttendance] = useState<any[]>([]);
 
   useEffect(() => {
-    if (data?.cancellations) setCancellations(data.cancellations);
+    if (data?.cancellations)   setCancellations(data.cancellations);
+    if (data?.tutorAttendance) setTutorAttendance(data.tutorAttendance);
   }, [data]);
 
   async function toggleWithin24hrs(attendanceId: string, current: string) {
@@ -1380,8 +1382,20 @@ function AttendanceTab() {
         body: JSON.stringify({ attendanceId, within24Hrs: next }),
       });
     } catch {
-      // revert on failure
       setCancellations(prev => prev.map(c => c.attendanceId === attendanceId ? { ...c, within24Hrs: current } : c));
+    }
+  }
+
+  async function toggleTutorStatus(attendanceId: string, current: string) {
+    const next = current.toLowerCase() === "absent" ? "Present" : "Absent";
+    setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: next } : r));
+    try {
+      await apiFetch("/attendance/tutor-status", {
+        method: "PATCH",
+        body: JSON.stringify({ attendanceId, status: next }),
+      });
+    } catch {
+      setTutorAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: current } : r));
     }
   }
 
@@ -1625,6 +1639,50 @@ function AttendanceTab() {
                           }`}
                         >
                           {c.within24Hrs?.toLowerCase() === "no" ? "No" : "Yes"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Tutor Attendance ── */}
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Tutor Attendance
+          </h3>
+          {tutorAttendance.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No tutor attendance records for {monthLabel}.</p>
+          ) : (
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left font-medium px-3 py-2.5">Tutor</th>
+                    <th className="text-left font-medium px-3 py-2.5">Class</th>
+                    <th className="text-left font-medium px-3 py-2.5">Date</th>
+                    <th className="text-center font-medium px-3 py-2.5 w-32">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {tutorAttendance.map((r: any) => (
+                    <tr key={r.attendanceId} className="hover:bg-muted/20">
+                      <td className="px-3 py-2.5 font-medium">{r.teacherName || "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{r.className || "—"}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{r.sessionDate || "—"}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <button
+                          onClick={() => toggleTutorStatus(r.attendanceId, r.status)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                            r.status?.toLowerCase() === "absent"
+                              ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                              : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                          }`}
+                        >
+                          {r.status?.toLowerCase() === "absent" ? "Absent" : "Present"}
                         </button>
                       </td>
                     </tr>

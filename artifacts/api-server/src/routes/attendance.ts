@@ -14,13 +14,37 @@ async function readAttendanceRows(spreadsheetId: string) {
   return readTabRows(spreadsheetId, SHEET_TABS.attendance);
 }
 
+// Parse "Mon", "Monday", "Tue", "Tuesday", … → JS day number (0=Sun)
+function parseWeekday(days: string): number | null {
+  const d = (days || '').trim().toLowerCase().slice(0, 3);
+  const map: Record<string, number> = {
+    sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+  };
+  return d in map ? map[d] : null;
+}
+
+// Return all past dates (YYYY-MM-DD) in `month` that fall on `weekdayNum`
+function getSessionDatesInMonth(month: string, weekdayNum: number): string[] {
+  const [year, mon] = month.split('-').map(Number);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  const dates: string[] = [];
+  const d = new Date(year, mon - 1, 1);
+  while (d.getMonth() === mon - 1) {
+    if (d.getDay() === weekdayNum && d <= today) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
+}
+
 // GET /api/attendance/summary?sheetId=X&month=YYYY-MM
-// Returns per-student and per-tutor monthly attendance totals.
 router.get('/attendance/summary', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
-  const month = (req.query.month as string) || new Date().toISOString().slice(0, 7); // YYYY-MM
+  const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
 
   try {
     const [rows, users, subjects] = await Promise.all([
@@ -29,10 +53,8 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       readTabRows(sheetId, SHEET_TABS.subjects),
     ]);
 
-    const userMap = new Map(users.map(u => [u.userId, u]));
-    const classMap = new Map(subjects.map(s => [s['SubjectID'], s]));
-
-    // Filter to the requested month
+    const userMap   = new Map(users.map(u => [u.userId, u]));
+    const classMap  = new Map(subjects.map(s => [s['SubjectID'], s]));
     const monthRows = rows.filter(r => (r['SessionDate'] || '').startsWith(month));
 
     // ── Student billing summary ──────────────────────────────────────────────
@@ -40,9 +62,9 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
     const studentMap = new Map<string, { studentId: string; studentName: string; classes: Map<string, ClassStats> }>();
 
     for (const r of monthRows) {
-      const userId  = r['UserID']  || '';
+      const userId  = r['UserID']    || '';
       const classId = r['SubjectID'] || '';
-      const status  = (r['Status'] || '').toLowerCase();
+      const status  = (r['Status']  || '').toLowerCase();
 
       const user = userMap.get(userId);
       if (!user || user.role?.toLowerCase() !== 'student') continue;
@@ -54,12 +76,11 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
         studentMap.set(userId, { studentId: userId, studentName: user.name || userId, classes: new Map() });
       }
       const studentEntry = studentMap.get(userId)!;
-
       if (!studentEntry.classes.has(classId)) {
         studentEntry.classes.set(classId, {
           classId,
-          className:   cls?.['Name'] || classId,
-          teacherName: teacherUser?.name || cls?.['TeacherID'] || '—',
+          className:   cls?.['Name']       || classId,
+          teacherName: teacherUser?.name   || cls?.['TeacherID'] || '—',
           present: 0, absent: 0,
         });
       }
@@ -68,12 +89,12 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       else if (status === 'absent') stats.absent++;
     }
 
-    // ── Tutor payment summary ────────────────────────────────────────────────
+    // ── Tutor payment summary (from student rows) ────────────────────────────
     type TutorClass = { classId: string; className: string; sessionsTaught: number; };
     const tutorMap = new Map<string, { teacherId: string; teacherName: string; classes: Map<string, { className: string; sessions: Set<string> }> }>();
 
     for (const r of monthRows) {
-      const classId     = r['SubjectID']    || '';
+      const classId     = r['SubjectID']   || '';
       const sessionDate = r['SessionDate'] || '';
       const cls         = classMap.get(classId);
       if (!cls) continue;
@@ -82,11 +103,7 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       const teacherUser = userMap.get(teacherId);
 
       if (!tutorMap.has(teacherId)) {
-        tutorMap.set(teacherId, {
-          teacherId,
-          teacherName: teacherUser?.name || teacherId || '—',
-          classes: new Map(),
-        });
+        tutorMap.set(teacherId, { teacherId, teacherName: teacherUser?.name || teacherId || '—', classes: new Map() });
       }
       const tutorEntry = tutorMap.get(teacherId)!;
       if (!tutorEntry.classes.has(classId)) {
@@ -95,34 +112,125 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       tutorEntry.classes.get(classId)!.sessions.add(sessionDate);
     }
 
-    // ── Cancellations (absent rows) for principal view ───────────────────────
+    // ── Cancellations ────────────────────────────────────────────────────────
     const cancellationRows = monthRows.filter(r => (r['Status'] || '').toLowerCase() === 'absent');
-    const cancellations = cancellationRows.map(r => {
-      const subjectId   = r['SubjectID']     || '';
-      const cls         = classMap.get(subjectId);
-      // Use pre-stored names from the attendance row first; fall back to lookups
-      const studentName = r['Student Name']  || userMap.get(r['UserID'] || '')?.name || r['UserID'] || '';
-      const teacherName = r['Teacher Name']  || '';
-      // Class name: Subjects JOIN → SubjectID as last resort
-      const className   = cls?.['Name']      || subjectId;
-      return {
-        attendanceId: r['AttendanceID'] || '',
-        classId:      subjectId,
-        userId:       r['UserID']       || '',
-        sessionDate:  r['SessionDate']  || '',
-        within24Hrs:  r['Within24Hrs']  || 'Yes',
-        notes:        r['Notes']        || '',
-        studentName,
-        teacherName,
-        className,
-      };
-    }).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
+    const cancellations = cancellationRows
+      .filter(r => {
+        const u = userMap.get(r['UserID'] || '');
+        return !u || u.role?.toLowerCase() === 'student'; // student absences only
+      })
+      .map(r => {
+        const subjectId   = r['SubjectID']    || '';
+        const cls         = classMap.get(subjectId);
+        const studentName = r['Student Name'] || userMap.get(r['UserID'] || '')?.name || r['UserID'] || '';
+        const teacherName = r['Teacher Name'] || '';
+        const className   = cls?.['Name']     || subjectId;
+        return {
+          attendanceId: r['AttendanceID'] || '',
+          classId:      subjectId,
+          userId:       r['UserID']       || '',
+          sessionDate:  r['SessionDate']  || '',
+          within24Hrs:  r['Within24Hrs']  || 'Yes',
+          notes:        r['Notes']        || '',
+          studentName,
+          teacherName,
+          className,
+        };
+      }).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
 
-    const cancelCount   = cancellations.length;
-    const within24Yes   = cancellations.filter(c => c.within24Hrs.toLowerCase() !== 'no').length;
-    const within24No    = cancellations.filter(c => c.within24Hrs.toLowerCase() === 'no').length;
+    const cancelCount  = cancellations.length;
+    const within24Yes  = cancellations.filter(c => c.within24Hrs.toLowerCase() !== 'no').length;
+    const within24No   = cancellations.filter(c => c.within24Hrs.toLowerCase() === 'no').length;
 
-    // Serialise
+    // ── Tutor attendance: auto-generate rows for past session dates ───────────
+    // Key: `${subjectId}|${teacherId}|${sessionDate}`
+    const existingTutorKeys = new Set(
+      rows
+        .filter(r => {
+          const u = userMap.get(r['UserID'] || '');
+          return u?.role?.toLowerCase() === 'teacher' || u?.role?.toLowerCase() === 'tutor';
+        })
+        .map(r => `${r['SubjectID']}|${r['UserID']}|${r['SessionDate']}`)
+    );
+
+    const HEADERS = SHEET_HEADERS.attendance;
+    const TAB     = SHEET_TABS.attendance;
+    const newTutorRows: string[][] = [];
+    const newTutorMeta: { subjectId: string; teacherId: string; sessionDate: string; attendanceId: string }[] = [];
+
+    for (const s of subjects) {
+      const subjectId = s['SubjectID'] || '';
+      const teacherId = s['TeacherID'] || '';
+      if (!subjectId || !teacherId) continue;
+      const weekdayNum = parseWeekday(s['Days'] || '');
+      if (weekdayNum === null) continue;
+      const sessionDates = getSessionDatesInMonth(month, weekdayNum);
+
+      for (const sessionDate of sessionDates) {
+        const key = `${subjectId}|${teacherId}|${sessionDate}`;
+        if (existingTutorKeys.has(key)) continue;
+
+        const teacherUser = userMap.get(teacherId);
+        const teacherName = s['Teacher Name'] || teacherUser?.name || '';
+        const attendanceId = `ATT-TCH-${teacherId}-${subjectId}-${sessionDate.replace(/-/g, '')}`;
+        const now = new Date().toISOString();
+
+        const rowValues = HEADERS.map(h => {
+          if (h === 'AttendanceID') return attendanceId;
+          if (h === 'SubjectID')    return subjectId;
+          if (h === 'UserID')       return teacherId;
+          if (h === 'SessionDate')  return sessionDate;
+          if (h === 'Status')       return 'Present';
+          if (h === 'MarkedBy')     return 'system';
+          if (h === 'MarkedAt')     return now;
+          if (h === 'Teacher Name') return teacherName;
+          return '';
+        });
+
+        newTutorRows.push(rowValues);
+        newTutorMeta.push({ subjectId, teacherId, sessionDate, attendanceId });
+        existingTutorKeys.add(key); // prevent duplicates within same request
+      }
+    }
+
+    // Batch-write new tutor rows
+    if (newTutorRows.length > 0) {
+      const sheets = await getUncachableGoogleSheetClient();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: `${TAB}!A1`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: newTutorRows },
+      });
+    }
+
+    // Re-read attendance (includes newly written rows) for tutor attendance list
+    const allRows = newTutorRows.length > 0
+      ? await readAttendanceRows(sheetId)
+      : rows;
+
+    const tutorAttendance = allRows
+      .filter(r => {
+        if (!(r['SessionDate'] || '').startsWith(month)) return false;
+        const u = userMap.get(r['UserID'] || '');
+        return u?.role?.toLowerCase() === 'teacher' || u?.role?.toLowerCase() === 'tutor';
+      })
+      .map(r => {
+        const cls = classMap.get(r['SubjectID'] || '');
+        return {
+          attendanceId: r['AttendanceID'] || '',
+          subjectId:    r['SubjectID']    || '',
+          className:    cls?.['Name']     || r['SubjectID'] || '',
+          teacherId:    r['UserID']       || '',
+          teacherName:  r['Teacher Name'] || userMap.get(r['UserID'] || '')?.name || r['UserID'] || '',
+          sessionDate:  r['SessionDate']  || '',
+          status:       r['Status']       || 'Present',
+        };
+      })
+      .sort((a, b) => a.teacherName.localeCompare(b.teacherName) || a.sessionDate.localeCompare(b.sessionDate));
+
+    // Serialise student + tutor payment summaries
     const students = [...studentMap.values()].map(s => {
       const classes = [...s.classes.values()].map(c => ({
         ...c,
@@ -141,7 +249,7 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       return { ...t, classes, totalSessions: classes.reduce((n, c) => n + c.sessionsTaught, 0) };
     }).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
 
-    res.json({ month, students, tutors, cancellations, cancelCount, within24Yes, within24No });
+    res.json({ month, students, tutors, cancellations, cancelCount, within24Yes, within24No, tutorAttendance });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -154,26 +262,17 @@ router.get('/attendance', async (req, res): Promise<void> => {
 
   try {
     let rows = await readAttendanceRows(sheetId);
+    if (req.query.classId)     rows = rows.filter(r => r['SubjectID']   === req.query.classId);
+    if (req.query.sessionDate) rows = rows.filter(r => r['SessionDate'] === req.query.sessionDate);
+    if (req.query.userId)      rows = rows.filter(r => r['UserID']      === req.query.userId);
 
-    if (req.query.classId) {
-      rows = rows.filter(r => r['SubjectID'] === req.query.classId);
-    }
-    if (req.query.sessionDate) {
-      rows = rows.filter(r => r['SessionDate'] === req.query.sessionDate);
-    }
-    if (req.query.userId) {
-      rows = rows.filter(r => r['UserID'] === req.query.userId);
-    }
-
-    // Enrich with student names
-    const users = await readUsersTab(sheetId);
+    const users   = await readUsersTab(sheetId);
     const userMap = new Map(users.map(u => [u.userId, u]));
     const enriched = rows.map(r => ({
       ...r,
-      'Student Name': userMap.get(r['UserID'])?.name || r['UserID'] || '',
+      'Student Name':  userMap.get(r['UserID'])?.name  || r['UserID'] || '',
       'Student Email': userMap.get(r['UserID'])?.email || '',
     }));
-
     res.json(enriched);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -181,7 +280,6 @@ router.get('/attendance', async (req, res): Promise<void> => {
 });
 
 // POST /api/attendance/mark
-// Body: { classId, sessionDate (YYYY-MM-DD), userId, status ('Present'|'Absent'), notes, markedBy, within24Hrs, sheetId }
 router.post('/attendance/mark', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -194,25 +292,22 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
     res.status(400).json({ error: 'status must be Present or Absent' }); return;
   }
 
-  // Within24Hrs only applies to Absent rows; default to 'Yes' for absences
   const within24HrsValue = status === 'Absent' ? (within24Hrs || 'Yes') : '';
 
   try {
     const sheets = await getUncachableGoogleSheetClient();
-    const TAB = SHEET_TABS.attendance;
+    const TAB     = SHEET_TABS.attendance;
     const HEADERS = SHEET_HEADERS.attendance;
 
-    // Resolve student name and teacher name upfront
     const [users, subjectRows, existing] = await Promise.all([
       readUsersTab(sheetId),
       readTabRows(sheetId, SHEET_TABS.subjects),
       readAttendanceRows(sheetId),
     ]);
-    const userMap = new Map(users.map(u => [u.userId, u]));
-    const subject = subjectRows.find(s => s['SubjectID'] === classId);
+    const userMap     = new Map(users.map(u => [u.userId, u]));
+    const subject     = subjectRows.find(s => s['SubjectID'] === classId);
     const studentName = userMap.get(userId)?.name || '';
     const teacherId   = subject?.['TeacherID'] || '';
-    // Prefer stored Teacher Name column; fall back to Users tab lookup
     const teacherName = subject?.['Teacher Name'] || userMap.get(teacherId)?.name || '';
 
     const found = existing.find(
@@ -222,13 +317,13 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
 
     if (found) {
       const updatedValues = HEADERS.map(h => {
-        if (h === 'Status')        return status;
-        if (h === 'Notes')         return notes || found['Notes'] || '';
-        if (h === 'MarkedBy')      return markedBy || found['MarkedBy'] || '';
-        if (h === 'MarkedAt')      return now;
-        if (h === 'Within24Hrs')   return within24HrsValue;
-        if (h === 'Student Name')  return studentName || found['Student Name'] || '';
-        if (h === 'Teacher Name')  return teacherName || found['Teacher Name'] || '';
+        if (h === 'Status')       return status;
+        if (h === 'Notes')        return notes || found['Notes'] || '';
+        if (h === 'MarkedBy')     return markedBy || found['MarkedBy'] || '';
+        if (h === 'MarkedAt')     return now;
+        if (h === 'Within24Hrs')  return within24HrsValue;
+        if (h === 'Student Name') return studentName || found['Student Name'] || '';
+        if (h === 'Teacher Name') return teacherName || found['Teacher Name'] || '';
         return found[h] || '';
       });
       const colEnd = String.fromCharCode(64 + HEADERS.length);
@@ -242,17 +337,17 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
     } else {
       const attendanceId = `ATT-${Date.now()}`;
       const rowValues = HEADERS.map(h => {
-        if (h === 'AttendanceID')  return attendanceId;
-        if (h === 'SubjectID')     return classId;
-        if (h === 'UserID')        return userId;
-        if (h === 'SessionDate')   return sessionDate;
-        if (h === 'Status')        return status;
-        if (h === 'Notes')         return notes || '';
-        if (h === 'MarkedBy')      return markedBy || '';
-        if (h === 'MarkedAt')      return now;
-        if (h === 'Within24Hrs')   return within24HrsValue;
-        if (h === 'Student Name')  return studentName;
-        if (h === 'Teacher Name')  return teacherName;
+        if (h === 'AttendanceID') return attendanceId;
+        if (h === 'SubjectID')    return classId;
+        if (h === 'UserID')       return userId;
+        if (h === 'SessionDate')  return sessionDate;
+        if (h === 'Status')       return status;
+        if (h === 'Notes')        return notes || '';
+        if (h === 'MarkedBy')     return markedBy || '';
+        if (h === 'MarkedAt')     return now;
+        if (h === 'Within24Hrs')  return within24HrsValue;
+        if (h === 'Student Name') return studentName;
+        if (h === 'Teacher Name') return teacherName;
         return '';
       });
       await sheets.spreadsheets.values.append({
@@ -270,8 +365,6 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
 });
 
 // PATCH /api/attendance/within24hrs
-// Body: { attendanceId, within24Hrs ('Yes'|'No'), sheetId }
-// Principal toggles whether a cancellation was within 24 hours.
 router.patch('/attendance/within24hrs', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
@@ -285,14 +378,14 @@ router.patch('/attendance/within24hrs', async (req, res): Promise<void> => {
   }
 
   try {
-    const rows = await readAttendanceRows(sheetId);
+    const rows  = await readAttendanceRows(sheetId);
     const found = rows.find(r => r['AttendanceID'] === attendanceId);
     if (!found) { res.status(404).json({ error: 'Attendance record not found' }); return; }
 
-    const HEADERS = SHEET_HEADERS.attendance;
-    const colIdx = HEADERS.indexOf('Within24Hrs');
+    const HEADERS   = SHEET_HEADERS.attendance;
+    const colIdx    = HEADERS.indexOf('Within24Hrs');
     const colLetter = String.fromCharCode(65 + colIdx);
-    const sheets = await getUncachableGoogleSheetClient();
+    const sheets    = await getUncachableGoogleSheetClient();
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetId,
       range: `${SHEET_TABS.attendance}!${colLetter}${found._row}`,
@@ -300,6 +393,42 @@ router.patch('/attendance/within24hrs', async (req, res): Promise<void> => {
       requestBody: { values: [[within24Hrs]] },
     });
     res.json({ ok: true, within24Hrs });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/attendance/tutor-status
+// Body: { attendanceId, status ('Present'|'Absent'), sheetId }
+// Principal marks a tutor as Present or Absent for a session. No 24-hr rule.
+router.patch('/attendance/tutor-status', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+
+  const { attendanceId, status } = req.body;
+  if (!attendanceId || !status) {
+    res.status(400).json({ error: 'attendanceId and status are required' }); return;
+  }
+  if (!['Present', 'Absent'].includes(status)) {
+    res.status(400).json({ error: 'status must be Present or Absent' }); return;
+  }
+
+  try {
+    const rows  = await readAttendanceRows(sheetId);
+    const found = rows.find(r => r['AttendanceID'] === attendanceId);
+    if (!found) { res.status(404).json({ error: 'Attendance record not found' }); return; }
+
+    const HEADERS   = SHEET_HEADERS.attendance;
+    const colIdx    = HEADERS.indexOf('Status');
+    const colLetter = String.fromCharCode(65 + colIdx);
+    const sheets    = await getUncachableGoogleSheetClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetId,
+      range: `${SHEET_TABS.attendance}!${colLetter}${found._row}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[status]] },
+    });
+    res.json({ ok: true, status });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
