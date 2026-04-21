@@ -1585,8 +1585,9 @@ function AttendanceTab() {
         </div>
       )}
 
-      {/* ── Cancellations ── */}
+      {/* ── Cancellations + Tutor Attendance ── */}
       {data && (
+        <>
         <div className="mt-8">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Cancellations
@@ -1692,6 +1693,7 @@ function AttendanceTab() {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );
