@@ -1517,7 +1517,7 @@ function UsersTab() {
                     <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
                     <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
                     <td className="px-3 py-2.5">
-                      {u.status?.toLowerCase() === "active" && (
+                      {isElevatedRole(getViewerRole()) && u.status?.toLowerCase() === "active" && (
                         <Button
                           size="sm" variant="outline"
                           disabled={acting === u.userId}
