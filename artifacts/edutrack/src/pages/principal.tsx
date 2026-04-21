@@ -2567,8 +2567,11 @@ async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
   return tutors.filter(t => {
     const id = t.UserID || t.userId || t.TeacherID;
     if (id && sc.tutorIds.has(id)) return true;
-    const name = String(t.Name || t.name || "").trim();
+    const name = String(t.Name || t.name || "").trim().toLowerCase();
     if (name && sc.tutorNames.has(name)) return true;
+    // Tutors should also see themselves matched by email if name/id miss
+    const email = String(t.Email || t.email || "").trim().toLowerCase();
+    if (email && email === sc.viewerEmail) return true;
     return false;
   });
 }
