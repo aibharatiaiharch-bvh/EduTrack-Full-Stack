@@ -437,7 +437,7 @@ export default function EnrollPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="applicantEmail">Email Address <span className="text-destructive">*</span></Label>
-                      <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail || localStorage.getItem("edutrack_user_email") || ""} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
+                      <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
                     </div>
                   </div>
                   <div className="space-y-2">
