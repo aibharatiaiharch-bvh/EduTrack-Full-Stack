@@ -128,7 +128,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
       const users = await readUsersTab(sheetId);
       const user = users.find(u => u.email === submitterEmail);
       const userId = user?.userId || '';
-      const reqId = `REQ-${Date.now()}`;
+      const reqId = await generateTabId('ENR', sheetId, SHEET_TABS.enrollments);
       const packedNotes = packNotes({
         requesterName: submitterName,
         requesterEmail: submitterEmail,
@@ -168,7 +168,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
           userId, applicantEmail, 'tutor', applicantName, 'Pending', today, now,
         ]);
       }
-      const reqId = `REQ-${Date.now()}`;
+      const reqId = await generateTabId('ENR', sheetId, SHEET_TABS.enrollments);
       const packedNotes = packNotes({
         applicantName,
         applicantEmail,
@@ -214,7 +214,7 @@ router.post('/roles/enroll', async (req, res): Promise<void> => {
           now,
         ]);
       }
-      const reqId = `REQ-${Date.now()}`;
+      const reqId = await generateTabId('ENR', sheetId, SHEET_TABS.enrollments);
       const packedNotes = packNotes({
         studentName: studentNameClean,
         studentEmail: studentEmailClean,
