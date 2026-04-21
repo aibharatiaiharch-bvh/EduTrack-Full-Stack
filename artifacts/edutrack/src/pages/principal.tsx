@@ -1124,6 +1124,7 @@ function StudentsTab() {
 
 function TutorsTab() {
   const [tutors, setTutors] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -1138,11 +1139,38 @@ function TutorsTab() {
     setLoading(true);
     setError("");
     try {
-      const data = await apiFetch("/principals/teachers");
-      if (Array.isArray(data)) setTutors(data);
+      const [tutorData, subjData] = await Promise.all([
+        apiFetch("/principals/teachers"),
+        apiFetch("/subjects/with-capacity?status=active"),
+      ]);
+      if (Array.isArray(tutorData)) setTutors(tutorData);
       else setError("Could not load tutors.");
+      if (Array.isArray(subjData)) setSubjects(subjData);
     } catch { setError("Connection error."); }
     setLoading(false);
+  }
+
+  const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const normDay = (d: string) => {
+    const x = (d || "").trim().toLowerCase().slice(0, 3);
+    return x ? x.charAt(0).toUpperCase() + x.slice(1) : "";
+  };
+  function tutorSchedule(tutor: any) {
+    const tid = tutor.UserID || tutor.TeacherID || "";
+    const mine = subjects.filter(s => (s.TeacherID || "") === tid);
+    const days = new Set<string>();
+    const types = new Set<string>();
+    for (const s of mine) {
+      String(s.Days || "").split(/[,/;|]/).map(normDay).filter(Boolean).forEach(d => days.add(d));
+      const t = (s.Type || "").trim();
+      if (t) types.add(t);
+    }
+    const orderedDays = DAY_ORDER.filter(d => days.has(d));
+    const otherDays = Array.from(days).filter(d => !DAY_ORDER.includes(d)).sort();
+    return {
+      days: [...orderedDays, ...otherDays].join(", ") || "—",
+      types: Array.from(types).sort().join(", ") || "—",
+    };
   }
 
   useEffect(() => {
@@ -1230,17 +1258,23 @@ function TutorsTab() {
                       <th className="text-left font-medium px-3 py-2.5">Name</th>
                       <th className="text-left font-medium px-3 py-2.5">Email</th>
                       <th className="text-left font-medium px-3 py-2.5">Classes Taught</th>
+                      <th className="text-left font-medium px-3 py-2.5">Type</th>
+                      <th className="text-left font-medium px-3 py-2.5">Days</th>
                       <th className="text-left font-medium px-3 py-2.5">Zoom Link</th>
                       <th className="text-left font-medium px-3 py-2.5">Specialty</th>
                       <th className="text-left font-medium px-3 py-2.5">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {paged.map((t) => (
+                    {paged.map((t) => {
+                      const sched = tutorSchedule(t);
+                      return (
                       <tr key={t.UserID} className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{t.Name || t.name || t.Email || "Unknown"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{t.Email || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{t.Subjects || t.Classes || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{sched.types}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{sched.days}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">
                           {t["Zoom Link"] ? (
                             <a href={t["Zoom Link"]} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Zoom</a>
@@ -1249,7 +1283,8 @@ function TutorsTab() {
                         <td className="px-3 py-2.5 text-muted-foreground">{t.Specialty || "—"}</td>
                         <td className="px-3 py-2.5"><StatusBadge status={t.Status} /></td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
