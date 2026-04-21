@@ -2075,6 +2075,13 @@ function AnalysisTab() {
   const [error, setError] = useState("");
   const [from, setFrom] = useState(janThisYear);
   const [to, setTo] = useState(thisMonth);
+  const subjectSummary = bySubject.reduce<Record<string, { sessions: number; students: number; hoursPerWeek: number }>>((acc, s) => {
+    acc[s.name] = acc[s.name] || { sessions: 0, students: 0, hoursPerWeek: 0 };
+    acc[s.name].sessions += s.sessionsPerWeek;
+    acc[s.name].students += s.students;
+    acc[s.name].hoursPerWeek += s.hoursPerWeek;
+    return acc;
+  }, {});
 
   async function load(f = from, t = to) {
     const sid = sheetId();
@@ -2114,6 +2121,17 @@ function AnalysisTab() {
         <Button variant="ghost" size="sm" onClick={() => load()} disabled={loading}>
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
+      </div>
+      <div className="rounded-lg border bg-muted/30 p-4">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Subject Summary</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(subjectSummary).map(([name, stats]) => (
+            <div key={name} className="rounded-md border bg-background px-3 py-2 text-sm">
+              <div className="font-semibold">{name}</div>
+              <div className="text-xs text-muted-foreground">{stats.students} students · {stats.sessions} sessions · {stats.hoursPerWeek} hrs/wk</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Period filter */}
