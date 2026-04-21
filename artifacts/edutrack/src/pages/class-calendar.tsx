@@ -73,8 +73,8 @@ function transformToGrid(days: ApiDay[]): { group: SubjectRow[]; individual: Sub
   }
   const rows = Array.from(map.values()).sort((a, b) => a.className.localeCompare(b.className));
   return {
-    group: rows,
-    individual: [],
+    group: rows.filter((row) => row.type !== "Individual"),
+    individual: rows.filter((row) => row.type === "Individual"),
   };
 }
 
