@@ -112,8 +112,11 @@ router.post('/principals/add-teacher', async (req, res): Promise<void> => {
       ]);
     }
 
-    // Write to Teachers extension tab — Name at col C so sheet is always human-readable
-    const teacherId = await generateTabId('TCH', sheetId, SHEET_TABS.teachers);
+    // Write to Teachers extension tab — Name at col C so sheet is always human-readable.
+    // TeacherID is set equal to UserID so Subjects.TeacherID === Teachers.TeacherID === Users.UserID.
+    // This is the design intent (see enrollmentRequests.ts) and prevents prefix collisions
+    // when the staff is a Principal (PRN-) or non-tutor Staff (STF-) rather than a Tutor (TCH-).
+    const teacherId = userId;
     await appendRow(sheetId, SHEET_TABS.teachers, [
       teacherId, userId,
       name.trim(),                    // col C = Name (denormalised for readability)
