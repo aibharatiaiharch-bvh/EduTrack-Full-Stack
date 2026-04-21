@@ -115,7 +115,7 @@ router.get('/tutors/me', async (req, res): Promise<void> => {
 
       // Get today's attendance for this class
       const todayAttendance = attendance.filter(a =>
-        a['ClassID'] === classId && a['SessionDate'] === todayISO
+        a['SubjectID'] === classId && a['SessionDate'] === todayISO
       );
       const attendanceMap = new Map(todayAttendance.map(a => [a['UserID'], a['Status']]));
 

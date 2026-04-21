@@ -389,7 +389,7 @@ router.post('/enrollments/:row/cancel', async (req, res): Promise<void> => {
       const attId      = `ATT-${Date.now()}`;
       const rowValues  = attHeaders.map((h: string) => {
         if (h === 'AttendanceID') return attId;
-        if (h === 'ClassID')      return classId;
+        if (h === 'SubjectID')    return classId;
         if (h === 'UserID')       return userId;
         if (h === 'SessionDate')  return date;
         if (h === 'Status')       return 'Absent';

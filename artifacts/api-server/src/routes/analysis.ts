@@ -143,7 +143,7 @@ router.get('/analysis', async (req, res): Promise<void> => {
       const dateStr = (r['SessionDate'] || '').trim();
       if (!dateStr || dateStr.length < 7) continue;
       const yyyyMM = dateStr.slice(0, 7);
-      const classId = (r['ClassID'] || '').trim();
+      const classId = (r['SubjectID'] || '').trim();
       const status = (r['Status'] || '').toLowerCase();
       if (!monthBuckets.has(yyyyMM)) monthBuckets.set(yyyyMM, { sessions: new Set(), present: 0, absent: 0 });
       const b = monthBuckets.get(yyyyMM)!;

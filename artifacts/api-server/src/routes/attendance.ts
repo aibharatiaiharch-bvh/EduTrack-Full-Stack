@@ -41,7 +41,7 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
 
     for (const r of monthRows) {
       const userId  = r['UserID']  || '';
-      const classId = r['ClassID'] || '';
+      const classId = r['SubjectID'] || '';
       const status  = (r['Status'] || '').toLowerCase();
 
       const user = userMap.get(userId);
@@ -73,7 +73,7 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
     const tutorMap = new Map<string, { teacherId: string; teacherName: string; classes: Map<string, { className: string; sessions: Set<string> }> }>();
 
     for (const r of monthRows) {
-      const classId     = r['ClassID']    || '';
+      const classId     = r['SubjectID']    || '';
       const sessionDate = r['SessionDate'] || '';
       const cls         = classMap.get(classId);
       if (!cls) continue;
@@ -99,16 +99,16 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
     const cancellationRows = monthRows.filter(r => (r['Status'] || '').toLowerCase() === 'absent');
     const cancellations = cancellationRows.map(r => {
       const user = userMap.get(r['UserID'] || '');
-      const cls  = classMap.get(r['ClassID'] || '');
+      const cls  = classMap.get(r['SubjectID'] || '');
       return {
         attendanceId: r['AttendanceID'] || '',
-        classId:      r['ClassID']      || '',
+        classId:      r['SubjectID']    || '',
         userId:       r['UserID']       || '',
         sessionDate:  r['SessionDate']  || '',
         within24Hrs:  r['Within24Hrs']  || 'Yes',
         notes:        r['Notes']        || '',
         studentName:  user?.name        || r['UserID'] || '',
-        className:    cls?.['Name']     || r['ClassID'] || '',
+        className:    cls?.['Name']     || r['SubjectID'] || '',
       };
     }).sort((a, b) => b.sessionDate.localeCompare(a.sessionDate));
 
@@ -150,7 +150,7 @@ router.get('/attendance', async (req, res): Promise<void> => {
     let rows = await readAttendanceRows(sheetId);
 
     if (req.query.classId) {
-      rows = rows.filter(r => r['ClassID'] === req.query.classId);
+      rows = rows.filter(r => r['SubjectID'] === req.query.classId);
     }
     if (req.query.sessionDate) {
       rows = rows.filter(r => r['SessionDate'] === req.query.sessionDate);
@@ -210,7 +210,7 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
     const teacherName = subject?.['Teacher Name'] || userMap.get(teacherId)?.name || '';
 
     const found = existing.find(
-      r => r['ClassID'] === classId && r['SessionDate'] === sessionDate && r['UserID'] === userId
+      r => r['SubjectID'] === classId && r['SessionDate'] === sessionDate && r['UserID'] === userId
     );
     const now = new Date().toISOString();
 
@@ -237,7 +237,7 @@ router.post('/attendance/mark', async (req, res): Promise<void> => {
       const attendanceId = `ATT-${Date.now()}`;
       const rowValues = HEADERS.map(h => {
         if (h === 'AttendanceID')  return attendanceId;
-        if (h === 'ClassID')       return classId;
+        if (h === 'SubjectID')     return classId;
         if (h === 'UserID')        return userId;
         if (h === 'SessionDate')   return sessionDate;
         if (h === 'Status')        return status;

@@ -147,7 +147,7 @@ export const SHEET_HEADERS = {
   announcements: ['AnnouncementID', 'Title', 'Message', 'Priority', 'IsActive', 'CreatedAt'],
 
   // Attendance — per-session records (SessionDate = YYYY-MM-DD of the actual class day)
-  attendance: ['AttendanceID', 'ClassID', 'UserID', 'SessionDate', 'Status', 'Notes', 'MarkedBy', 'MarkedAt', 'Within24Hrs', 'Student Name', 'Teacher Name'],
+  attendance: ['AttendanceID', 'SubjectID', 'UserID', 'SessionDate', 'Status', 'Notes', 'MarkedBy', 'MarkedAt', 'Within24Hrs', 'Student Name', 'Teacher Name'],
 
   // Archive — snapshots of deactivated/deleted user records
   archive: ['ArchiveID', 'UserID', 'Email', 'Role', 'Name', 'Status', 'ArchivedAt'],
