@@ -101,6 +101,67 @@ function ClassesTab() {
       <SectionHeader title={`Classes (${subjects.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
+      {/* Weekday × Type summary */}
+      {!loading && subjects.length > 0 && (() => {
+        const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const normDay = (d: string) => {
+          const x = (d || "").trim().toLowerCase().slice(0, 3);
+          return x ? x.charAt(0).toUpperCase() + x.slice(1) : "";
+        };
+        const types = Array.from(new Set(subjects.map(s => (s.Type || "").trim()).filter(Boolean))).sort();
+        const grid: Record<string, Record<string, number>> = {};
+        const dayTotals: Record<string, number> = {};
+        const typeTotals: Record<string, number> = {};
+        let grandTotal = 0;
+        for (const s of subjects) {
+          const days = String(s.Days || "").split(/[,/;|]/).map(normDay).filter(Boolean);
+          const type = (s.Type || "").trim() || "—";
+          for (const d of days) {
+            if (!DAY_ORDER.includes(d)) continue;
+            grid[d] = grid[d] || {};
+            grid[d][type] = (grid[d][type] || 0) + 1;
+            dayTotals[d] = (dayTotals[d] || 0) + 1;
+            typeTotals[type] = (typeTotals[type] || 0) + 1;
+            grandTotal++;
+          }
+        }
+        const activeDays = DAY_ORDER.filter(d => grid[d]);
+        if (!activeDays.length) return null;
+        return (
+          <div className="mb-4 rounded-md border overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/50 border-b">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2">Day</th>
+                  {types.map(t => (
+                    <th key={t} className="text-right font-medium px-3 py-2">{t}</th>
+                  ))}
+                  <th className="text-right font-medium px-3 py-2">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {activeDays.map(d => (
+                  <tr key={d}>
+                    <td className="px-3 py-1.5 font-medium">{d}</td>
+                    {types.map(t => (
+                      <td key={t} className="px-3 py-1.5 text-right text-muted-foreground">{grid[d]?.[t] || 0}</td>
+                    ))}
+                    <td className="px-3 py-1.5 text-right font-medium">{dayTotals[d] || 0}</td>
+                  </tr>
+                ))}
+                <tr className="bg-muted/30 border-t">
+                  <td className="px-3 py-1.5 font-semibold">Total</td>
+                  {types.map(t => (
+                    <td key={t} className="px-3 py-1.5 text-right font-semibold">{typeTotals[t] || 0}</td>
+                  ))}
+                  <td className="px-3 py-1.5 text-right font-semibold">{grandTotal}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
+
       {/* Add Subject */}
       <div className="mb-4">
         {addSuccess && !showAdd && (
