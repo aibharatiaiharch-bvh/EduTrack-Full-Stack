@@ -224,4 +224,43 @@ router.patch('/subjects/:row', async (req, res): Promise<void> => {
   }
 });
 
+router.post('/subjects/:row/reassign', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  const rowNum = parseInt(req.params.row, 10);
+  const { teacherId } = req.body as { teacherId?: string };
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+  if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
+  if (!teacherId?.trim()) { res.status(400).json({ error: 'teacherId is required' }); return; }
+
+  try {
+    const rows = await readSubjectRows(spreadsheetId);
+    const subject = rows.find(r => r._row === rowNum);
+    if (!subject) { res.status(404).json({ error: 'Subject not found' }); return; }
+
+    const users = await readUsersTab(spreadsheetId);
+    const teacher = users.find(u => u.userId === teacherId);
+    const teacherName = teacher?.name || '';
+
+    const updated = {
+      ...subject,
+      TeacherID: teacherId.trim(),
+      'Teacher Name': teacherName,
+    };
+
+    const updatedValues = HEADERS.map(h => updated[h] || '');
+    const sheets = await getUncachableGoogleSheetClient();
+    const colEnd = String.fromCharCode(64 + HEADERS.length);
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${TAB}!A${rowNum}:${colEnd}${rowNum}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [updatedValues] },
+    });
+
+    res.json({ ok: true, teacherName });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

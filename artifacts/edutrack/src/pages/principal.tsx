@@ -50,6 +50,10 @@ function ClassesTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showDevNotes, setShowDevNotes] = useState(false);
+  const [reassignRow, setReassignRow] = useState<number | null>(null);
+  const [reassignTeacherId, setReassignTeacherId] = useState("");
+  const [reassignError, setReassignError] = useState("");
+  const [reassignSaving, setReassignSaving] = useState(false);
 
   async function load() {
     setLoading(true); setError("");
@@ -95,6 +99,28 @@ function ClassesTab() {
       }
     } catch { setAddError("Connection error."); }
     setAddSubmitting(false);
+  }
+
+  async function handleReassignSubject(rowNum: number) {
+    if (!reassignTeacherId) return;
+    setReassignSaving(true);
+    setReassignError("");
+    try {
+      const data = await apiFetch(`/subjects/${rowNum}/reassign`, {
+        method: "POST",
+        body: JSON.stringify({ teacherId: reassignTeacherId }),
+      });
+      if (data.ok) {
+        setReassignRow(null);
+        setReassignTeacherId("");
+        await load();
+      } else {
+        setReassignError(data.error || "Failed to reassign.");
+      }
+    } catch {
+      setReassignError("Connection error.");
+    }
+    setReassignSaving(false);
   }
 
   return (
@@ -310,14 +336,17 @@ function ClassesTab() {
                     <th className="text-left font-medium px-3 py-2.5">Teacher</th>
                     <th className="text-left font-medium px-3 py-2.5">Schedule</th>
                     <th className="text-left font-medium px-3 py-2.5">Students</th>
+                  <th className="text-left font-medium px-3 py-2.5">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filtered.map((s) => {
                     const subjectId = s["SubjectID"] || s.SubjectID || "";
+                  const rowNum = s._row || s.row || null;
                     const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
                     return (
-                      <tr key={subjectId} className="hover:bg-muted/20">
+                    <Fragment key={subjectId}>
+                    <tr className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{s.Name || s["Name"]}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{s.Type || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{currentTeacher}</td>
@@ -327,7 +356,38 @@ function ClassesTab() {
                         <td className="px-3 py-2.5 text-muted-foreground text-xs">
                           {s.enrolledNames || "—"}
                         </td>
+                        <td className="px-3 py-2.5">
+                          <Button size="sm" variant="outline" onClick={() => { setReassignRow(rowNum); setReassignTeacherId(s.TeacherID || ""); setReassignError(""); }}>
+                            Reassign
+                          </Button>
+                        </td>
                       </tr>
+                    {reassignRow === rowNum && (
+                      <tr className="bg-muted/20">
+                        <td colSpan={6} className="px-3 py-3">
+                          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                            <select
+                              className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+                              value={reassignTeacherId}
+                              onChange={e => setReassignTeacherId(e.target.value)}
+                            >
+                              <option value="">Select teacher</option>
+                              {tutors.map(t => (
+                                <option key={t.UserID} value={t.UserID}>{t.Name}</option>
+                              ))}
+                            </select>
+                            <Button size="sm" onClick={() => handleReassignSubject(rowNum)} disabled={reassignSaving || !reassignTeacherId}>
+                              {reassignSaving ? "Saving…" : "Save"}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => { setReassignRow(null); setReassignTeacherId(""); setReassignError(""); }}>
+                              Cancel
+                            </Button>
+                            {reassignError && <span className="text-xs text-red-500">{reassignError}</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                     );
                   })}
                 </tbody>
