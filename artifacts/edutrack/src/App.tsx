@@ -71,7 +71,7 @@ function AppRoutes() {
               <ProtectedRoute component={AdminPortal} />
             </Route>
             <Route path="/principal">
-              <ProtectedRoute component={PrincipalDashboard} requiredRole="principal" />
+              <ProtectedRoute component={PrincipalDashboard} />
             </Route>
             <Route path="/student">
               <ProtectedRoute component={StudentDashboard} requiredRole="student" />

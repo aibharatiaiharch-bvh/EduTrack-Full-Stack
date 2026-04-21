@@ -8,7 +8,7 @@ import { CheckCircle2, AlertCircle, Loader2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
-export default function Settings() {
+export function SettingsContent() {
   const {
     sheetId,
     setSheetId,
@@ -20,7 +20,6 @@ export default function Settings() {
   } = useSheetConfig();
 
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const handleManualLink = () => {
     const value = manualSheetId.trim();
     if (!value) return;
@@ -51,12 +50,11 @@ export default function Settings() {
   };
 
   return (
-    <AppLayout>
-      <div className="p-4 md:p-8 space-y-6 md:space-y-8 max-w-4xl">
-        <header>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your platform preferences and institution details.</p>
-        </header>
+    <div className="space-y-6 md:space-y-8 max-w-4xl">
+      <header>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-1">Manage your platform preferences and institution details.</p>
+      </header>
 
         <Card>
           <CardHeader>
@@ -144,8 +142,17 @@ export default function Settings() {
             </div>
 
           </CardContent>
-        </Card>
+      </Card>
 
+    </div>
+  );
+}
+
+export default function Settings() {
+  return (
+    <AppLayout>
+      <div className="p-4 md:p-8">
+        <SettingsContent />
       </div>
     </AppLayout>
   );

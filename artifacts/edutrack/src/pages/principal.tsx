@@ -5,6 +5,7 @@ import { apiUrl } from "@/lib/api";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { BulkUploadCard } from "@/components/BulkUploadCard";
 import { CalendarContent } from "@/pages/class-calendar";
+import { SettingsContent } from "@/pages/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
   BookOpen, AlertTriangle, Plus, CheckCircle2, Upload,
-  Search, ChevronLeft, ChevronRight, CalendarDays, BarChart2,
+  Search, ChevronLeft, ChevronRight, CalendarDays, BarChart2, Settings as SettingsIcon,
 } from "lucide-react";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
@@ -398,7 +399,7 @@ function ClassesTab() {
   );
 }
 
-type Tab = "calendar" | "requests" | "students" | "tutors" | "users" | "classes" | "student-attendance" | "tutor-attendance" | "upload" | "analysis";
+type Tab = "calendar" | "requests" | "students" | "tutors" | "users" | "classes" | "student-attendance" | "tutor-attendance" | "upload" | "analysis" | "settings";
 
 
 function StatusBadge({ status }: { status: string }) {
@@ -2286,7 +2287,9 @@ function AnalysisTab() {
   );
 }
 
-const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+const ELEVATED_ONLY: Tab[] = ["requests", "upload"];
+
+const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
   { id: "requests",    label: "Requests",           icon: <ClipboardList className="w-4 h-4" /> },
   { id: "students",    label: "Students",            icon: <Users className="w-4 h-4" /> },
@@ -2297,14 +2300,20 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "analysis",   label: "Analysis",           icon: <BarChart2 className="w-4 h-4" /> },
   { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
   { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
+  { id: "settings",    label: "Settings",           icon: <SettingsIcon className="w-4 h-4" /> },
 ];
+
+function getViewerRole(): string {
+  return (localStorage.getItem("edutrack_dev_role_override")
+       || localStorage.getItem("edutrack_user_role")
+       || "").toLowerCase();
+}
 
 export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
-
-  useEffect(() => {
-    localStorage.setItem("edutrack_user_role", "principal");
-  }, []);
+  const role = getViewerRole();
+  const isElevated = role === "principal" || role === "developer" || role === "admin";
+  const TABS = ALL_TABS.filter(t => isElevated || !ELEVATED_ONLY.includes(t.id));
 
   return (
     <AppLayout>
@@ -2339,6 +2348,7 @@ export default function PrincipalDashboard() {
           {tab === "analysis"    && <AnalysisTab />}
           {tab === "users"       && <UsersTab />}
           {tab === "upload"      && <BulkUploadCard />}
+          {tab === "settings"    && <SettingsContent />}
         </main>
       </div>
     </AppLayout>
