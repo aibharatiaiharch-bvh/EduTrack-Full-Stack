@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 
 const spreadsheetId = process.argv[2] || process.env.DEFAULT_SHEET_ID;
+const dryRun = process.argv.includes('--dry-run');
 if (!spreadsheetId) {
   console.error('Missing spreadsheet id');
   process.exit(1);
@@ -50,7 +51,7 @@ async function read(tab) {
 }
 
 async function writeRange(tab, startRow, rows) {
-  if (!rows.length) return;
+  if (!rows.length || dryRun) return;
   const endCol = String.fromCharCode(65 + rows[0].length - 1);
   await sheets.spreadsheets.values.update({
     spreadsheetId,
@@ -147,14 +148,17 @@ const updatedAttendance = attendanceRows.map(row => {
   ];
 });
 
-await writeRange(tabMap.teachers, 2, newTeacherRows);
-await writeRange(tabMap.subjects, 2, newSubjectRows);
-await writeRange(tabMap.enrollments, 2, updatedEnrollments);
-await writeRange(tabMap.attendance, 2, updatedAttendance);
-
 console.log(JSON.stringify({
+  dryRun,
   teachersRenumbered: teacherIdMap.size,
   subjectsRenumbered: subjectIdMap.size,
   enrollmentsUpdated: updatedEnrollments.length,
   attendanceUpdated: updatedAttendance.length,
+  sampleTeacherMap: Array.from(teacherIdMap.entries()).slice(0, 3),
+  sampleSubjectMap: Array.from(subjectIdMap.entries()).slice(0, 3),
 }, null, 2));
+
+await writeRange(tabMap.teachers, 2, newTeacherRows);
+await writeRange(tabMap.subjects, 2, newSubjectRows);
+await writeRange(tabMap.enrollments, 2, updatedEnrollments);
+await writeRange(tabMap.attendance, 2, updatedAttendance);
