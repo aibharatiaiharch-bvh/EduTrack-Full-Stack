@@ -320,17 +320,17 @@ function ClassesTab() {
                     <th className="text-left font-medium px-3 py-2.5">Teacher</th>
                     <th className="text-left font-medium px-3 py-2.5">Schedule</th>
                     <th className="text-left font-medium px-3 py-2.5">Students</th>
-                  <th className="text-left font-medium px-3 py-2.5">Action</th>
+                    <th className="text-left font-medium px-3 py-2.5">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filtered.map((s) => {
                     const subjectId = s["SubjectID"] || s.SubjectID || "";
-                  const rowNum = s._row || s.row || null;
+                    const rowNum = s._row || s.row || null;
                     const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
                     return (
-                    <Fragment key={subjectId}>
-                    <tr className="hover:bg-muted/20">
+                      <Fragment key={subjectId}>
+                        <tr className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{s.Name || s["Name"]}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{s.Type || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{currentTeacher}</td>
@@ -347,35 +347,44 @@ function ClassesTab() {
                             </Button>
                           ) : "—"}
                         </td>
-                      </tr>
-                    {reassignRow === rowNum && (
-                      <tr className="bg-muted/20">
-                        <td colSpan={6} className="px-3 py-3">
-                          <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                            <select
-                              className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-                              value={reassignTeacherId}
-                              onChange={e => setReassignTeacherId(e.target.value)}
-                            >
-                              <option value="">Select teacher</option>
-                              {tutors.map(t => (
-                                <option key={t.UserID} value={t.UserID}>
-                                  {t.Name}{t.Specialty ? ` — ${t.Specialty}` : ""}
-                                </option>
-                              ))}
-                            </select>
-                            <Button size="sm" onClick={() => handleReassignSubject(rowNum)} disabled={reassignSaving || !reassignTeacherId}>
-                              {reassignSaving ? "Saving…" : "Save"}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => { setReassignRow(null); setReassignTeacherId(""); setReassignError(""); }}>
-                              Cancel
-                            </Button>
-                            {reassignError && <span className="text-xs text-red-500">{reassignError}</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                    </Fragment>
+                        </tr>
+                        {reassignRow === rowNum && (
+                          <tr className="bg-muted/20">
+                            <td colSpan={6} className="px-3 pb-2">
+                              <div className="flex justify-end">
+                                <div className="relative w-full max-w-md -mt-1">
+                                  <div className="absolute right-0 bottom-full mb-2 w-full rounded-md border bg-background shadow-lg z-20 p-3">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="text-xs font-medium text-muted-foreground">Reassign to</div>
+                                      <select
+                                        className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+                                        value={reassignTeacherId}
+                                        onChange={e => setReassignTeacherId(e.target.value)}
+                                      >
+                                        <option value="">Select teacher</option>
+                                        {tutors.map(t => (
+                                          <option key={t.UserID} value={t.UserID}>
+                                            {t.Name}{t.Specialty ? ` — ${t.Specialty}` : ""}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => handleReassignSubject(rowNum)} disabled={reassignSaving || !reassignTeacherId}>
+                                          {reassignSaving ? "Saving…" : "Save"}
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => { setReassignRow(null); setReassignTeacherId(""); setReassignError(""); }}>
+                                          Cancel
+                                        </Button>
+                                        {reassignError && <span className="text-xs text-red-500 self-center">{reassignError}</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
