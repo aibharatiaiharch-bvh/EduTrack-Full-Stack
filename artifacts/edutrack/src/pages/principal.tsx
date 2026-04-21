@@ -53,6 +53,8 @@ function ClassesTab() {
   const [reassignTeacherId, setReassignTeacherId] = useState("");
   const [reassignError, setReassignError] = useState("");
   const [reassignSaving, setReassignSaving] = useState(false);
+  const role = (localStorage.getItem("edutrack_user_role") || "").toLowerCase();
+  const canReassign = role === "principal" || role === "developer";
 
   async function load() {
     setLoading(true); setError("");
@@ -339,9 +341,11 @@ function ClassesTab() {
                           {s.enrolledNames || "—"}
                         </td>
                         <td className="px-3 py-2.5">
-                          <Button size="sm" variant="outline" onClick={() => { setReassignRow(rowNum); setReassignTeacherId(s.TeacherID || ""); setReassignError(""); }}>
-                            Reassign
-                          </Button>
+                          {canReassign ? (
+                            <Button size="sm" variant="outline" onClick={() => { setReassignRow(rowNum); setReassignTeacherId(s.TeacherID || ""); setReassignError(""); }}>
+                              Reassign
+                            </Button>
+                          ) : "—"}
                         </td>
                       </tr>
                     {reassignRow === rowNum && (
