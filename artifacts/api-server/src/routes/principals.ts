@@ -153,6 +153,7 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
 
   try {
     const users = await readUsersTab(sheetId);
+    const parentDisplayName = parentNorm || '';
     const existingStudent = emailNorm ? users.find(u => u.email === emailNorm && u.role === 'student') : undefined;
 
     // Generate a fresh student UserID and write to Users tab (master)
@@ -212,7 +213,7 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
     const subjectsStr = Array.isArray(subjectsInterested) ? subjectsInterested.join(', ') : (subjectsInterested || '');
     await appendRow(sheetId, SHEET_TABS.students, [
       studentExtId, studentId,
-      parentNorm || '', // col C = Parent Email
+      parentDisplayName, // col C = Parent Email
       parentId,
       subjectsStr,
       (phone || '').trim(),
