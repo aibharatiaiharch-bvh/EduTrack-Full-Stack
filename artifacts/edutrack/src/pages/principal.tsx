@@ -130,33 +130,33 @@ function ClassesTab() {
         const activeDays = [...knownDays, ...otherDays];
         if (!activeDays.length) return null;
         return (
-          <div className="mb-4 rounded-md border overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="mb-4 rounded-md border overflow-x-auto inline-block max-w-full">
+            <table className="text-xs">
               <thead className="bg-muted/50 border-b">
                 <tr>
-                  <th className="text-left font-medium px-3 py-2">Day</th>
-                  {types.map(t => (
-                    <th key={t} className="text-right font-medium px-3 py-2">{t}</th>
+                  <th className="text-left font-medium px-2 py-1">Type</th>
+                  {activeDays.map(d => (
+                    <th key={d} className="text-right font-medium px-2 py-1">{d}</th>
                   ))}
-                  <th className="text-right font-medium px-3 py-2">Total</th>
+                  <th className="text-right font-medium px-2 py-1">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {activeDays.map(d => (
-                  <tr key={d}>
-                    <td className="px-3 py-1.5 font-medium">{d}</td>
-                    {types.map(t => (
-                      <td key={t} className="px-3 py-1.5 text-right text-muted-foreground">{grid[d]?.[t] || 0}</td>
+                {types.map(t => (
+                  <tr key={t}>
+                    <td className="px-2 py-1 font-medium">{t}</td>
+                    {activeDays.map(d => (
+                      <td key={d} className="px-2 py-1 text-right text-muted-foreground">{grid[d]?.[t] || 0}</td>
                     ))}
-                    <td className="px-3 py-1.5 text-right font-medium">{dayTotals[d] || 0}</td>
+                    <td className="px-2 py-1 text-right font-medium">{typeTotals[t] || 0}</td>
                   </tr>
                 ))}
                 <tr className="bg-muted/30 border-t">
-                  <td className="px-3 py-1.5 font-semibold">Total</td>
-                  {types.map(t => (
-                    <td key={t} className="px-3 py-1.5 text-right font-semibold">{typeTotals[t] || 0}</td>
+                  <td className="px-2 py-1 font-semibold">Total</td>
+                  {activeDays.map(d => (
+                    <td key={d} className="px-2 py-1 text-right font-semibold">{dayTotals[d] || 0}</td>
                   ))}
-                  <td className="px-3 py-1.5 text-right font-semibold">{grandTotal}</td>
+                  <td className="px-2 py-1 text-right font-semibold">{grandTotal}</td>
                 </tr>
               </tbody>
             </table>
