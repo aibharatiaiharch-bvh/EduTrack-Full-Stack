@@ -2357,7 +2357,7 @@ function AnalysisTab() {
   );
 }
 
-const ELEVATED_ONLY: Tab[] = ["requests", "upload", "settings"];
+const ELEVATED_ONLY: Tab[] = ["requests", "upload", "settings", "users"];
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
@@ -2588,7 +2588,7 @@ export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
   const isElevated = isElevatedRole(role);
-  const TABS = ALL_TABS.filter(t => t.id !== "settings" && t.id !== "upload" && t.id !== "requests");
+  const TABS = ALL_TABS.filter(t => isElevated || !ELEVATED_ONLY.includes(t.id));
 
   return (
     <AppLayout>
