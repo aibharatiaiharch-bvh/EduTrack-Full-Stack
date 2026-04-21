@@ -1276,7 +1276,7 @@ function TutorsTab() {
                       <tr key={t.UserID} className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{t.Name || t.name || t.Email || "Unknown"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{t.Email || "—"}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{sched.classes !== "—" ? sched.classes : (t.Subjects || t.Classes || "—")}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{sched.classes}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{sched.types}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">{sched.days}</td>
                         <td className="px-3 py-2.5 text-muted-foreground">
