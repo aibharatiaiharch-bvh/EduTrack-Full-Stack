@@ -141,11 +141,24 @@ async function getEnrollRow(sheetId: string, rowNum: number) {
 // row, and stamp the tutor's UserID onto each per-day Subject row they listed
 // (only if that row currently has no teacher assigned, so we never clobber an
 // existing assignment).
-async function activateTutor(sheetId: string, enrollRow: any, users: any[], extra: any) {
+async function activateTutor(sheetId: string, enrollRow: any, users: any[], extra: any, rowNum?: number) {
   const tutorUserId = enrollRow["UserID"] || "";
   const tutorName   = enrollRow["Student Name"] || extra.applicantName || extra.requesterName || "";
   const tutorEmail  = (extra.applicantEmail || extra.requesterEmail || enrollRow["ParentID"] || "").toLowerCase().trim();
   const zoomLink    = extra.zoomLink || extra.reference || "";
+
+  // Stamp the tutor's own teacher details onto her Enrollment row so the
+  // Enrollments sheet and any downstream lookups have Teacher Name/Email.
+  if (rowNum && tutorUserId) {
+    const tIdCol    = colLetter("enrollments", "TeacherID");
+    const tNameCol  = colLetter("enrollments", "Teacher Name");
+    const tEmailCol = colLetter("enrollments", "TeacherEmail");
+    const zoomCol   = colLetter("enrollments", "Zoom Link");
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tIdCol}${rowNum}`, tutorUserId);
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tNameCol}${rowNum}`, tutorName);
+    await updateCell(sheetId, `${SHEET_TABS.enrollments}!${tEmailCol}${rowNum}`, tutorEmail);
+    if (zoomLink) await updateCell(sheetId, `${SHEET_TABS.enrollments}!${zoomCol}${rowNum}`, zoomLink);
+  }
   const phone       = extra.phone || extra.parentPhone || "";
   const notesText   = extra.extra || "";
   // Selected per-day Subject rows (";"-separated SubjectIDs from the form;
@@ -475,7 +488,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
     const principalEmail = getSetting('PRINCIPAL_EMAIL') || process.env.PRINCIPAL_EMAIL || "";
 
     if (classType === "tutor") {
-      const { tutorName, tutorEmail, subjectsField } = await activateTutor(sheetId, enrollRow, users, extra);
+      const { tutorName, tutorEmail, subjectsField } = await activateTutor(sheetId, enrollRow, users, extra, rowNum);
       if (isEmailConfigured() && tutorEmail.includes("@")) {
         const ccRecipients = [principalEmail].filter(e => e && e.includes("@"));
         sendEmail({
