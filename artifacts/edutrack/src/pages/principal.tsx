@@ -2559,9 +2559,7 @@ async function scopeAttendanceSummary(data: any): Promise<any> {
     out.tutors = data.tutors.filter((t: any) => sc.tutorIds.has(t.teacherId));
   }
   if (Array.isArray(data.tutorAttendance)) {
-    out.tutorAttendance = data.tutorAttendance.filter((r: any) =>
-      sc.classIds.has(r.classId) || (r.teacherName && sc.tutorNames.has(r.teacherName))
-    );
+    out.tutorAttendance = data.tutorAttendance.filter((r: any) => sc.tutorIds.has(r.teacherId));
   }
   return out;
 }
@@ -2573,7 +2571,7 @@ async function scopeAnalysisForViewer(data: any): Promise<any> {
     out.bySubject = data.bySubject.filter((s: any) => sc.classIds.has(s.subjectId));
   }
   if (Array.isArray(data.byTeacher)) {
-    out.byTeacher = data.byTeacher.filter((t: any) => sc.tutorNames.has(t.teacherName));
+    out.byTeacher = data.byTeacher.filter((t: any) => sc.tutorIds.has(t.teacherId));
   }
   // Recompute coarse totals from the scoped slices.
   const teachers = out.byTeacher?.length ?? 0;
