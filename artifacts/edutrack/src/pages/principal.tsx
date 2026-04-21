@@ -221,14 +221,37 @@ function ClassesTab() {
               <p className="text-sm text-muted-foreground">No classes match your search.</p>
             )}
 
-            <div className="rounded-md border overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="flex flex-col gap-2 sm:hidden">
+              {filtered.map((s) => {
+                const subjectId = s["SubjectID"] || s.SubjectID || "";
+                const currentTeacher = s.TeacherName || s.Teachers || "Unassigned";
+                const schedule = [s.Days, s.Time].filter(Boolean).join(" · ") || "—";
+                return (
+                  <div key={subjectId} className="rounded-md border bg-card px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-sm">{s.Name || s["Name"]}</span>
+                      <span className="text-xs text-muted-foreground border rounded px-1.5 py-0.5">{s.Type || "—"}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{currentTeacher}</p>
+                    <p className="text-xs text-muted-foreground">{schedule}</p>
+                    {s.enrolledNames && (
+                      <p className="text-xs text-muted-foreground pt-0.5">{s.enrolledNames}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block rounded-md border overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 border-b">
                   <tr>
                     <th className="text-left font-medium px-3 py-2.5">Class</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Type</th>
+                    <th className="text-left font-medium px-3 py-2.5">Type</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden md:table-cell">Teacher</th>
-                    <th className="text-left font-medium px-3 py-2.5 hidden sm:table-cell">Schedule</th>
+                    <th className="text-left font-medium px-3 py-2.5">Schedule</th>
                     <th className="text-left font-medium px-3 py-2.5 hidden lg:table-cell">Students</th>
                   </tr>
                 </thead>
@@ -239,9 +262,9 @@ function ClassesTab() {
                     return (
                       <tr key={subjectId} className="hover:bg-muted/20">
                         <td className="px-3 py-2.5 font-medium">{s.Name || s["Name"]}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">{s.Type || "—"}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{s.Type || "—"}</td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden md:table-cell">{currentTeacher}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground hidden sm:table-cell">
+                        <td className="px-3 py-2.5 text-muted-foreground">
                           {[s.Days, s.Time].filter(Boolean).join(" · ") || "—"}
                         </td>
                         <td className="px-3 py-2.5 text-muted-foreground hidden lg:table-cell text-xs">
