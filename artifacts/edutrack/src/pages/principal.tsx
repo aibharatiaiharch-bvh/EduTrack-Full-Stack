@@ -2498,22 +2498,14 @@ function getViewerScope(): Promise<ViewerScope> {
             if (cid) classIds.add(cid);
           }
         }
-        // Also pull class IDs from any Enrollment rows where this tutor is named/IDed.
+        // Collect student IDs from STUDENT enrollment rows whose ClassID is in
+        // the tutor's set. We deliberately ignore tutor / teacher / new-class
+        // rows here — those are application rows, not class memberships, and
+        // pulling them in would leak another teacher's class to this tutor.
+        const NON_STUDENT_TYPES = new Set(["tutor","teacher","new-class"]);
         for (const e of enrArr) {
-          const eTid = String(e["TeacherID"] || e.teacherId || "").trim();
-          const eTname = String(e["Teacher Name"] || e.teacherName || "").toLowerCase().trim();
-          const eTemail = String(e["TeacherEmail"] || e.teacherEmail || "").toLowerCase().trim();
-          const matches =
-            (viewerId && eTid && eTid === viewerId) ||
-            (viewerName && eTname && eTname === viewerName) ||
-            (viewerEmail && eTemail && eTemail === viewerEmail);
-          if (matches) {
-            const cid = e.ClassID || e.classId;
-            if (cid) classIds.add(cid);
-          }
-        }
-        // Now collect student IDs from any enrollment row whose ClassID is in our set.
-        for (const e of enrArr) {
+          const type = String(e["Class Type"] || "").toLowerCase().trim();
+          if (NON_STUDENT_TYPES.has(type)) continue;
           const cid = e.ClassID || e.classId;
           if (cid && classIds.has(cid)) {
             const uid = e.UserID || e.userId;
