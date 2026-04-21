@@ -178,6 +178,8 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
 
   // Resolve human labels for the chosen Subject rows + assign teacher to each
   let subjectLabels: string[] = [];
+  let firstSubjectTime = "";
+  let firstSubjectDays = "";
   if (selectedIds.length) {
     const subjectRows = await readTabRows(sheetId, SHEET_TABS.subjects);
     const teacherIdCol   = colLetter("subjects", "TeacherID");
@@ -187,6 +189,8 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
       if (!sub) { subjectLabels.push(sid); continue; }
       const day = sub["Days"] ? ` (${sub["Days"]})` : "";
       subjectLabels.push(`${sub["Name"]}${day}`);
+      if (!firstSubjectTime) firstSubjectTime = sub["Time"] || "";
+      if (!firstSubjectDays) firstSubjectDays = sub["Days"] || "";
       // Only assign if the Subject row currently has no teacher, so we never
       // overwrite an existing assignment.
       const currentTeacher = (sub["TeacherID"] || "").trim();
@@ -195,6 +199,15 @@ async function activateTutor(sheetId: string, enrollRow: any, users: any[], extr
         await updateCell(sheetId, `${SHEET_TABS.subjects}!${teacherNameCol}${sub._row}`, tutorName);
       }
     }
+  }
+
+  // Stamp ClassTime / ClassDate onto the tutor's own enrollment row from the
+  // first selected subject so the Enrollments sheet reflects the schedule.
+  if (rowNum && (firstSubjectTime || firstSubjectDays)) {
+    const timeCol = colLetter("enrollments", "ClassTime");
+    const dateCol = colLetter("enrollments", "ClassDate");
+    if (firstSubjectTime) await updateCell(sheetId, `${SHEET_TABS.enrollments}!${timeCol}${rowNum}`, firstSubjectTime);
+    if (firstSubjectDays) await updateCell(sheetId, `${SHEET_TABS.enrollments}!${dateCol}${rowNum}`, firstSubjectDays);
   }
   const subjectsField = subjectLabels.join(", ");
 
