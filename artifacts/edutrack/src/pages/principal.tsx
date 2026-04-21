@@ -49,7 +49,6 @@ function ClassesTab() {
   const [addSuccess, setAddSuccess] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [showDevNotes, setShowDevNotes] = useState(false);
   const [reassignRow, setReassignRow] = useState<number | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState("");
   const [reassignError, setReassignError] = useState("");
@@ -127,23 +126,6 @@ function ClassesTab() {
     <div>
       <SectionHeader title={`Classes (${subjects.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
-      <Button size="sm" variant="outline" className="mb-3 gap-1.5" onClick={() => setShowDevNotes(v => !v)}>
-        <ClipboardList className="w-3.5 h-3.5" /> Dev notes
-      </Button>
-      {showDevNotes && (
-        <Card className="mb-4 border-dashed">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm">Teacher / class update steps</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 text-xs text-muted-foreground space-y-2">
-            <p><span className="font-medium text-foreground">Script:</span> <code>node artifacts/api-server/scripts/renumber-subjects-and-teachers.mjs &lt;SHEET_ID&gt;</code></p>
-            <p><span className="font-medium text-foreground">Use dry run:</span> add <code>--dry-run</code> first to preview changes.</p>
-            <p><span className="font-medium text-foreground">Edit order:</span> Teachers tab: update teacher details → Subjects tab: assign TeacherID, Type, Days, Time, Name → run script.</p>
-            <p><span className="font-medium text-foreground">Student classes:</span> rebuilt from Enrollments into readable subject names.</p>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Weekday × Type summary */}
       {!loading && subjects.length > 0 && (() => {
         const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
