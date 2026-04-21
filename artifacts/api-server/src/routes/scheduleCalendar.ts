@@ -34,16 +34,72 @@ router.get('/schedule/calendar', async (req, res): Promise<void> => {
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
 
   const weeks = Math.min(Math.max(parseInt((req.query.weeks as string) || '2', 10), 1), 4);
+  const viewerId    = ((req.query.userId as string) || '').trim();
+  const viewerEmail = ((req.query.email  as string) || '').trim().toLowerCase();
+  const viewerRole  = ((req.query.role   as string) || '').trim().toLowerCase();
 
   try {
-    const [subjects, enrollments, teachers, users] = await Promise.all([
+    const [subjects, enrollments, teachers, users, students] = await Promise.all([
       readRows(sheetId, SHEET_TABS.subjects),
       readRows(sheetId, SHEET_TABS.enrollments),
       readRows(sheetId, SHEET_TABS.teachers),
       readUsersTab(sheetId),
+      readRows(sheetId, SHEET_TABS.students),
     ]);
 
-    const activeSubjects = subjects.filter(s => (s['Status'] || '').toLowerCase() === 'active');
+    let activeSubjects = subjects.filter(s => (s['Status'] || '').toLowerCase() === 'active');
+
+    // ── Per-viewer scoping ────────────────────────────────────────────────────
+    // Principal/developer/admin: see everything. Others: only their own slice.
+    const isElevated = ['principal', 'developer', 'admin'].includes(viewerRole);
+    if (viewerId && !isElevated) {
+      let allowedSubjectIds: Set<string> | null = null;
+
+      if (viewerRole === 'tutor') {
+        // Subjects taught by this tutor (TeacherID === viewer userId)
+        allowedSubjectIds = new Set(
+          activeSubjects
+            .filter(s => (s['TeacherID'] || '').trim() === viewerId)
+            .map(s => (s['SubjectID'] || '').trim())
+            .filter(Boolean)
+        );
+      } else if (viewerRole === 'student') {
+        // Subjects this student is enrolled in
+        allowedSubjectIds = new Set(
+          enrollments
+            .filter(e => (e['UserID'] || '').trim() === viewerId)
+            .filter(e => {
+              const st = (e['Status'] || 'active').toLowerCase().trim();
+              return st !== 'inactive' && st !== 'cancelled' && st !== 'late cancellation';
+            })
+            .map(e => (e['ClassID'] || '').trim())
+            .filter(Boolean)
+        );
+      } else if (viewerRole === 'parent') {
+        // Children of this parent → their enrollments
+        const childIds = new Set(
+          students
+            .filter(s => (s['ParentID'] || '').trim() === viewerId)
+            .map(s => (s['UserID'] || s['StudentID'] || '').trim())
+            .filter(Boolean)
+        );
+        allowedSubjectIds = new Set(
+          enrollments
+            .filter(e => childIds.has((e['UserID'] || '').trim()))
+            .filter(e => {
+              const st = (e['Status'] || 'active').toLowerCase().trim();
+              return st !== 'inactive' && st !== 'cancelled' && st !== 'late cancellation';
+            })
+            .map(e => (e['ClassID'] || '').trim())
+            .filter(Boolean)
+        );
+      }
+
+      if (allowedSubjectIds) {
+        activeSubjects = activeSubjects.filter(s => allowedSubjectIds!.has((s['SubjectID'] || '').trim()));
+      }
+    }
+    void viewerEmail;
 
     // Build user lookup by userId → { name, email, role }
     const userById = new Map(users.map(u => [u.userId, u]));
