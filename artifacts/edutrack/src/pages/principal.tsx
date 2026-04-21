@@ -1011,7 +1011,10 @@ function StudentsTab() {
         apiFetch("/principals/students"),
         apiFetch("/subjects?status=active"),
       ]);
-      if (Array.isArray(userData)) setStudents(userData);
+      if (Array.isArray(userData)) {
+        const scoped = await scopeStudentsForViewer(userData);
+        setStudents(scoped);
+      }
       else setError("Could not load students.");
       if (Array.isArray(subjectData)) {
         // Build labels that include Day + Time so each (Class, Day) row is
@@ -2307,6 +2310,64 @@ function getViewerRole(): string {
   return (localStorage.getItem("edutrack_dev_role_override")
        || localStorage.getItem("edutrack_user_role")
        || "").toLowerCase();
+}
+
+function getViewerId(): string {
+  return (localStorage.getItem("edutrack_user_id") || "").trim();
+}
+
+function getViewerEmail(): string {
+  return (localStorage.getItem("edutrack_user_email") || "").toLowerCase().trim();
+}
+
+// Filter a students[] array down to only those visible to the current viewer.
+// principal/developer/admin: see all. student: only self. parent: only their children.
+// tutor: only students enrolled in classes they teach.
+async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
+  const role = getViewerRole();
+  if (role === "principal" || role === "developer" || role === "admin") return students;
+
+  const vid = getViewerId();
+  const vemail = getViewerEmail();
+
+  if (role === "student") {
+    return students.filter(s =>
+      (s.userId && s.userId === vid) ||
+      (s.email && String(s.email).toLowerCase() === vemail)
+    );
+  }
+
+  if (role === "parent") {
+    return students.filter(s =>
+      (s.parentId && s.parentId === vid) ||
+      (s.parentEmail && String(s.parentEmail).toLowerCase() === vemail)
+    );
+  }
+
+  if (role === "tutor") {
+    try {
+      const [subjects, enrollments] = await Promise.all([
+        apiFetch("/subjects"),
+        apiFetch("/enrollments"),
+      ]);
+      const myClassIds = new Set(
+        (Array.isArray(subjects) ? subjects : [])
+          .filter((s: any) => (s.TeacherID || s.teacherId) === vid ||
+                              (s["Teacher Email"] && String(s["Teacher Email"]).toLowerCase() === vemail))
+          .map((s: any) => s.ClassID || s.classId)
+      );
+      const myStudentIds = new Set(
+        (Array.isArray(enrollments) ? enrollments : [])
+          .filter((e: any) => myClassIds.has(e.ClassID || e.classId))
+          .map((e: any) => e.UserID || e.userId)
+      );
+      return students.filter(s => myStudentIds.has(s.userId));
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
 }
 
 export default function PrincipalDashboard() {
