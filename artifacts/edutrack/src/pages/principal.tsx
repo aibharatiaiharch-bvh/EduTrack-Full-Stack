@@ -1817,22 +1817,24 @@ function TutorAttendanceTab() {
 
   const tutors: any[] = data?.tutors ?? [];
   const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const SUMMARY_ROWS = [
-    { label: "Group", match: (r: any) => (r.className || "").toLowerCase().includes("group") },
-    { label: "Ind", match: (r: any) => (r.className || "").toLowerCase().includes("individual") || (r.className || "").toLowerCase().includes("ind") },
-    { label: "Subject", match: (_: any) => true },
-  ];
-  const summaryByType = SUMMARY_ROWS.map(row => {
+  const summarySubjects = Array.from(
+    new Set(
+      tutorAttendance
+        .map((r: any) => String(r.className || "").trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  const summaryBySubject = summarySubjects.map(subject => {
     const byDay: Record<string, number> = {};
     for (const d of DAY_ORDER) byDay[d] = 0;
     for (const r of tutorAttendance) {
-      if (!row.match(r)) continue;
+      if (String(r.className || "").trim() !== subject) continue;
       const dayIdx = r.sessionDate ? new Date(`${r.sessionDate}T00:00:00`).getDay() : NaN;
       if (Number.isNaN(dayIdx)) continue;
       const day = DAY_ORDER[(dayIdx + 6) % 7];
       byDay[day] = (byDay[day] || 0) + 1;
     }
-    return { label: row.label, byDay };
+    return { label: subject, byDay };
   });
 
   return (
@@ -1918,14 +1920,14 @@ function TutorAttendanceTab() {
             <table className="w-full text-sm min-w-[600px]">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="text-left font-medium px-3 py-2.5">Row Group</th>
+                  <th className="text-left font-medium px-3 py-2.5">Subject</th>
                   {DAY_ORDER.map(day => (
                     <th key={day} className="text-center font-medium px-3 py-2.5">{day}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {summaryByType.map(row => (
+                {summaryBySubject.map(row => (
                   <tr key={row.label} className="border-t">
                     <td className="px-3 py-2.5 font-semibold">{row.label}</td>
                     {DAY_ORDER.map(day => (
