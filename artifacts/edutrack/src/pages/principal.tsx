@@ -1816,6 +1816,24 @@ function TutorAttendanceTab() {
   }
 
   const tutors: any[] = data?.tutors ?? [];
+  const DAY_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const SUMMARY_ROWS = [
+    { label: "Group", match: (r: any) => (r.className || "").toLowerCase().includes("group") },
+    { label: "Ind", match: (r: any) => (r.className || "").toLowerCase().includes("individual") || (r.className || "").toLowerCase().includes("ind") },
+    { label: "Subject", match: (_: any) => true },
+  ];
+  const summaryByType = SUMMARY_ROWS.map(row => {
+    const byDay: Record<string, number> = {};
+    for (const d of DAY_ORDER) byDay[d] = 0;
+    for (const r of tutorAttendance) {
+      if (!row.match(r)) continue;
+      const dayIdx = r.sessionDate ? new Date(`${r.sessionDate}T00:00:00`).getDay() : NaN;
+      if (Number.isNaN(dayIdx)) continue;
+      const day = DAY_ORDER[(dayIdx + 6) % 7];
+      byDay[day] = (byDay[day] || 0) + 1;
+    }
+    return { label: row.label, byDay };
+  });
 
   return (
     <div>
@@ -1827,7 +1845,6 @@ function TutorAttendanceTab() {
 
       {/* ── Tutor Payment Summary (top) ── */}
       {tutors.length > 0 && (() => {
-        const DAY_ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
         // Build teacherId → weekday → count from individual session rows
         const byDay: Record<string, Record<string, number>> = {};
         for (const r of tutorAttendance) {
@@ -1891,6 +1908,36 @@ function TutorAttendanceTab() {
         </div>
         );
       })()}
+
+      {tutorAttendance.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Attendance Summary by Type
+          </h3>
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Row Group</th>
+                  {DAY_ORDER.map(day => (
+                    <th key={day} className="text-center font-medium px-3 py-2.5">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {summaryByType.map(row => (
+                  <tr key={row.label} className="border-t">
+                    <td className="px-3 py-2.5 font-semibold">{row.label}</td>
+                    {DAY_ORDER.map(day => (
+                      <td key={day} className="px-3 py-2.5 text-center font-medium">{row.byDay[day] || "—"}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Tutor Attendance Detail ── */}
       <div>
