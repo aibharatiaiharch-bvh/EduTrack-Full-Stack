@@ -2368,7 +2368,7 @@ const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "student-attendance", label: "Student Attendance", icon: <CalendarDays className="w-4 h-4" /> },
   { id: "tutor-attendance",  label: "Tutor Attendance",   icon: <CalendarDays className="w-4 h-4" /> },
   { id: "analysis",   label: "Analysis",           icon: <BarChart2 className="w-4 h-4" /> },
-  { id: "users",       label: "All Users",          icon: <Users className="w-4 h-4" /> },
+  { id: "users",       label: "All Users",          icon: <span className="text-xs font-semibold">AU</span> },
   { id: "upload",      label: "Mass Upload",        icon: <Upload className="w-4 h-4" /> },
   { id: "settings",    label: "Settings",           icon: <SettingsIcon className="w-4 h-4" /> },
 ];
