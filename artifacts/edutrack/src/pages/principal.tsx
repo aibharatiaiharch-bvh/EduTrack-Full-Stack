@@ -2603,8 +2603,10 @@ export default function PrincipalDashboard() {
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                   tab === t.id
                     ? "border-primary text-primary"
-                    : (t.id === "requests" || t.id === "users")
-                      ? "border-transparent text-slate-700 font-semibold hover:text-slate-900"
+                    : t.id === "requests"
+                      ? "border-transparent text-red-600 font-semibold hover:text-red-700"
+                      : t.id === "users"
+                        ? "border-transparent text-slate-700 font-semibold hover:text-slate-900"
                       : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
