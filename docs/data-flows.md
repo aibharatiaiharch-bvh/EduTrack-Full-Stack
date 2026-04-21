@@ -112,6 +112,37 @@ POST /api/enrollments  { studentId, subjectId, … }
 
 ---
 
+## 8a. Add Tutor (Principal)
+```
+Principal → Tutors tab → Add Tutor button → fills name/email/subjects/specialty/zoomLink
+POST /api/principals/add-teacher
+  → if email matches existing Users row, REUSES UserID
+  → else: appends to Users tab (Role=tutor, Status=Active) → new UserID
+  → appends to Teachers tab (TeacherID, UserID, Name, Subjects, Zoom Link, Specialty)
+  → returns { ok, userId, teacherId }
+Frontend shows green success banner with the new TeacherID and a hint to use Reassign next.
+```
+
+---
+
+## 8b. Deactivate Tutor — Safety Guard
+```
+Principal → Users tab → Deactivate (on a tutor row)
+POST /api/users/deactivate { userId }
+  → reads Users tab → finds user
+  → if role === "tutor":
+       reads Subjects tab → counts rows where TeacherID = userId
+       if count > 0:
+         responds 409 { error, code: "TUTOR_HAS_CLASSES", classCount, classes[] }
+         (no Sheet writes happen)
+  → else continues normal flow:
+       appends Archive snapshot → sets Status=Inactive → deletes user's Enrollments
+       fires deactivation email
+Frontend: if 409, shows amber inline banner with class names and "Reassign first" instruction.
+```
+
+---
+
 ## 9. Reassign Class Teacher (Principal/Developer)
 ```
 Principal opens Classes tab → clicks Reassign on a row

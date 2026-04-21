@@ -1205,6 +1205,7 @@ function TutorsTab() {
   const [form, setForm] = useState({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [addedInfo, setAddedInfo] = useState<{ name: string; teacherId: string; userId: string } | null>(null);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
@@ -1263,6 +1264,7 @@ function TutorsTab() {
     try {
       const data = await apiFetch("/principals/add-teacher", { method: "POST", body: JSON.stringify(form) });
       if (data.ok) {
+        setAddedInfo({ name: form.name.trim(), teacherId: data.teacherId || "", userId: data.userId || "" });
         setForm({ name: "", email: "", subjects: "", specialty: "", zoomLink: "" });
         setShowForm(false);
         await load();
@@ -1281,6 +1283,21 @@ function TutorsTab() {
       <Button size="sm" className="mb-4 gap-1" onClick={() => setShowForm(!showForm)}>
         <UserPlus className="w-4 h-4" /> Add Tutor
       </Button>
+
+      {addedInfo && (
+        <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <strong>{addedInfo.name}</strong> added.
+              {addedInfo.teacherId && <> TeacherID: <code className="text-xs bg-white px-1.5 py-0.5 rounded border">{addedInfo.teacherId}</code></>}
+              <div className="mt-1 text-green-800 text-xs">
+                Next step: open the <strong>Classes</strong> tab and use the <strong>Reassign</strong> button to move existing classes to this new tutor. You can then deactivate any sample tutors.
+              </div>
+            </div>
+            <button onClick={() => setAddedInfo(null)} className="text-green-700 hover:text-green-900 font-medium shrink-0 text-xs">Dismiss</button>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <Card className="mb-4">
@@ -1381,6 +1398,7 @@ function UsersTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ userId: string; message: string; classes?: string[] } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
 
@@ -1401,11 +1419,16 @@ function UsersTab() {
 
   async function toggleStatus(user: any) {
     setActing(user.userId);
+    setActionError(null);
     const endpoint = user.status?.toLowerCase() === "active" ? "/users/deactivate" : "/users/reactivate";
     try {
-      await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: user.userId }) });
-      await load();
-    } catch { /* ignore */ }
+      const result = await apiFetch(endpoint, { method: "POST", body: JSON.stringify({ userId: user.userId }) });
+      if (result?.error) {
+        setActionError({ userId: user.userId, message: result.error, classes: result.classes });
+      } else {
+        await load();
+      }
+    } catch { setActionError({ userId: user.userId, message: "Connection error." }); }
     setActing(null);
   }
 
@@ -1471,24 +1494,41 @@ function UsersTab() {
             </thead>
             <tbody className="divide-y">
               {filtered.map((u) => (
-                <tr key={u.userId} className="hover:bg-muted/20">
-                  <td className="px-3 py-2.5 font-medium">{u.name || u.displayName || u.email || "Unknown"}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{u.email || "—"}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
-                  <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
-                  <td className="px-3 py-2.5">
-                    {u.status?.toLowerCase() === "active" && (
-                      <Button
-                        size="sm" variant="outline"
-                        disabled={acting === u.userId}
-                        onClick={() => toggleStatus(u)}
-                        className="text-xs h-7 px-2 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                      >
-                        {acting === u.userId ? "…" : "Deactivate"}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
+                <Fragment key={u.userId}>
+                  <tr className="hover:bg-muted/20">
+                    <td className="px-3 py-2.5 font-medium">{u.name || u.displayName || u.email || "Unknown"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{u.email || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground capitalize">{u.role}</td>
+                    <td className="px-3 py-2.5"><StatusBadge status={u.status} /></td>
+                    <td className="px-3 py-2.5">
+                      {u.status?.toLowerCase() === "active" && (
+                        <Button
+                          size="sm" variant="outline"
+                          disabled={acting === u.userId}
+                          onClick={() => toggleStatus(u)}
+                          className="text-xs h-7 px-2 bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                        >
+                          {acting === u.userId ? "…" : "Deactivate"}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                  {actionError?.userId === u.userId && (
+                    <tr className="bg-amber-50">
+                      <td colSpan={5} className="px-3 py-2 text-xs text-amber-900">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <strong>Cannot deactivate.</strong> {actionError.message}
+                            {actionError.classes && actionError.classes.length > 0 && (
+                              <div className="mt-1 text-amber-800">Classes: {actionError.classes.join(", ")}</div>
+                            )}
+                          </div>
+                          <button onClick={() => setActionError(null)} className="text-amber-700 hover:text-amber-900 font-medium shrink-0">Dismiss</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

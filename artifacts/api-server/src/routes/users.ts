@@ -82,6 +82,27 @@ router.post('/users/deactivate', async (req, res): Promise<void> => {
     const user = users.find(u => u.userId === userId);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
 
+    // Guard: a tutor cannot be deactivated while they still own Subjects rows.
+    // The principal must reassign those classes first (Classes tab → Reassign button).
+    if ((user.role || '').toLowerCase() === 'tutor') {
+      try {
+        const subjects = await readTabRows(sheetId, SHEET_TABS.subjects);
+        const owned = subjects.filter(s => (s['TeacherID'] || '') === userId);
+        if (owned.length > 0) {
+          const classNames = owned
+            .map(s => s['Name'] || s['SubjectID'] || '')
+            .filter(Boolean);
+          res.status(409).json({
+            error: `${user.name || 'This tutor'} still owns ${owned.length} class${owned.length === 1 ? '' : 'es'}. Reassign them first via the Classes tab, then try again.`,
+            code: 'TUTOR_HAS_CLASSES',
+            classCount: owned.length,
+            classes: classNames,
+          });
+          return;
+        }
+      } catch { /* if Subjects tab can't be read, fall through to normal deactivation */ }
+    }
+
     // 1. Append snapshot to Archive tab (best-effort — skip if tab doesn't exist yet)
     const now = new Date().toISOString();
     const archiveId = `ARC-${Date.now()}`;

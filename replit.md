@@ -100,6 +100,8 @@ Monorepo using `pnpm workspaces`.
 - `POST /api/admin/backfill-names` — fills blank Student Name / Teacher Name cells across Students, Subjects, Attendance tabs.
 - `POST /api/admin/migrate-columns` — schema migration helper.
 - `POST /api/subjects/:row/reassign` — reassigns a Subject row to a different teacher. Body: `{ teacherId }`. Updates `TeacherID` + `Teacher Name` columns. Used by the Classes tab Reassign button (Principal/Developer only).
+- `POST /api/principals/add-teacher` — creates a tutor in one step: appends to Users (Role=tutor) AND Teachers tab. Returns `{ userId, teacherId }`. UI: Principal → Tutors → Add Tutor.
+- `POST /api/users/deactivate` — guarded for tutors: returns **409** with `{ code: "TUTOR_HAS_CLASSES", classCount, classes }` if the tutor still owns Subjects rows. Reassign those classes first, then deactivate.
 - `scripts/seed-attendance.mjs` — seeds realistic April 2026 attendance (126 rows, 6 absences).
 - `scripts/renumber-subjects-and-teachers.mjs` — renumbers SubjectIDs (`SUB-001..`) and propagates IDs to Enrollments, Attendance, Students. Supports `--dry-run`.
 - `scripts/rebuild-student-classes.mjs` — rebuilds the Students.Classes column from active Enrollments (e.g. "Art, English, Mathematics").

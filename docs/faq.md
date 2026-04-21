@@ -52,6 +52,22 @@ No. Past Attendance rows keep the original `Teacher Name` snapshot they were wri
 
 ---
 
+## Adding & Removing Tutors
+
+**Q: How do I add a real tutor (not via the public enrolment form)?**  
+The public `/enroll` form is student-only. Use the Principal portal → **Tutors** tab → **Add Tutor** button. It writes both a `Users` row (Role=tutor) and a `Teachers` row in one step and returns the new TeacherID.
+
+**Q: After adding a new tutor, how do I move the sample tutor's classes to them?**  
+Open the **Classes** tab and click **Reassign** on each class row that should belong to the new tutor. Pick the new tutor and Save.
+
+**Q: I tried to deactivate a sample tutor and got "Cannot deactivate — still owns N classes". What now?**  
+That's the safety guard. Reassign every class that still points to that tutor (Classes tab → Reassign), then deactivate again. The guard prevents orphaned classes that would otherwise show an inactive teacher's name.
+
+**Q: What does deactivating a tutor actually do?**  
+Sets `Status = Inactive` on the Users row (so they can no longer sign in), archives a snapshot to the Archive tab, and deletes any Enrollments referencing their UserID. Their Teachers row is kept for history. With no Subjects pointing to them, they disappear from Classes/Calendar/Tutor lists.
+
+---
+
 ## Subjects & SubjectIDs
 
 **Q: What is a SubjectID?**  
