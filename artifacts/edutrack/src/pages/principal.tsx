@@ -2075,13 +2075,6 @@ function AnalysisTab() {
   const [error, setError] = useState("");
   const [from, setFrom] = useState(janThisYear);
   const [to, setTo] = useState(thisMonth);
-  const subjectSummary = bySubject.reduce<Record<string, { sessions: number; students: number; hoursPerWeek: number }>>((acc, s) => {
-    acc[s.name] = acc[s.name] || { sessions: 0, students: 0, hoursPerWeek: 0 };
-    acc[s.name].sessions += s.sessionsPerWeek;
-    acc[s.name].students += s.students;
-    acc[s.name].hoursPerWeek += s.hoursPerWeek;
-    return acc;
-  }, {});
 
   async function load(f = from, t = to) {
     const sid = sheetId();
@@ -2113,6 +2106,13 @@ function AnalysisTab() {
   const maxTeacherStudents = Math.max(...byTeacher.map(t => t.students), 1);
   const maxDayStudents     = Math.max(...byWeekday.map(d => d.students), 1);
   const maxMonthAttend     = Math.max(...(byMonth || []).map(m => m.studentAttendances), 1);
+  const subjectSummary = bySubject.reduce<Record<string, { sessions: number; students: number; hoursPerWeek: number }>>((acc, s) => {
+    acc[s.name] = acc[s.name] || { sessions: 0, students: 0, hoursPerWeek: 0 };
+    acc[s.name].sessions += s.sessionsPerWeek;
+    acc[s.name].students += s.students;
+    acc[s.name].hoursPerWeek += s.hoursPerWeek;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-8">
