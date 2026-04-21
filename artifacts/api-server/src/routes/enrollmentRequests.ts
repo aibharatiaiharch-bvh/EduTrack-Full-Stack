@@ -287,7 +287,7 @@ async function activateStudent(sheetId: string, enrollRow: any, users: any[], ex
       parentDisplayName = existingParent.name || "Parent";
     } else {
       parentUserId = await generateUserId("parent", sheetId);
-      parentDisplayName = studentName ? `${studentName}'s Parent` : "Parent";
+      parentDisplayName = studentName ? studentName : "Parent";
       await appendRow(sheetId, SHEET_TABS.users, [
         parentUserId, parentEmail, "parent", parentDisplayName, "Active", now, now,
       ]);
