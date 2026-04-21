@@ -2482,14 +2482,16 @@ function getViewerScope(): Promise<ViewerScope> {
 
       if (role === "tutor") {
         // Match tutor's classes by NAME (since /subjects overwrites TeacherID with name),
-        // by viewerId (in case raw TeacherID is preserved), and by Teacher Email when present.
+        // by viewerId (TeacherIdRaw or raw TeacherID), and by Teacher Email when present.
         for (const sub of subjArr) {
           const tname = subTeacherName(sub).toLowerCase();
           const temail = String(sub["Teacher Email"] || sub["TeacherEmail"] || "").toLowerCase();
+          const tidRaw = String(sub["TeacherIdRaw"] || "").trim();
           const tid = String(sub["TeacherID"] || "").trim();
           const matches =
             (viewerName && tname === viewerName) ||
             (viewerEmail && temail && temail === viewerEmail) ||
+            (viewerId && tidRaw && tidRaw === viewerId) ||
             (viewerId && tid && tid === viewerId);
           if (matches) {
             const cid = subClassId(sub);
@@ -2632,8 +2634,24 @@ export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
   const isElevated = FULL_ACCESS_ROLES.has(role);
-  const TABS = ALL_TABS;
+
+  // Tabs visible per role. Elevated roles see everything; tutors/students/parents
+  // see a restricted subset. Mass Upload is developer-only.
+  const visibleTabIds: Tab[] = isElevated
+    ? (role === "developer"
+        ? ["calendar","requests","students","tutors","classes","student-attendance","tutor-attendance","analysis","users","upload","settings"]
+        : ["calendar","requests","students","tutors","classes","student-attendance","tutor-attendance","analysis","users","settings"])
+    : role === "tutor"
+      ? ["calendar","students","tutors","classes","student-attendance","tutor-attendance"]
+      : role === "student" || role === "parent"
+        ? ["calendar","classes","student-attendance"]
+        : ["calendar"];
+  const TABS = ALL_TABS.filter(t => visibleTabIds.includes(t.id));
   const requestCount = 0;
+
+  useEffect(() => {
+    if (!visibleTabIds.includes(tab)) setTab(visibleTabIds[0] || "calendar");
+  }, [role]);
 
   useEffect(() => {
     resetViewerScope();
