@@ -424,7 +424,7 @@ export function CalendarContent() {
       ) : (
         <>
           <CalendarGrid rows={group} title="Group Classes" canSeeStudents={canSeeStudents} />
-          {false && <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />}
+          <CalendarGrid rows={individual} title="Individual Classes" canSeeStudents={canSeeStudents} />
           {/* Contact Directory moved to Principal → Requests tab for data privacy. */}
           {false && <ContactTable days={days} principalEmail={principalEmail} />}
         </>
