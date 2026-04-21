@@ -56,7 +56,7 @@ function ClassesTab() {
   const [reassignError, setReassignError] = useState("");
   const [reassignSaving, setReassignSaving] = useState(false);
   const role = (localStorage.getItem("edutrack_user_role") || "").toLowerCase();
-  const canReassign = role === "principal" || role === "developer";
+  const canReassign = role === "principal" || role === "developer" || role === "admin" || role === "staff";
 
   async function load() {
     setLoading(true); setError("");
@@ -2312,6 +2312,10 @@ function getViewerRole(): string {
        || "").toLowerCase();
 }
 
+function isElevatedRole(role: string): boolean {
+  return role === "principal" || role === "developer" || role === "admin" || role === "staff";
+}
+
 function getViewerId(): string {
   return (localStorage.getItem("edutrack_user_id") || "").trim();
 }
@@ -2321,11 +2325,11 @@ function getViewerEmail(): string {
 }
 
 // Filter a students[] array down to only those visible to the current viewer.
-// principal/developer/admin: see all. student: only self. parent: only their children.
+// principal/developer/admin/staff: see all. student: only self. parent: only their children.
 // tutor: only students enrolled in classes they teach.
 async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
   const role = getViewerRole();
-  if (role === "principal" || role === "developer" || role === "admin") return students;
+  if (isElevatedRole(role)) return students;
 
   const vid = getViewerId();
   const vemail = getViewerEmail();
@@ -2373,7 +2377,7 @@ async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
 export default function PrincipalDashboard() {
   const [tab, setTab] = useState<Tab>("calendar");
   const role = getViewerRole();
-  const isElevated = role === "principal" || role === "developer" || role === "admin";
+  const isElevated = isElevatedRole(role);
   const TABS = ALL_TABS.filter(t => isElevated || !ELEVATED_ONLY.includes(t.id));
 
   return (

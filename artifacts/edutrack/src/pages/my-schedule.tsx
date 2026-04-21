@@ -61,7 +61,7 @@ export default function MySchedule() {
   const sheetId = localStorage.getItem(SHEET_KEY);
   const email = user?.primaryEmailAddress?.emailAddress || localStorage.getItem("edutrack_user_email") || "";
   const role = localStorage.getItem("edutrack_user_role") || "tutor";
-  const isSummaryView = role === "principal" || role === "developer" || role === "admin";
+  const isSummaryView = role === "principal" || role === "developer" || role === "admin" || role === "staff";
 
   const { data: classes, isLoading, error } = useQuery<EnrollmentRow[]>({
     queryKey: ["my-schedule", email, sheetId],
