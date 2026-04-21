@@ -13,7 +13,7 @@ function tryParseJson(val: string): Record<string, string> {
   try { return val.startsWith("{") ? JSON.parse(val) : {}; } catch { return {}; }
 }
 
-function buildWelcomeEmail(studentName: string, classes: string, principalName: string): string {
+function buildWelcomeEmail(studentName: string, classes: string, principalName: string, loginEmail?: string): string {
   // Link people to the live app's sign-in page so they can log in immediately
   // (NOT the public /enroll form — they're already enrolled).
   const appBase = (process.env.EDUTRACK_APP_URL || "https://edutrack.app").replace(/\/$/, "");
@@ -49,7 +49,13 @@ function buildWelcomeEmail(studentName: string, classes: string, principalName: 
           <a href="${loginLink}" style="display: inline-block; background: #1d4ed8; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600;">Log in to EduTrack</a>
         </p>
         <p style="font-size: 13px; color: #6b7280;">Or open: <a href="${loginLink}" style="color: #1d4ed8;">${loginLink}</a></p>
-        <p>Sign in with this email address — no password needed. From the dashboard you can view your schedule, class calendar, and analysis.</p>
+        ${loginEmail ? `
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin: 16px 0;">
+          <p style="margin: 0 0 4px 0; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Your login email</p>
+          <p style="margin: 0; font-size: 16px; font-weight: 600; color: #1d4ed8;">${loginEmail}</p>
+        </div>
+        ` : ""}
+        <p>Use the email address above to sign in — no password needed. From the dashboard you can view your schedule, class calendar, and analysis.</p>
         <p>If you have any questions, just reply to this email.</p>
         <p style="margin-top: 32px;">Warm regards,<br/>
         <strong>${principalName}</strong><br/>
@@ -476,7 +482,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
           to: [tutorEmail],
           cc: ccRecipients.length > 0 ? ccRecipients : undefined,
           subject: `Welcome to EduTrack — your tutor account is active`,
-          html: buildWelcomeEmail(tutorName, subjectsField, principalName),
+          html: buildWelcomeEmail(tutorName, subjectsField, principalName, tutorEmail),
         }).catch((emailErr: any) => {
           console.error("Welcome email failed:", emailErr.message);
         });
@@ -499,7 +505,7 @@ router.post("/enrollment-requests/:row/mark-paid", async (req, res) => {
             to: uniqueRecipients,
             cc: ccRecipients.length > 0 ? ccRecipients : undefined,
             subject: `Welcome to EduTrack — ${studentName}'s enrollment is confirmed`,
-            html: buildWelcomeEmail(studentName, classes, principalName),
+            html: buildWelcomeEmail(studentName, classes, principalName, studentEmail || undefined),
           }).catch((emailErr: any) => {
             console.error("Welcome email failed:", emailErr.message);
           });
