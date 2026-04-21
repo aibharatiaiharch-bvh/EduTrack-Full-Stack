@@ -2484,9 +2484,8 @@ async function scopeAttendanceSummary(data: any): Promise<any> {
   }
   if (Array.isArray(data.cancellations)) {
     out.cancellations = data.cancellations.filter((c: any) =>
-      sc.studentIds.has(c.userId) ||
-      sc.classIds.has(c.classId) ||
-      sc.tutorNames.has(String(c.teacherName || "").trim())
+      sc.studentIds.has(c.userId) &&
+      (sc.classIds.size === 0 || sc.classIds.has(c.classId))
     );
   }
   if (Array.isArray(data.tutors)) {
