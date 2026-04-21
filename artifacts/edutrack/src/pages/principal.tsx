@@ -2647,7 +2647,7 @@ export default function PrincipalDashboard() {
           {tab === "tutor-attendance"  && <TutorAttendanceTab />}
           {tab === "analysis"    && <AnalysisTab />}
           {tab === "users"       && <UsersTab />}
-          {tab === "upload"      && <BulkUploadCard />}
+          {tab === "upload" && role === "developer" && <BulkUploadCard />}
           {tab === "settings"    && <SettingsContent />}
         </main>
       </div>
