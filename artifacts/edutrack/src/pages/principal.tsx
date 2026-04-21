@@ -108,16 +108,16 @@ function ClassesTab() {
           const x = (d || "").trim().toLowerCase().slice(0, 3);
           return x ? x.charAt(0).toUpperCase() + x.slice(1) : "";
         };
-        const types = Array.from(new Set(subjects.map(s => (s.Type || "").trim()).filter(Boolean))).sort();
+        const types = Array.from(new Set(subjects.map(s => (s.Type || "").trim() || "—"))).sort();
         const grid: Record<string, Record<string, number>> = {};
         const dayTotals: Record<string, number> = {};
         const typeTotals: Record<string, number> = {};
         let grandTotal = 0;
         for (const s of subjects) {
-          const days = String(s.Days || "").split(/[,/;|]/).map(normDay).filter(Boolean);
+          const raw = String(s.Days || "").split(/[,/;|]/).map(d => d.trim()).filter(Boolean);
+          const days = raw.length ? raw.map(normDay).filter(Boolean) : ["?"];
           const type = (s.Type || "").trim() || "—";
           for (const d of days) {
-            if (!DAY_ORDER.includes(d)) continue;
             grid[d] = grid[d] || {};
             grid[d][type] = (grid[d][type] || 0) + 1;
             dayTotals[d] = (dayTotals[d] || 0) + 1;
@@ -125,7 +125,9 @@ function ClassesTab() {
             grandTotal++;
           }
         }
-        const activeDays = DAY_ORDER.filter(d => grid[d]);
+        const knownDays = DAY_ORDER.filter(d => grid[d]);
+        const otherDays = Object.keys(grid).filter(d => !DAY_ORDER.includes(d)).sort();
+        const activeDays = [...knownDays, ...otherDays];
         if (!activeDays.length) return null;
         return (
           <div className="mb-4 rounded-md border overflow-x-auto">
