@@ -2358,6 +2358,19 @@ function AnalysisTab() {
 }
 
 const ELEVATED_ONLY: Tab[] = ["upload", "settings"];
+const TAB_ACCESS_RULES = {
+  calendar: "All roles",
+  requests: "Principal/Dev only",
+  students: "All roles",
+  tutors: "All roles",
+  users: "Principal/Dev only",
+  classes: "All roles",
+  "student-attendance": "All roles",
+  "tutor-attendance": "All roles",
+  analysis: "Principal only",
+  upload: "Principal/Dev only",
+  settings: "Principal/Dev only",
+} as const;
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "calendar",    label: "Calendar",           icon: <CalendarDays className="w-4 h-4" /> },
