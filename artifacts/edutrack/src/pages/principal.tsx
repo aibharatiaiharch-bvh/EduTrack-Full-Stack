@@ -2589,6 +2589,7 @@ export default function PrincipalDashboard() {
   const role = getViewerRole();
   const isElevated = isElevatedRole(role);
   const TABS = ALL_TABS.filter(t => t.id !== "upload" && t.id !== "settings");
+  const requestCount = 0;
 
   return (
     <AppLayout>
@@ -2610,7 +2611,7 @@ export default function PrincipalDashboard() {
                         : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t.icon}{t.label}
+                {t.id === "requests" ? `${t.label} (${requestCount})` : t.label}
               </button>
             ))}
           </div>
