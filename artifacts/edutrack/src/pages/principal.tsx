@@ -2406,6 +2406,10 @@ function getViewerEmail(): string {
   return (localStorage.getItem("edutrack_user_email") || "").toLowerCase().trim();
 }
 
+function getViewerName(): string {
+  return (localStorage.getItem("edutrack_user_name") || "").toLowerCase().trim();
+}
+
 // ─── Viewer Scope ──────────────────────────────────────────────────────────────
 // Computes the set of student IDs, class IDs, tutor IDs and tutor names visible
 // to the current viewer. Results are cached for the session to avoid repeated
@@ -2431,6 +2435,7 @@ function getViewerScope(): Promise<ViewerScope> {
     const elevated = isElevatedRole(role);
     const viewerId = getViewerId();
     const viewerEmail = getViewerEmail();
+    const viewerName = getViewerName();
 
     const empty: ViewerScope = {
       role, elevated, viewerId, viewerEmail,
@@ -2476,14 +2481,36 @@ function getViewerScope(): Promise<ViewerScope> {
         String(s.TeacherName || s.Teachers || s.TeacherID || s["Teacher Name"] || s.teacherName || "").trim();
 
       if (role === "tutor") {
+        // Match tutor's classes by NAME (since /subjects overwrites TeacherID with name),
+        // by viewerId (in case raw TeacherID is preserved), and by Teacher Email when present.
         for (const sub of subjArr) {
           const tname = subTeacherName(sub).toLowerCase();
-          const temail = String(sub["Teacher Email"] || "").toLowerCase();
-          if ((temail && temail === viewerEmail) || (tname && tname === viewerEmail)) {
+          const temail = String(sub["Teacher Email"] || sub["TeacherEmail"] || "").toLowerCase();
+          const tid = String(sub["TeacherID"] || "").trim();
+          const matches =
+            (viewerName && tname === viewerName) ||
+            (viewerEmail && temail && temail === viewerEmail) ||
+            (viewerId && tid && tid === viewerId);
+          if (matches) {
             const cid = subClassId(sub);
             if (cid) classIds.add(cid);
           }
         }
+        // Also pull class IDs from any Enrollment rows where this tutor is named/IDed.
+        for (const e of enrArr) {
+          const eTid = String(e["TeacherID"] || e.teacherId || "").trim();
+          const eTname = String(e["Teacher Name"] || e.teacherName || "").toLowerCase().trim();
+          const eTemail = String(e["TeacherEmail"] || e.teacherEmail || "").toLowerCase().trim();
+          const matches =
+            (viewerId && eTid && eTid === viewerId) ||
+            (viewerName && eTname && eTname === viewerName) ||
+            (viewerEmail && eTemail && eTemail === viewerEmail);
+          if (matches) {
+            const cid = e.ClassID || e.classId;
+            if (cid) classIds.add(cid);
+          }
+        }
+        // Now collect student IDs from any enrollment row whose ClassID is in our set.
         for (const e of enrArr) {
           const cid = e.ClassID || e.classId;
           if (cid && classIds.has(cid)) {
@@ -2492,6 +2519,7 @@ function getViewerScope(): Promise<ViewerScope> {
           }
         }
         if (viewerId) tutorIds.add(viewerId);
+        if (viewerName) tutorNames.add(viewerName);
       }
 
       // For student/parent: derive class IDs from their student IDs.
