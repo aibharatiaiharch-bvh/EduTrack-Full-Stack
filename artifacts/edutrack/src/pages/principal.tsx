@@ -2385,12 +2385,20 @@ function getViewerScope(): Promise<ViewerScope> {
             if (s.userId) studentIds.add(s.userId);
           }
         }
-      } else if (role === "tutor") {
+      }
+
+      // Helper: subjects use `SubjectID` (sometimes also `ClassID`); /subjects
+      // OVERWRITES TeacherID with the teacher's NAME, so prefer name matching.
+      const subClassId = (s: any) => s.SubjectID || s.ClassID || s.subjectId || s.classId || "";
+      const subTeacherName = (s: any) =>
+        String(s.TeacherName || s.Teachers || s.TeacherID || s["Teacher Name"] || s.teacherName || "").trim();
+
+      if (role === "tutor") {
         for (const sub of subjArr) {
-          const tid = sub.TeacherID || sub.teacherId || "";
+          const tname = subTeacherName(sub).toLowerCase();
           const temail = String(sub["Teacher Email"] || "").toLowerCase();
-          if (tid === viewerId || (temail && temail === viewerEmail)) {
-            const cid = sub.ClassID || sub.classId;
+          if ((temail && temail === viewerEmail) || (tname && tname === viewerEmail)) {
+            const cid = subClassId(sub);
             if (cid) classIds.add(cid);
           }
         }
@@ -2413,24 +2421,14 @@ function getViewerScope(): Promise<ViewerScope> {
             if (cid) classIds.add(cid);
           }
         }
-        // Tutors = teachers of those classes.
+        // Tutors = teachers of those classes (matched by NAME since /subjects
+        // returns TeacherID overwritten with the teacher's display name).
         for (const sub of subjArr) {
-          const cid = sub.ClassID || sub.classId;
+          const cid = subClassId(sub);
           if (cid && classIds.has(cid)) {
-            const tid = sub.TeacherID || sub.teacherId;
-            if (tid) tutorIds.add(tid);
-            const tname = (sub["Teacher Name"] || sub.teacherName || "").trim();
+            const tname = subTeacherName(sub);
             if (tname) tutorNames.add(tname);
           }
-        }
-      } else if (role === "tutor") {
-        if (viewerId) {
-          // Try to find own name from subjects we teach.
-          const own = subjArr.find(s =>
-            (s.TeacherID || s.teacherId) === viewerId
-          );
-          const tname = (own?.["Teacher Name"] || own?.teacherName || "").trim();
-          if (tname) tutorNames.add(tname);
         }
       }
 
@@ -2451,12 +2449,18 @@ async function scopeStudentsForViewer(students: any[]): Promise<any[]> {
 async function scopeTutorsForViewer(tutors: any[]): Promise<any[]> {
   const sc = await getViewerScope();
   if (sc.elevated) return tutors;
-  return tutors.filter(t => sc.tutorIds.has(t.UserID || t.userId || t.TeacherID));
+  return tutors.filter(t => {
+    const id = t.UserID || t.userId || t.TeacherID;
+    if (id && sc.tutorIds.has(id)) return true;
+    const name = String(t.Name || t.name || "").trim();
+    if (name && sc.tutorNames.has(name)) return true;
+    return false;
+  });
 }
 async function scopeSubjectsForViewer(subjects: any[]): Promise<any[]> {
   const sc = await getViewerScope();
   if (sc.elevated) return subjects;
-  return subjects.filter(s => sc.classIds.has(s.ClassID || s.classId));
+  return subjects.filter(s => sc.classIds.has(s.SubjectID || s.ClassID || s.subjectId || s.classId));
 }
 async function scopeUsersForViewer(users: any[]): Promise<any[]> {
   const sc = await getViewerScope();
