@@ -74,6 +74,7 @@ export default function EnrollPage() {
     applicantEmail: "",
     applicantPhone: "",
     previousUser: "No",
+    role: "tutor",
     timeZone: "",
     zoomLink: "",
     subjects: "",
@@ -168,6 +169,7 @@ export default function EnrollPage() {
           parentEmail: tutorForm.applicantEmail || userEmail,
           parentPhone: tutorForm.applicantPhone,
           previouslyEnrolled: tutorForm.previousUser,
+          role: tutorForm.role,
           currentGrade: tutorForm.timeZone,
           classesInterested: tutorForm.subjects,
           reference: tutorForm.zoomLink,
@@ -437,6 +439,14 @@ export default function EnrollPage() {
                       <Label htmlFor="applicantEmail">Email Address <span className="text-destructive">*</span></Label>
                       <Input id="applicantEmail" type="email" value={tutorForm.applicantEmail || localStorage.getItem("edutrack_user_email") || ""} onChange={e => setTutor("applicantEmail", e.target.value)} placeholder="e.g. james@email.com" required />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role <span className="text-destructive">*</span></Label>
+                    <select id="role" value={tutorForm.role} onChange={e => setTutor("role", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="tutor">Tutor</option>
+                      <option value="principal">Principal</option>
+                      <option value="staff">Staff</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="applicantPhone">Phone Number</Label>
