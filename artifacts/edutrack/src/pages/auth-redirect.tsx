@@ -7,8 +7,8 @@ export default function AuthRedirect() {
 
   useEffect(() => {
     const role = localStorage.getItem("edutrack_user_role");
-    if (role === "admin" || role === "developer") {
-      setLocation("/admin");
+    if (role === "admin" || role === "developer" || role === "staff") {
+      setLocation("/principal");
     } else if (role === "principal") {
       setLocation("/principal");
     } else if (role === "student") {
