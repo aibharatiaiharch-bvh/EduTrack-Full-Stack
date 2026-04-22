@@ -1546,6 +1546,21 @@ function StudentAttendanceTab() {
     setExpandedStudents(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
+  const [studentAttendance, setStudentAttendance] = useState<any[]>([]);
+  useEffect(() => { if (data?.studentAttendance) setStudentAttendance(data.studentAttendance); }, [data]);
+
+  async function toggleStudentStatus(attendanceId: string, current: string) {
+    const next = current.toLowerCase() === "absent" ? "Present" : "Absent";
+    setStudentAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: next } : r));
+    try {
+      await apiFetch("/attendance/student-status", { method: "PATCH", body: JSON.stringify({ attendanceId, status: next }) });
+      // Reload so the Billing Summary above updates in real time
+      load(month);
+    } catch {
+      setStudentAttendance(prev => prev.map(r => r.attendanceId === attendanceId ? { ...r, status: current } : r));
+    }
+  }
+
   const students: any[]  = data?.students ?? [];
   const cancelCount      = cancellations.length;
   const within24Yes      = cancellations.filter(c => c.within24Hrs?.toLowerCase() !== "no").length;
@@ -1643,6 +1658,53 @@ function StudentAttendanceTab() {
           </div>
         </div>
       )}
+
+      {/* ── Student Session Detail ── */}
+      <div className="mb-8">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Session Detail
+          <span className="ml-2 text-xs font-normal normal-case">(defaults to Present — click to mark Absent)</span>
+        </h3>
+        {studentAttendance.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No student session records for {monthLabel}.</p>
+        ) : (
+          <div className="border rounded-lg overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left font-medium px-3 py-2.5">Student</th>
+                  <th className="text-left font-medium px-3 py-2.5">Class</th>
+                  <th className="text-left font-medium px-3 py-2.5">Tutor</th>
+                  <th className="text-left font-medium px-3 py-2.5">Date</th>
+                  <th className="text-center font-medium px-3 py-2.5 w-32">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {studentAttendance.map((r: any) => (
+                  <tr key={r.attendanceId} className="hover:bg-muted/20">
+                    <td className="px-3 py-2.5 font-medium">{r.studentName || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.className || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.teacherName || "—"}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{r.sessionDate || "—"}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button
+                        onClick={() => toggleStudentStatus(r.attendanceId, r.status)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                          r.status?.toLowerCase() === "absent"
+                            ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        }`}
+                      >
+                        {r.status?.toLowerCase() === "absent" ? "Absent" : "Present"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* ── Cancellations ── */}
       {data && (
@@ -2535,6 +2597,12 @@ async function scopeAttendanceSummary(data: any): Promise<any> {
   }
   if (Array.isArray(data.tutorAttendance)) {
     out.tutorAttendance = data.tutorAttendance.filter((r: any) => sc.tutorIds.has(r.teacherId));
+  }
+  if (Array.isArray(data.studentAttendance)) {
+    out.studentAttendance = data.studentAttendance.filter((r: any) =>
+      sc.studentIds.has(r.userId) &&
+      (sc.classIds.size === 0 || sc.classIds.has(r.subjectId))
+    );
   }
   return out;
 }

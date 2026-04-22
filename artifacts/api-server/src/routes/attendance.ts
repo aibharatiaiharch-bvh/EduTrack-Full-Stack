@@ -47,14 +47,89 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
   const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
 
   try {
-    const [rows, users, subjects] = await Promise.all([
+    const [initialRows, users, subjects, enrollments] = await Promise.all([
       readAttendanceRows(sheetId),
       readUsersTab(sheetId),
       readTabRows(sheetId, SHEET_TABS.subjects),
+      readTabRows(sheetId, SHEET_TABS.enrollments),
     ]);
 
     const userMap   = new Map(users.map(u => [u.userId, u]));
     const classMap  = new Map(subjects.map(s => [s['SubjectID'], s]));
+
+    // ── Auto-generate per-student "Present" attendance rows ──────────────────
+    // For each active enrollment + each past session date in the month, ensure
+    // a Present row exists. Tutors can later toggle to Absent via the UI.
+    const HEADERS_AT = SHEET_HEADERS.attendance;
+    const TAB_AT     = SHEET_TABS.attendance;
+
+    const existingStudentKeys = new Set(
+      initialRows
+        .filter(r => {
+          const u = userMap.get(r['UserID'] || '');
+          return u?.role?.toLowerCase() === 'student';
+        })
+        .map(r => `${r['SubjectID']}|${r['UserID']}|${r['SessionDate']}`)
+    );
+
+    const newStudentRows: string[][] = [];
+    for (const enr of enrollments) {
+      const status = (enr['Status'] || '').toLowerCase();
+      if (status !== 'active' && status !== 'approved') continue;
+      const subjectId = enr['ClassID'] || '';
+      const userId    = enr['UserID']  || '';
+      if (!subjectId || !userId) continue;
+
+      const subj = classMap.get(subjectId);
+      if (!subj) continue;
+      const weekdayNum = parseWeekday(subj['Days'] || '');
+      if (weekdayNum === null) continue;
+
+      const enrolledAt = enr['EnrolledAt'] || '';
+      const sessionDates = getSessionDatesInMonth(month, weekdayNum)
+        .filter(d => !enrolledAt || d >= enrolledAt.slice(0, 10));
+
+      for (const sessionDate of sessionDates) {
+        const key = `${subjectId}|${userId}|${sessionDate}`;
+        if (existingStudentKeys.has(key)) continue;
+
+        const studentName = enr['Student Name'] || userMap.get(userId)?.name || '';
+        const teacherId   = subj['TeacherID']   || '';
+        const teacherName = subj['Teacher Name'] || userMap.get(teacherId)?.name || '';
+        const attendanceId = `ATT-STU-${userId}-${subjectId}-${sessionDate.replace(/-/g, '')}`;
+        const now = new Date().toISOString();
+
+        const rowValues = HEADERS_AT.map(h => {
+          if (h === 'AttendanceID') return attendanceId;
+          if (h === 'SubjectID')    return subjectId;
+          if (h === 'UserID')       return userId;
+          if (h === 'SessionDate')  return sessionDate;
+          if (h === 'Status')       return 'Present';
+          if (h === 'MarkedBy')     return 'system';
+          if (h === 'MarkedAt')     return now;
+          if (h === 'Student Name') return studentName;
+          if (h === 'Teacher Name') return teacherName;
+          return '';
+        });
+        newStudentRows.push(rowValues);
+        existingStudentKeys.add(key);
+      }
+    }
+
+    if (newStudentRows.length > 0) {
+      const sheets = await getUncachableGoogleSheetClient();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: `${TAB_AT}!A1`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: newStudentRows },
+      });
+    }
+
+    const rows = newStudentRows.length > 0
+      ? await readAttendanceRows(sheetId)
+      : initialRows;
     const monthRows = rows.filter(r => (r['SessionDate'] || '').startsWith(month));
 
     // ── Student billing summary ──────────────────────────────────────────────
@@ -249,7 +324,29 @@ router.get('/attendance/summary', async (req, res): Promise<void> => {
       return { ...t, classes, totalSessions: classes.reduce((n, c) => n + c.sessionsTaught, 0) };
     }).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
 
-    res.json({ month, students, tutors, cancellations, cancelCount, within24Yes, within24No, tutorAttendance });
+    const studentAttendance = allRows
+      .filter(r => {
+        if (!(r['SessionDate'] || '').startsWith(month)) return false;
+        const u = userMap.get(r['UserID'] || '');
+        return u?.role?.toLowerCase() === 'student';
+      })
+      .map(r => {
+        const cls = classMap.get(r['SubjectID'] || '');
+        const teacherUser = cls ? userMap.get(cls['TeacherID']) : undefined;
+        return {
+          attendanceId: r['AttendanceID'] || '',
+          subjectId:    r['SubjectID']    || '',
+          className:    cls?.['Name']     || r['SubjectID'] || '',
+          userId:       r['UserID']       || '',
+          studentName:  r['Student Name'] || userMap.get(r['UserID'] || '')?.name || r['UserID'] || '',
+          teacherName:  r['Teacher Name'] || teacherUser?.name || cls?.['TeacherID'] || '',
+          sessionDate:  r['SessionDate']  || '',
+          status:       r['Status']       || 'Present',
+        };
+      })
+      .sort((a, b) => a.studentName.localeCompare(b.studentName) || a.sessionDate.localeCompare(b.sessionDate));
+
+    res.json({ month, students, tutors, cancellations, cancelCount, within24Yes, within24No, tutorAttendance, studentAttendance });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -398,10 +495,10 @@ router.patch('/attendance/within24hrs', async (req, res): Promise<void> => {
   }
 });
 
-// PATCH /api/attendance/tutor-status
+// PATCH /api/attendance/tutor-status  (also: /attendance/student-status)
 // Body: { attendanceId, status ('Present'|'Absent'), sheetId }
-// Principal marks a tutor as Present or Absent for a session. No 24-hr rule.
-router.patch('/attendance/tutor-status', async (req, res): Promise<void> => {
+// Marks a session row's status by AttendanceID. No 24-hr rule.
+const setStatusHandler = async (req: any, res: any): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
 
@@ -432,6 +529,8 @@ router.patch('/attendance/tutor-status', async (req, res): Promise<void> => {
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
-});
+};
+router.patch('/attendance/tutor-status', setStatusHandler);
+router.patch('/attendance/student-status', setStatusHandler);
 
 export default router;
