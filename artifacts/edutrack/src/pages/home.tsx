@@ -4,13 +4,19 @@ import { GraduationCap } from "lucide-react";
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const storedRole = localStorage.getItem("edutrack_user_role");
+  const storedRole = (localStorage.getItem("edutrack_user_role") || "").toLowerCase();
 
   function goToPortal() {
     if (storedRole === "developer" || storedRole === "admin") {
       setLocation("/admin");
+    } else if (storedRole === "principal" || storedRole === "staff") {
+      setLocation("/principal");
+    } else if (storedRole === "student") {
+      setLocation("/student");
+    } else if (storedRole === "tutor") {
+      setLocation("/tutor");
     } else {
-      setLocation("/calendar");
+      setLocation("/sign-in");
     }
   }
 
@@ -27,7 +33,7 @@ export default function Home() {
           </p>
         </div>
         <Button className="w-full" size="lg" onClick={goToPortal}>
-          {storedRole ? "Go to Calendar" : "Sign In"}
+          {storedRole ? "Go to Portal" : "Sign In"}
         </Button>
       </div>
     </div>
