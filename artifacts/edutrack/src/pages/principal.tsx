@@ -1916,7 +1916,7 @@ function UsersTab() {
                       )}
                     </td>
                   </tr>
-                  {actionError?.userId === u.userId && (
+                  {actionError && actionError.userId === u.userId && (
                     <tr className="bg-amber-50">
                       <td colSpan={5} className="px-3 py-2 text-xs text-amber-900">
                         <div className="flex items-start justify-between gap-3">

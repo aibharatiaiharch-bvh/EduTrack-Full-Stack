@@ -219,7 +219,7 @@ function SummaryView({ classes, teachers, subjects }: { classes: EnrollmentRow[]
                   const tone = dayClass ? (dayClass["Class Type"] === "Group" ? "red" : dayClass["Class Type"] === "Both" ? "yellow" : "green") : "green";
                   return (
                     <div
-                      key={`${subject._row}-${day}`}
+                      key={`${rowName}-${day}`}
                       className={
                         `min-h-[72px] rounded-lg border px-2 py-1.5 text-[9px] leading-tight ${tone === "red" ? "bg-red-50 border-red-200" : tone === "yellow" ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`
                       }

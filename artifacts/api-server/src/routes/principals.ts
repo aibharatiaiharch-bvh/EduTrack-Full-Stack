@@ -861,7 +861,7 @@ router.post('/principals/remove-duplicates', async (req, res): Promise<void> => 
     for (const sh of (meta.data.sheets || [])) {
       const title = sh.properties?.title || '';
       const gid   = sh.properties?.sheetId;
-      if (gid !== undefined) gidMap.set(title, gid);
+      if (gid !== undefined && gid !== null) gidMap.set(title, gid);
     }
 
     // Delete highest row numbers first so earlier row numbers stay valid

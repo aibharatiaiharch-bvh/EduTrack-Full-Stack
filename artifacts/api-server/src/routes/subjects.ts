@@ -224,7 +224,7 @@ router.patch('/subjects/:row', async (req, res): Promise<void> => {
     if (!subject) { res.status(404).json({ error: 'Subject not found' }); return; }
 
     const updated = { ...subject, ...req.body };
-    const updatedValues = HEADERS.map(h => updated[h] || '');
+    const updatedValues = HEADERS.map(h => (updated as Record<string, any>)[h] || '');
     const sheets  = await getUncachableGoogleSheetClient();
     const colEnd  = String.fromCharCode(64 + HEADERS.length);
     await sheets.spreadsheets.values.update({
@@ -262,7 +262,7 @@ router.post('/subjects/:row/reassign', async (req, res): Promise<void> => {
       'Teacher Name': teacherName,
     };
 
-    const updatedValues = HEADERS.map(h => updated[h] || '');
+    const updatedValues = HEADERS.map(h => (updated as Record<string, any>)[h] || '');
     const sheets = await getUncachableGoogleSheetClient();
     const colEnd = String.fromCharCode(64 + HEADERS.length);
     await sheets.spreadsheets.values.update({
