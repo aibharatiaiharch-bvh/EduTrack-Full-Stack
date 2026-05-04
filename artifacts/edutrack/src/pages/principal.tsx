@@ -1389,6 +1389,7 @@ function StudentsTab() {
         <Button size="sm" className="gap-1" onClick={openForm}>
           <UserPlus className="w-4 h-4" /> Add Student
         </Button>
+        <div className="text-xs text-muted-foreground">Use the Assign button in each student row to add classes.</div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline" className="gap-1">
