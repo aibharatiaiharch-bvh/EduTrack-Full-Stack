@@ -883,7 +883,7 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
+  const [studentClasses, setStudentClasses] = useState<Record<string, string[]>>({});
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -901,16 +901,6 @@ function StudentsTab() {
     const m = id.match(/-([A-Z]{3})$/);
     const day = m ? dayMap[m[1]] : "";
     return day ? `${name} (${day})` : name;
-  }
-
-  async function loadStudentClasses(userId: string) {
-    try {
-      const data = await apiFetch(`/enrollments?userId=${encodeURIComponent(userId)}&status=active`);
-      if (Array.isArray(data)) {
-        const classNames = data.map(enrollmentLabel).filter(Boolean).join(", ");
-        setStudentClasses(prev => ({ ...prev, [userId]: classNames || "—" }));
-      }
-    } catch { /* ignore */ }
   }
 
   async function loadAllStudentClasses() {
@@ -933,6 +923,15 @@ function StudentsTab() {
       );
       setStudentClasses(mapped);
     } catch { /* ignore */ }
+  }
+
+  async function assignClasses(userId: string, classIds: string[]) {
+    if (!userId || classIds.length === 0) return;
+    await apiFetch("/principals/assign-student-classes", {
+      method: "POST",
+      body: JSON.stringify({ userId, classIds }),
+    });
+    await load();
   }
 
   async function load() {
@@ -1105,7 +1104,7 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = studentClasses[s.userId] || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
+                      const classes = studentClasses[s.userId]?.join(", ") || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
@@ -1114,7 +1113,17 @@ function StudentsTab() {
                             <td className="px-3 py-2.5 text-muted-foreground">{s.currentGrade ? s.currentGrade.toString().replace(/[^\d]/g, "") || s.currentGrade : "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground">{s.currentSchool || "—"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground">{s.parentEmail || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground text-xs">{classes}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground text-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="flex-1">{classes}</span>
+                                {s.status?.toLowerCase() === "active" && (
+                                  <ClassAssignDropdown
+                                    subjects={subjectObjects}
+                                    onAssign={(classIds) => assignClasses(s.userId, classIds)}
+                                  />
+                                )}
+                              </div>
+                            </td>
                             <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
                           </tr>
                         </Fragment>
