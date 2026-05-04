@@ -943,7 +943,7 @@ router.get('/principals/students', async (req, res): Promise<void> => {
 // ─── PUT /api/principals/students/:userId ───────────────────────────────────
 // Inline-edits one or more student fields and writes back to the sheet.
 // Accepts any subset of: currentSchool, currentGrade, phone, notes, parentName,
-// parentPhone, previousStudent, parentEmail.
+// parentPhone, previousStudent, parentEmail, classes.
 //   - Plain Students-tab fields are written to the Students extension tab.
 //   - parentPhone is written to the Parents extension tab (looked up by ParentID).
 //   - parentName updates BOTH the Users tab Name (master) of the linked parent
@@ -963,11 +963,11 @@ router.put('/principals/students/:userId', async (req, res): Promise<void> => {
   const body = (req.body || {}) as {
     currentSchool?: string; currentGrade?: string; phone?: string; notes?: string;
     parentName?: string; parentPhone?: string; previousStudent?: boolean | string;
-    parentEmail?: string;
+    parentEmail?: string; classes?: string;
   };
 
   // Whitelist the fields we accept so unknown keys can't sneak through.
-  const ALLOWED = ['currentSchool', 'currentGrade', 'phone', 'notes', 'parentName', 'parentPhone', 'previousStudent', 'parentEmail'] as const;
+  const ALLOWED = ['currentSchool', 'currentGrade', 'phone', 'notes', 'parentName', 'parentPhone', 'previousStudent', 'parentEmail', 'classes'] as const;
   const provided = ALLOWED.filter(k => Object.prototype.hasOwnProperty.call(body, k));
   if (provided.length === 0) { res.status(400).json({ error: 'No editable fields provided' }); return; }
 
@@ -1049,6 +1049,7 @@ router.put('/principals/students/:userId', async (req, res): Promise<void> => {
       phone:           'Phone',
       notes:           'Notes',
       parentName:      'Parent Name',
+    classes:         'Classes',
     };
 
     for (const k of provided) {
