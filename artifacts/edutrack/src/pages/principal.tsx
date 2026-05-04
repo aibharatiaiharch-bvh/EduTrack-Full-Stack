@@ -17,7 +17,12 @@ import {
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
   BookOpen, AlertTriangle, Plus, CheckCircle2, Upload, X,
   Search, ChevronLeft, ChevronRight, CalendarDays, BarChart2, Settings as SettingsIcon,
+  Columns3,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 
 const sheetId = () => localStorage.getItem("edutrack_sheet_id") || "";
 
@@ -750,6 +755,115 @@ const BLANK_STUDENT = {
   previousStudent: false, subjectsInterested: [] as string[], notes: "",
 };
 
+// Optional Students-table columns the user can toggle on. The three default
+// columns (Grade, School, Parent Email) are always shown.
+const EXTRA_STUDENT_COLS: Array<{
+  key: string; label: string; field: string; type: 'text' | 'email' | 'tel' | 'select';
+  placeholder?: string; options?: { value: string; label: string }[];
+}> = [
+  { key: 'phone',           label: 'Student Phone', field: 'phone',           type: 'tel',   placeholder: 'e.g. 0412 345 678' },
+  { key: 'parentName',      label: 'Parent Name',   field: 'parentName',      type: 'text',  placeholder: 'Full name' },
+  { key: 'parentPhone',     label: 'Parent Phone',  field: 'parentPhone',     type: 'tel',   placeholder: 'e.g. 0412 345 678' },
+  { key: 'notes',           label: 'Notes',         field: 'notes',           type: 'text',  placeholder: 'Any notes…' },
+  { key: 'previousStudent', label: 'Re-enrolment',  field: 'previousStudent', type: 'select',
+    options: [{ value: '', label: '—' }, { value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }] },
+];
+
+const STUDENT_COLS_LS_KEY = 'edutrack_student_extra_cols_v1';
+
+function EditableTextCell({
+  value, onSave, type = 'text', placeholder, editable, busy,
+}: {
+  value: string;
+  onSave: (v: string) => Promise<void> | void;
+  type?: 'text' | 'email' | 'tel';
+  placeholder?: string;
+  editable: boolean;
+  busy?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || '');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (!editing) setDraft(value || ''); }, [value, editing]);
+
+  if (!editable) {
+    return <span className="text-muted-foreground">{value || '—'}</span>;
+  }
+
+  async function commit() {
+    const next = draft.trim();
+    if (next === (value || '').trim()) { setEditing(false); return; }
+    setSaving(true);
+    try {
+      await onSave(next);
+      setEditing(false);
+    } catch {
+      setDraft(value || '');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        type={type}
+        value={draft}
+        placeholder={placeholder}
+        disabled={saving || busy}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          else if (e.key === 'Escape') { setDraft(value || ''); setEditing(false); }
+        }}
+        className="h-7 text-sm px-2"
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      disabled={busy}
+      className="text-left w-full min-h-[1.5rem] hover:bg-muted/50 rounded px-1 -mx-1 transition-colors disabled:opacity-60"
+      title="Click to edit"
+    >
+      {value
+        ? <span className="text-foreground">{value}</span>
+        : <span className="text-muted-foreground italic">— click to add —</span>}
+    </button>
+  );
+}
+
+function EditableSelectCell({
+  value, onSave, options, editable,
+}: {
+  value: string;
+  onSave: (v: string) => Promise<void> | void;
+  options: { value: string; label: string }[];
+  editable: boolean;
+}) {
+  const [saving, setSaving] = useState(false);
+  if (!editable) return <span className="text-muted-foreground">{value || '—'}</span>;
+  return (
+    <select
+      value={value || ''}
+      disabled={saving}
+      onChange={async (e) => {
+        const v = e.target.value;
+        if (v === (value || '')) return;
+        setSaving(true);
+        try { await onSave(v); } finally { setSaving(false); }
+      }}
+      className="text-sm h-7 px-1.5 border rounded bg-background disabled:opacity-60"
+    >
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+}
+
 function subjectOptionLabel(s: any): string {
   const name  = s.Name || s["Name"] || "";
   const day   = s.Days || s["Days"] || "";
@@ -1053,7 +1167,54 @@ function StudentsTab() {
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
   const [rowBusy,      setRowBusy]      = useState<Record<number, boolean>>({});
+  const [extraCols, setExtraCols] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(STUDENT_COLS_LS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((k: any) => EXTRA_STUDENT_COLS.some(c => c.key === k)) : [];
+    } catch { return []; }
+  });
   const qc = useQueryClient();
+
+  function toggleExtraCol(key: string) {
+    setExtraCols(prev => {
+      const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+      try { localStorage.setItem(STUDENT_COLS_LS_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  // Save a single editable field for a student. Optimistic — reverts ONLY this
+  // row's field on error so concurrent edits to other rows aren't lost.
+  // apiFetch() doesn't throw on HTTP 4xx/5xx, so we explicitly inspect the
+  // response (server returns `{ error: "..." }` on failure, `{ ok: true }` on
+  // success).
+  async function saveStudentField(userId: string, field: string, value: string) {
+    let prevValue: any = undefined;
+    setStudents(curr => curr.map(s => {
+      if (s.userId !== userId) return s;
+      prevValue = s[field];
+      return { ...s, [field]: value };
+    }));
+    try {
+      const resp = await apiFetch(`/principals/students/${encodeURIComponent(userId)}`, {
+        method: "PUT",
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (resp && resp.error) throw new Error(String(resp.error));
+      // For fields the server may normalise (e.g. previousStudent → "Yes"/"No",
+      // parentEmail → linked parent name), reload from server so the UI shows
+      // the canonical persisted values.
+      if (field === "parentEmail" || field === "previousStudent") {
+        try { await load(); } catch { /* ignore */ }
+      }
+    } catch (e: any) {
+      // Per-row revert: only roll back this one student's one field.
+      setStudents(curr => curr.map(s => (s.userId === userId ? { ...s, [field]: prevValue } : s)));
+      alert(e?.message || "Could not save");
+      throw e;
+    }
+  }
 
   // Build "Subject (Day)" label from an enrollment row. The new schema has one
   // Subject row per (Class, Day), with ClassID like "SUB-ENG-TUE" — the day
@@ -1210,9 +1371,37 @@ function StudentsTab() {
       <SectionHeader title={`Students (${students.length})`} onRefresh={load} loading={loading} />
       {error && <p className="text-sm text-red-500 mb-3">{error}</p>}
 
-      <Button size="sm" className="mb-4 gap-1" onClick={openForm}>
-        <UserPlus className="w-4 h-4" /> Add Student
-      </Button>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button size="sm" className="gap-1" onClick={openForm}>
+          <UserPlus className="w-4 h-4" /> Add Student
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="gap-1">
+              <Columns3 className="w-4 h-4" />
+              Add Column
+              {extraCols.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{extraCols.length}</Badge>
+              )}
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuLabel>Show extra columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {EXTRA_STUDENT_COLS.map(col => (
+              <DropdownMenuCheckboxItem
+                key={col.key}
+                checked={extraCols.includes(col.key)}
+                onCheckedChange={() => toggleExtraCol(col.key)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {col.label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {showForm && (
         <Card className="mb-6">
@@ -1302,6 +1491,11 @@ function StudentsTab() {
                       <th className="text-left font-medium px-3 py-2.5">Grade</th>
                       <th className="text-left font-medium px-3 py-2.5">School</th>
                       <th className="text-left font-medium px-3 py-2.5">Parent Email</th>
+                      {extraCols.map(key => {
+                        const col = EXTRA_STUDENT_COLS.find(c => c.key === key);
+                        if (!col) return null;
+                        return <th key={key} className="text-left font-medium px-3 py-2.5">{col.label}</th>;
+                      })}
                       <th className="text-left font-medium px-3 py-2.5">Classes</th>
                       <th className="text-left font-medium px-3 py-2.5">Status</th>
                     </tr>
@@ -1315,9 +1509,56 @@ function StudentsTab() {
                           <tr className="hover:bg-muted/20">
                             <td className="px-3 py-2.5 font-medium align-top">{s.name || s.displayName || s.email || "Unknown"}</td>
                             <td className="px-3 py-2.5 text-muted-foreground align-top">{s.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.currentGrade ? s.currentGrade.toString().replace(/[^\d]/g, "") || s.currentGrade : "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.currentSchool || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.parentEmail || "—"}</td>
+                            <td className="px-3 py-2.5 align-top">
+                              <EditableTextCell
+                                value={s.currentGrade || ""}
+                                editable={isActive}
+                                placeholder="e.g. Year 10"
+                                onSave={v => saveStudentField(s.userId, "currentGrade", v)}
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 align-top">
+                              <EditableTextCell
+                                value={s.currentSchool || ""}
+                                editable={isActive}
+                                placeholder="School name"
+                                onSave={v => saveStudentField(s.userId, "currentSchool", v)}
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 align-top">
+                              <EditableTextCell
+                                value={s.parentEmail || ""}
+                                editable={isActive}
+                                type="email"
+                                placeholder="parent@email.com"
+                                onSave={v => saveStudentField(s.userId, "parentEmail", v)}
+                              />
+                            </td>
+                            {extraCols.map(key => {
+                              const col = EXTRA_STUDENT_COLS.find(c => c.key === key);
+                              if (!col) return null;
+                              const val = String(s[col.field] ?? "");
+                              return (
+                                <td key={key} className="px-3 py-2.5 align-top">
+                                  {col.type === 'select' ? (
+                                    <EditableSelectCell
+                                      value={val}
+                                      editable={isActive}
+                                      options={col.options || []}
+                                      onSave={v => saveStudentField(s.userId, col.field, v)}
+                                    />
+                                  ) : (
+                                    <EditableTextCell
+                                      value={val}
+                                      editable={isActive}
+                                      type={col.type === 'tel' ? 'tel' : col.type === 'email' ? 'email' : 'text'}
+                                      placeholder={col.placeholder}
+                                      onSave={v => saveStudentField(s.userId, col.field, v)}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })}
                             <td className="px-3 py-2.5 align-top">
                               <StudentClassesEditor
                                 assignments={assignments}

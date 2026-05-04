@@ -891,41 +891,221 @@ router.post('/principals/remove-duplicates', async (req, res): Promise<void> => 
 
 // ─── GET /api/principals/students ───────────────────────────────────────────
 // Returns all students from Users tab, enriched with extension-tab fields
-// (currentGrade, currentSchool, phone, parentId) from the Students tab.
+// (currentGrade, currentSchool, phone, parentId, notes, previousStudent)
+// from the Students tab, plus parentPhone from the Parents extension tab.
 router.get('/principals/students', async (req, res): Promise<void> => {
   const sheetId = getSheetId(req);
   if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
   try {
-    const [users, studentRows] = await Promise.all([
+    const [users, studentRows, parentRows] = await Promise.all([
       readUsersTab(sheetId),
       readTabRows(sheetId, SHEET_TABS.students),
+      readTabRows(sheetId, SHEET_TABS.parents),
     ]);
 
     const students = users.filter(u => u.role === 'student');
     const userMap = new Map(users.map(u => [u.userId, u]));
+    const parentExtById = new Map(
+      parentRows.map(r => [r['ParentID'] || r['UserID'] || '', r] as const).filter(([k]) => k)
+    );
     const enriched = students.map(u => {
       const ext = studentRows.find(r => r['UserID'] === u.userId || r['StudentID'] === u.userId);
       const parentId = ext?.['ParentID'] || '';
       const parentUser = parentId ? userMap.get(parentId) : undefined;
+      const parentExt  = parentId ? parentExtById.get(parentId) : undefined;
       return {
-        _row:          u._row,
-        userId:        u.userId,
-        email:         u.email,
-        role:          u.role,
-        name:          u.name,
-        status:        u.status,
-        createdAt:     u.createdAt,
-        updatedAt:     u.updatedAt,
-        currentGrade:  ext?.['CurrentGrade'] || ext?.['currentGrade'] || '',
-        currentSchool: ext?.['CurrentSchool'] || ext?.['currentSchool'] || '',
-        phone:         ext?.['Phone'] || '',
+        _row:            u._row,
+        userId:          u.userId,
+        email:           u.email,
+        role:            u.role,
+        name:            u.name,
+        status:          u.status,
+        createdAt:       u.createdAt,
+        updatedAt:       u.updatedAt,
+        currentGrade:    ext?.['CurrentGrade']    || ext?.['currentGrade']    || '',
+        currentSchool:   ext?.['CurrentSchool']   || ext?.['currentSchool']   || '',
+        phone:           ext?.['Phone']           || '',
+        notes:           ext?.['Notes']           || '',
+        previousStudent: ext?.['PreviousStudent'] || '',
         parentId,
-        parentEmail:   parentUser?.email || '',
-        parentName:    parentUser?.name || '',
+        parentEmail:     parentUser?.email || '',
+        parentName:      parentUser?.name  || ext?.['Parent Name'] || '',
+        parentPhone:     parentExt?.['Phone'] || '',
       };
     });
 
     res.json(enriched);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PUT /api/principals/students/:userId ───────────────────────────────────
+// Inline-edits one or more student fields and writes back to the sheet.
+// Accepts any subset of: currentSchool, currentGrade, phone, notes, parentName,
+// parentPhone, previousStudent, parentEmail.
+//   - Plain Students-tab fields are written to the Students extension tab.
+//   - parentPhone is written to the Parents extension tab (looked up by ParentID).
+//   - parentName updates BOTH the Users tab Name (master) of the linked parent
+//     AND the Students tab "Parent Name" cell (denormalised display copy).
+//   - parentEmail re-links the student to a different (or new) parent:
+//       * empty   → clears ParentID + Parent Name
+//       * existing parent user → re-links to that ParentID
+//       * existing user with another role → 409
+//       * new email → creates a new parent in Users + Parents tabs
+router.put('/principals/students/:userId', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+
+  const userId = (req.params.userId || '').trim();
+  if (!userId) { res.status(400).json({ error: 'userId is required' }); return; }
+
+  const body = (req.body || {}) as {
+    currentSchool?: string; currentGrade?: string; phone?: string; notes?: string;
+    parentName?: string; parentPhone?: string; previousStudent?: boolean | string;
+    parentEmail?: string;
+  };
+
+  // Whitelist the fields we accept so unknown keys can't sneak through.
+  const ALLOWED = ['currentSchool', 'currentGrade', 'phone', 'notes', 'parentName', 'parentPhone', 'previousStudent', 'parentEmail'] as const;
+  const provided = ALLOWED.filter(k => Object.prototype.hasOwnProperty.call(body, k));
+  if (provided.length === 0) { res.status(400).json({ error: 'No editable fields provided' }); return; }
+
+  try {
+    const [users, studentRows, parentRows] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+      readTabRows(sheetId, SHEET_TABS.parents),
+    ]);
+
+    const userRow = users.find(u => u.userId === userId);
+    if (!userRow || userRow.role !== 'student') {
+      res.status(404).json({ error: 'Student not found' }); return;
+    }
+
+    const ext = studentRows.find(r => r['UserID'] === userId || r['StudentID'] === userId);
+    if (!ext) { res.status(404).json({ error: 'Student extension row not found' }); return; }
+
+    // ── Phase 1: parentEmail relink FIRST, so any parentName/parentPhone in
+    // the same payload target the NEW parent (not the old one).
+    // Tracks the effective parentId and any newly-appended parent extension row.
+    let effectiveParentId = ext['ParentID'] || '';
+    let appendedParentExt: { parentId: string; row: Record<string, string> } | null = null;
+
+    if (provided.includes('parentEmail')) {
+      const newEmail = (body.parentEmail || '').trim().toLowerCase();
+      const parentIdCol = colLetter('students', 'ParentID');
+      const parentNameCol = colLetter('students', 'Parent Name');
+
+      if (!newEmail) {
+        await updateCell(sheetId, `${SHEET_TABS.students}!${parentIdCol}${ext._row}`, '');
+        await updateCell(sheetId, `${SHEET_TABS.students}!${parentNameCol}${ext._row}`, '');
+        effectiveParentId = '';
+      } else {
+        const existing = users.find(u => u.email === newEmail);
+        if (existing && existing.role !== 'parent') {
+          res.status(409).json({
+            error: `Email is already used by a ${existing.role} — pick a different email.`,
+          });
+          return;
+        }
+
+        let newParentId: string;
+        let newParentName: string;
+        if (existing) {
+          newParentId   = existing.userId;
+          newParentName = existing.name;
+        } else {
+          newParentName = (body.parentName || ext['Parent Name'] || 'Parent').trim() || 'Parent';
+          newParentId   = await generateUserId('parent', sheetId);
+          const today = new Date().toLocaleDateString('en-AU');
+          const now   = new Date().toISOString();
+          await appendRow(sheetId, SHEET_TABS.users, [
+            newParentId, newEmail, 'parent', newParentName, 'Active', today, now,
+          ]);
+          // Track the newly-appended parent extension row so a same-payload
+          // parentPhone write can locate it without another sheet read.
+          const newParentExtRow = {
+            ParentID: newParentId, UserID: newParentId, Name: newParentName,
+            'Children Names': userRow.name || '', Phone: '', Notes: '',
+          };
+          await appendRow(sheetId, SHEET_TABS.parents, [
+            newParentId, newParentId, newParentName, userRow.name || '', '', '',
+          ]);
+          appendedParentExt = { parentId: newParentId, row: newParentExtRow };
+        }
+
+        await updateCell(sheetId, `${SHEET_TABS.students}!${parentIdCol}${ext._row}`, newParentId);
+        await updateCell(sheetId, `${SHEET_TABS.students}!${parentNameCol}${ext._row}`, newParentName);
+        effectiveParentId = newParentId;
+      }
+    }
+
+    // ── Phase 2: plain Students-tab fields (excluding parentName which is
+    // handled below so it can also sync to the Users tab).
+    const studentTabFields: Record<string, string> = {
+      currentSchool:   'CurrentSchool',
+      currentGrade:    'CurrentGrade',
+      phone:           'Phone',
+      notes:           'Notes',
+      parentName:      'Parent Name',
+    };
+
+    for (const k of provided) {
+      const header = studentTabFields[k];
+      if (!header) continue;
+      const col = colLetter('students', header);
+      const val = String((body as any)[k] ?? '').trim();
+      await updateCell(sheetId, `${SHEET_TABS.students}!${col}${ext._row}`, val);
+    }
+
+    // previousStudent — normalised to Yes/No
+    if (provided.includes('previousStudent')) {
+      const v = body.previousStudent;
+      const yes = v === true || String(v).toLowerCase() === 'true' || String(v).toLowerCase() === 'yes';
+      const col = colLetter('students', 'PreviousStudent');
+      await updateCell(sheetId, `${SHEET_TABS.students}!${col}${ext._row}`, yes ? 'Yes' : 'No');
+    }
+
+    // ── Phase 3: parent-linked writes use effectiveParentId (post-relink).
+    if (provided.includes('parentName') && effectiveParentId) {
+      const parentUser = users.find(u => u.userId === effectiveParentId);
+      if (parentUser) {
+        const col = colLetter('users', 'Name');
+        await updateCell(sheetId, `${SHEET_TABS.users}!${col}${parentUser._row}`, String(body.parentName || '').trim());
+        await touchUser(sheetId, parentUser._row);
+      }
+      // If we just created the parent in this same request, the Users-tab Name
+      // was already set above using body.parentName fallback — no extra write needed.
+    }
+
+    if (provided.includes('parentPhone') && effectiveParentId) {
+      const parentExt = parentRows.find(r => (r['ParentID'] || r['UserID']) === effectiveParentId);
+      const phoneVal = String(body.parentPhone || '').trim();
+      if (parentExt) {
+        const col = colLetter('parents', 'Phone');
+        await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${parentExt._row}`, phoneVal);
+      } else if (appendedParentExt && appendedParentExt.parentId === effectiveParentId) {
+        // We just appended this parent's extension row in Phase 1 — append a
+        // separate row would duplicate, so re-read the appended row and patch
+        // its Phone cell. Simplest: read parents tab again to find the new row.
+        const refreshed = await readTabRows(sheetId, SHEET_TABS.parents);
+        const row = refreshed.find(r => (r['ParentID'] || r['UserID']) === effectiveParentId);
+        if (row && phoneVal) {
+          const col = colLetter('parents', 'Phone');
+          await updateCell(sheetId, `${SHEET_TABS.parents}!${col}${row._row}`, phoneVal);
+        }
+      } else if (phoneVal) {
+        // Linked parent has no extension row yet — create a minimal one.
+        const parentUser = users.find(u => u.userId === effectiveParentId);
+        await appendRow(sheetId, SHEET_TABS.parents, [
+          effectiveParentId, effectiveParentId, parentUser?.name || '', userRow.name || '', phoneVal, '',
+        ]);
+      }
+    }
+
+    await touchUser(sheetId, userRow._row);
+    res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
