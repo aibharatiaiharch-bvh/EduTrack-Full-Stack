@@ -783,7 +783,8 @@ function ClassAssignDropdown({ subjects, onAssign }: {
     const name = s.Name || s["Name"] || "";
     const day  = s.Days || s["Days"] || "";
     const time = s.Time || s["Time"] || "";
-    return [name, day, time].filter(Boolean).join(" — ");
+    const tutor = s["Teacher Name"] || s.TeacherName || s.Teacher || "";
+    return [name, tutor ? `Tutor: ${tutor}` : "", day, time].filter(Boolean).join(" — ");
   }
 
   return (
