@@ -784,7 +784,8 @@ function ClassAssignDropdown({ subjects, onAssign }: {
     const day  = s.Days || s["Days"] || "";
     const time = s.Time || s["Time"] || "";
     const tutor = s["Teacher Name"] || s.TeacherName || s.Teacher || "";
-    return [name, tutor ? `Tutor: ${tutor}` : "", day, time].filter(Boolean).join(" — ");
+    const type = s.Type || s["Type"] || "";
+    return [name, day, time, type ? `(${type})` : "", tutor].filter(Boolean).join(" — ");
   }
 
   const sortedSubjects = [...subjects].sort((a, b) => {
@@ -799,7 +800,7 @@ function ClassAssignDropdown({ subjects, onAssign }: {
         <Plus className="w-3 h-3" /> Assign
       </Button>
       {open && (
-        <div className="absolute right-0 z-30 mt-1 w-72 border rounded-md bg-popover shadow-lg">
+        <div className="absolute right-0 z-30 mt-1 w-full min-w-72 border rounded-md bg-popover shadow-lg">
           <div className="max-h-60 overflow-y-auto p-1">
             {subjects.length === 0 && (
               <p className="text-xs text-muted-foreground px-2 py-2">No active classes available.</p>
@@ -808,12 +809,12 @@ function ClassAssignDropdown({ subjects, onAssign }: {
               const id = s.SubjectID || s["SubjectID"];
               if (!id) return null;
               return (
-                <label key={id} className="flex items-start gap-2 px-2 py-1.5 text-xs hover:bg-muted rounded cursor-pointer">
+                <label key={id} className="flex items-center gap-2 px-2 py-2 text-sm hover:bg-muted cursor-pointer">
                   <input
                     type="checkbox"
                     checked={selected.includes(id)}
                     onChange={() => toggle(id)}
-                    className="accent-primary mt-0.5"
+                    className="accent-primary"
                   />
                   <span className="flex-1">{classLabel(s)}</span>
                 </label>
