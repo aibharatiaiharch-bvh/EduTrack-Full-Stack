@@ -275,6 +275,15 @@ router.post('/principals/assign-student-classes', async (req, res): Promise<void
 
     const created: string[] = [];
     const skipped: string[] = [];
+    const finalAssignedClassIds = new Set<string>(
+      enrollments
+        .filter(r => (r['UserID'] === userId) &&
+          ((r['Status'] || '').toLowerCase().trim() !== 'inactive' &&
+           (r['Status'] || '').toLowerCase().trim() !== 'cancelled' &&
+           (r['Status'] || '').toLowerCase().trim() !== 'canceled'))
+        .map(r => r['ClassID'] || '')
+        .filter(Boolean),
+    );
 
     // Helpers for auto-creating Present attendance rows for past sessions in current month
     const parseWeekday = (days: string): number | null => {
@@ -340,6 +349,7 @@ router.post('/principals/assign-student-classes', async (req, res): Promise<void
         requestBody: { values: [rowValues] },
       });
       created.push(classId);
+      finalAssignedClassIds.add(classId);
 
       // ── Default to Present for all past session dates in the current month ──
       const weekdayNum = parseWeekday(subject?.['Days'] || '');
@@ -365,6 +375,11 @@ router.post('/principals/assign-student-classes', async (req, res): Promise<void
         newAttendanceRows.push(attRow);
         existingAttKeys.add(key);
       }
+    }
+
+    if (studentExt) {
+      const classesCol = colLetter('students', 'Classes');
+      await updateCell(sheetId, `${SHEET_TABS.students}!${classesCol}${studentExt._row}`, [...finalAssignedClassIds].join(', '));
     }
 
     if (newAttendanceRows.length > 0) {
