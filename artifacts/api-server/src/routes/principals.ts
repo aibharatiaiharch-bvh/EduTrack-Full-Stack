@@ -276,6 +276,34 @@ router.post('/principals/assign-student-classes', async (req, res): Promise<void
     const created: string[] = [];
     const skipped: string[] = [];
 
+    // Helpers for auto-creating Present attendance rows for past sessions in current month
+    const parseWeekday = (days: string): number | null => {
+      const d = (days || '').trim().toLowerCase().slice(0, 3);
+      const map: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+      return d in map ? map[d] : null;
+    };
+    const month = new Date().toISOString().slice(0, 7);
+    const getSessionDatesInMonth = (m: string, weekdayNum: number): string[] => {
+      const [year, mon] = m.split('-').map(Number);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      const dates: string[] = [];
+      const d = new Date(year, mon - 1, 1);
+      while (d.getMonth() === mon - 1) {
+        if (d.getDay() === weekdayNum && d <= today) dates.push(d.toISOString().slice(0, 10));
+        d.setDate(d.getDate() + 1);
+      }
+      return dates;
+    };
+
+    // Pre-load attendance once so we can de-dupe Present rows
+    const attendanceRows = await readTabRows(sheetId, SHEET_TABS.attendance);
+    const existingAttKeys = new Set(
+      attendanceRows.map(r => `${r['SubjectID']}|${r['UserID']}|${r['SessionDate']}`),
+    );
+    const newAttendanceRows: string[][] = [];
+    const HEADERS_AT = SHEET_HEADERS.attendance;
+
     for (const classId of classIds) {
       if (!classId) continue;
       if (existingActive.has(classId)) { skipped.push(classId); continue; }
@@ -312,9 +340,44 @@ router.post('/principals/assign-student-classes', async (req, res): Promise<void
         requestBody: { values: [rowValues] },
       });
       created.push(classId);
+
+      // ── Default to Present for all past session dates in the current month ──
+      const weekdayNum = parseWeekday(subject?.['Days'] || '');
+      if (weekdayNum === null) continue;
+      const sessionDates = getSessionDatesInMonth(month, weekdayNum);
+      const teacherName = subject?.['Teacher Name'] || teacher?.name || '';
+      for (const sessionDate of sessionDates) {
+        const key = `${classId}|${userId}|${sessionDate}`;
+        if (existingAttKeys.has(key)) continue;
+        const attendanceId = `ATT-STU-${userId}-${classId}-${sessionDate.replace(/-/g, '')}`;
+        const attRow = HEADERS_AT.map(h => {
+          if (h === 'AttendanceID') return attendanceId;
+          if (h === 'SubjectID')    return classId;
+          if (h === 'UserID')       return userId;
+          if (h === 'SessionDate')  return sessionDate;
+          if (h === 'Status')       return 'Present';
+          if (h === 'MarkedBy')     return 'system';
+          if (h === 'MarkedAt')     return now;
+          if (h === 'Student Name') return student.name || '';
+          if (h === 'Teacher Name') return teacherName;
+          return '';
+        });
+        newAttendanceRows.push(attRow);
+        existingAttKeys.add(key);
+      }
     }
 
-    res.json({ ok: true, created, skipped });
+    if (newAttendanceRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: `${SHEET_TABS.attendance}!A1`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: newAttendanceRows },
+      });
+    }
+
+    res.json({ ok: true, created, skipped, attendanceCreated: newAttendanceRows.length });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
