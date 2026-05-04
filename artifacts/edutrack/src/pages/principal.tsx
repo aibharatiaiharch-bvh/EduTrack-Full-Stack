@@ -1261,7 +1261,11 @@ function StudentsTab() {
       body: JSON.stringify({ userId, classIds }),
     });
     invalidateCalendar();
-    await load();
+    await loadAllStudentClasses();
+    await apiFetch(`/principals/students/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      body: JSON.stringify({ classes: classIds.join(", ") }),
+    });
   }
 
   async function changeStudentClass(row: number, userId: string, classId: string) {
@@ -1274,6 +1278,10 @@ function StudentsTab() {
       });
       invalidateCalendar();
       await loadAllStudentClasses();
+      await apiFetch(`/principals/students/${encodeURIComponent(userId)}`, {
+        method: "PUT",
+        body: JSON.stringify({ classes: (studentClasses[userId] || []).map(a => a.classId).concat(classId).join(", ") }),
+      });
     } catch (e: any) {
       alert(e?.message || "Could not change class");
     } finally {
@@ -1292,6 +1300,12 @@ function StudentsTab() {
       });
       invalidateCalendar();
       await loadAllStudentClasses();
+      await apiFetch(`/principals/students/${encodeURIComponent(userId)}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          classes: (studentClasses[userId] || []).filter(a => a.row !== row).map(a => a.classId).join(", "),
+        }),
+      });
     } catch (e: any) {
       alert(e?.message || "Could not remove class");
     } finally {
