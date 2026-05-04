@@ -1,6 +1,6 @@
 import { Router, type IRouter } from 'express';
 import {
-  getUncachableGoogleSheetClient, SHEET_TABS, colLetter,
+  getUncachableGoogleSheetClient, SHEET_TABS, SHEET_HEADERS, colLetter,
   generateUserId, generateTabId,
   readTabRows, readUsersTab, appendRow, updateCell, touchUser,
 } from '../lib/googleSheets.js';
@@ -226,6 +226,95 @@ router.post('/principals/add-student', async (req, res): Promise<void> => {
     ensureNameColumnProtected(sheetId).catch(() => {});
 
     res.json({ ok: true, userId: studentId, parentId, status: 'Active', reusedExisting: !!existingStudent });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/principals/assign-student-classes ────────────────────────────
+// Bulk-assign multiple classes to one Active student.
+// Skips classes the student is already actively enrolled in.
+router.post('/principals/assign-student-classes', async (req, res): Promise<void> => {
+  const sheetId = getSheetId(req);
+  if (!sheetId) { res.status(400).json({ error: 'sheetId is required' }); return; }
+
+  const { userId, classIds } = req.body as { userId?: string; classIds?: string[] };
+  if (!userId || !Array.isArray(classIds) || classIds.length === 0) {
+    res.status(400).json({ error: 'userId and classIds[] are required' }); return;
+  }
+
+  try {
+    const [users, studentRows, subjects, enrollments] = await Promise.all([
+      readUsersTab(sheetId),
+      readTabRows(sheetId, SHEET_TABS.students),
+      readTabRows(sheetId, SHEET_TABS.subjects),
+      readTabRows(sheetId, SHEET_TABS.enrollments),
+    ]);
+
+    const student = users.find(u => u.userId === userId && u.role === 'student' && u.status === 'active');
+    if (!student) { res.status(404).json({ error: 'Active student not found' }); return; }
+
+    const studentExt = studentRows.find(r => r['UserID'] === userId);
+    const parentId   = studentExt?.['ParentID'] || '';
+
+    const subjectMap = new Map(subjects.map(s => [s['SubjectID'] || '', s]));
+
+    // (UserID, ClassID) pairs already active — skip duplicates
+    const existingActive = new Set(
+      enrollments
+        .filter(r => (r['UserID'] === userId) &&
+          ((r['Status'] || '').toLowerCase().trim() !== 'inactive' &&
+           (r['Status'] || '').toLowerCase().trim() !== 'cancelled' &&
+           (r['Status'] || '').toLowerCase().trim() !== 'canceled'))
+        .map(r => r['ClassID'] || ''),
+    );
+
+    const baseHeaders = SHEET_HEADERS.enrollments.filter(h => h !== 'Fee');
+    const now = new Date().toISOString();
+    const sheets = await getUncachableGoogleSheetClient();
+
+    const created: string[] = [];
+    const skipped: string[] = [];
+
+    for (const classId of classIds) {
+      if (!classId) continue;
+      if (existingActive.has(classId)) { skipped.push(classId); continue; }
+
+      const subject = subjectMap.get(classId);
+      const teacherId = subject?.['TeacherID'] || '';
+      const teacher   = teacherId ? users.find(u => u.userId === teacherId) : undefined;
+
+      const enrollmentId = await generateTabId('ENR', sheetId, SHEET_TABS.enrollments);
+      const rowValues = baseHeaders.map(h => {
+        if (h === 'EnrollmentID') return enrollmentId;
+        if (h === 'UserID')       return userId;
+        if (h === 'Student Name') return student.name || '';
+        if (h === 'ClassID')      return classId;
+        if (h === 'ParentID')     return parentId;
+        if (h === 'Status')       return 'Active';
+        if (h === 'EnrolledAt')   return now;
+        if (h === 'TeacherID')    return teacherId;
+        if (h === 'Teacher Name') return subject?.['Teacher Name'] || teacher?.name || '';
+        if (h === 'TeacherEmail') return teacher?.email || '';
+        if (h === 'Zoom Link')    return '';
+        if (h === 'Class Type')   return subject?.['Type'] || '';
+        if (h === 'ClassDate')    return 'TBD';
+        if (h === 'ClassTime')    return subject?.['Time'] || 'TBD';
+        return '';
+      });
+      rowValues.push('Not Applicable'); // Fee column at end
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: sheetId,
+        range: `${SHEET_TABS.enrollments}!A1`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: [rowValues] },
+      });
+      created.push(classId);
+    }
+
+    res.json({ ok: true, created, skipped });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

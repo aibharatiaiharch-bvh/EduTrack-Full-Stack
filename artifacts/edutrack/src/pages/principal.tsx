@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { AppLayout } from "@/components/layout";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
@@ -749,6 +749,82 @@ const BLANK_STUDENT = {
   previousStudent: false, subjectsInterested: [] as string[], notes: "",
 };
 
+function ClassAssignDropdown({ subjects, onAssign }: {
+  subjects: any[]; onAssign: (classIds: string[]) => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  function toggle(id: string) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  async function submit() {
+    if (selected.length === 0) return;
+    setSaving(true);
+    try {
+      await onAssign(selected);
+      setSelected([]);
+      setOpen(false);
+    } finally { setSaving(false); }
+  }
+
+  function classLabel(s: any): string {
+    const name = s.Name || s["Name"] || "";
+    const day  = s.Days || s["Days"] || "";
+    const time = s.Time || s["Time"] || "";
+    return [name, day, time].filter(Boolean).join(" — ");
+  }
+
+  return (
+    <div className="relative inline-block" ref={ref}>
+      <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1" onClick={() => setOpen(o => !o)}>
+        <Plus className="w-3 h-3" /> Assign
+      </Button>
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-72 border rounded-md bg-popover shadow-lg">
+          <div className="max-h-60 overflow-y-auto p-1">
+            {subjects.length === 0 && (
+              <p className="text-xs text-muted-foreground px-2 py-2">No active classes available.</p>
+            )}
+            {subjects.map(s => {
+              const id = s.SubjectID || s["SubjectID"];
+              if (!id) return null;
+              return (
+                <label key={id} className="flex items-start gap-2 px-2 py-1.5 text-xs hover:bg-muted rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(id)}
+                    onChange={() => toggle(id)}
+                    className="accent-primary mt-0.5"
+                  />
+                  <span className="flex-1">{classLabel(s)}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="border-t p-2 flex justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => { setOpen(false); setSelected([]); }}>Cancel</Button>
+            <Button size="sm" className="h-7 px-2 text-xs" disabled={saving || selected.length === 0} onClick={submit}>
+              {saving ? "Saving…" : `Assign${selected.length ? ` (${selected.length})` : ""}`}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SubjectMultiSelect({ selected, onChange, subjects }: {
   selected: string[]; onChange: (v: string[]) => void; subjects: string[];
 }) {
@@ -883,7 +959,7 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [studentClasses, setStudentClasses] = useState<Record<string, string[]>>({});
+  const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
@@ -1104,7 +1180,7 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = studentClasses[s.userId]?.join(", ") || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
+                      const classes = studentClasses[s.userId] || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
