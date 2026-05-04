@@ -459,6 +459,92 @@ router.post('/enrollments/:row/override', async (req, res): Promise<void> => {
   }
 });
 
+// ─── PUT /api/enrollments/:row/change-class ─────────────────────────────────
+// Swap the ClassID on an existing enrollment row and refresh the
+// teacher / class-type / class-time cells to match the new subject.
+// Status / Fee / UserID / EnrolledAt are intentionally untouched.
+router.put('/enrollments/:row/change-class', async (req, res): Promise<void> => {
+  const spreadsheetId = getSheetId(req);
+  if (!spreadsheetId) { res.status(400).json({ error: 'Missing sheetId' }); return; }
+
+  const rowNum = parseInt(req.params.row, 10);
+  if (isNaN(rowNum) || rowNum < 2) { res.status(400).json({ error: 'Invalid row' }); return; }
+
+  const { classId, userId: expectedUserId } = req.body as { classId?: string; userId?: string };
+  if (!classId) { res.status(400).json({ error: 'classId is required' }); return; }
+
+  try {
+    const [subjects, users, enrollments] = await Promise.all([
+      readSubjectRows(spreadsheetId),
+      readUsersTab(spreadsheetId),
+      readEnrollmentRows(spreadsheetId),
+    ]);
+
+    const subject = subjects.find(s => (s['SubjectID'] || '') === classId);
+    if (!subject) { res.status(404).json({ error: 'Class not found' }); return; }
+
+    const current = enrollments.find(e => e._row === rowNum);
+    if (!current) { res.status(404).json({ error: 'Enrollment not found' }); return; }
+
+    const userId = current['UserID'] || '';
+
+    // Guard against row drift: client must confirm the row still belongs to the same student
+    if (expectedUserId && expectedUserId !== userId) {
+      res.status(409).json({
+        error: 'Enrollment row no longer matches this student — please refresh and try again',
+      });
+      return;
+    }
+
+    // No-op if same class
+    if ((current['ClassID'] || '') === classId) {
+      res.json({ ok: true, classId, unchanged: true }); return;
+    }
+
+    // Block duplicates: same student already actively enrolled in that class on a different row
+    const dup = enrollments.some(e =>
+      e._row !== rowNum &&
+      (e['UserID'] || '') === userId &&
+      (e['ClassID'] || '') === classId &&
+      normalizeStatus(e['Status']) === 'Active'
+    );
+    if (dup) { res.status(409).json({ error: 'Student is already enrolled in this class' }); return; }
+
+    const teacherId = subject['TeacherID'] || '';
+    const teacher   = teacherId ? users.find(u => u.userId === teacherId) : undefined;
+
+    const sheets = await getUncachableGoogleSheetClient();
+    const headerRes = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${TAB}!1:1` });
+    const headers: string[] = (headerRes.data.values?.[0] as string[]) || [];
+
+    // ClassID is essential — fail fast if the column header is missing
+    if (headers.indexOf('ClassID') < 0) {
+      res.status(500).json({ error: 'Enrollments tab is missing the ClassID column header' });
+      return;
+    }
+
+    const updates: Array<{ field: string; value: string }> = [
+      { field: 'ClassID',      value: classId },
+      { field: 'TeacherID',    value: teacherId },
+      { field: 'Teacher Name', value: subject['Teacher Name'] || teacher?.name || '' },
+      { field: 'TeacherEmail', value: teacher?.email || '' },
+      { field: 'Class Type',   value: subject['Type'] || '' },
+      { field: 'ClassTime',    value: subject['Time'] || 'TBD' },
+    ];
+
+    for (const { field, value } of updates) {
+      const idx = headers.indexOf(field);
+      if (idx >= 0) {
+        await updateCell(spreadsheetId, `${TAB}!${String.fromCharCode(65 + idx)}${rowNum}`, value);
+      }
+    }
+
+    res.json({ ok: true, classId });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── PUT /api/enrollments/:row/assign-teacher ───────────────────────────────
 router.put('/enrollments/:row/assign-teacher', async (req, res): Promise<void> => {
   const spreadsheetId = getSheetId(req);

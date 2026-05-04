@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { apiUrl } from "@/lib/api";
@@ -14,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import {
   GraduationCap, LogOut, ClipboardList, Users, UserCheck,
   UserPlus, RefreshCw, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  BookOpen, AlertTriangle, Plus, CheckCircle2, Upload,
+  BookOpen, AlertTriangle, Plus, CheckCircle2, Upload, X,
   Search, ChevronLeft, ChevronRight, CalendarDays, BarChart2, Settings as SettingsIcon,
 } from "lucide-react";
 
@@ -749,6 +750,84 @@ const BLANK_STUDENT = {
   previousStudent: false, subjectsInterested: [] as string[], notes: "",
 };
 
+function subjectOptionLabel(s: any): string {
+  const name  = s.Name || s["Name"] || "";
+  const day   = s.Days || s["Days"] || "";
+  const time  = s.Time || s["Time"] || "";
+  const tutor = s["Teacher Name"] || s.TeacherName || s.Teacher || "";
+  const type  = s.Type || s["Type"] || "";
+  return [name, day, time, type ? `(${type})` : "", tutor].filter(Boolean).join(" — ");
+}
+
+function StudentClassesEditor({
+  assignments, subjects, rowBusy, editable, onChange, onRemove, onAssign,
+}: {
+  assignments: { row: number; classId: string; label: string }[];
+  subjects: any[];
+  rowBusy: Record<number, boolean>;
+  editable: boolean;
+  onChange: (row: number, classId: string) => void;
+  onRemove: (row: number, classId: string) => void;
+  onAssign: (classIds: string[]) => Promise<void> | void;
+}) {
+  const sortedSubjects = [...subjects].sort((a, b) => {
+    const an = String(a.Name || a["Name"] || "").toLowerCase();
+    const bn = String(b.Name || b["Name"] || "").toLowerCase();
+    return an.localeCompare(bn);
+  });
+
+  if (assignments.length === 0 && !editable) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[260px]">
+      {assignments.map(a => {
+        const busy = !!rowBusy[a.row];
+        // Show current option even if it's not in the active subjects list (deleted/inactive class)
+        const inList = sortedSubjects.some(s => (s.SubjectID || s["SubjectID"]) === a.classId);
+        return (
+          <div key={a.row} className="flex items-center gap-1">
+            <select
+              value={a.classId}
+              disabled={!editable || busy}
+              onChange={(e) => {
+                if (e.target.value && e.target.value !== a.classId) onChange(a.row, e.target.value);
+              }}
+              className="text-xs h-7 px-1.5 border rounded bg-background flex-1 min-w-0 disabled:opacity-60"
+              title={a.label}
+            >
+              {!inList && <option value={a.classId}>{a.label || a.classId}</option>}
+              {sortedSubjects.map(s => {
+                const id = s.SubjectID || s["SubjectID"];
+                if (!id) return null;
+                return <option key={id} value={id}>{subjectOptionLabel(s)}</option>;
+              })}
+            </select>
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onRemove(a.row, a.classId)}
+                disabled={busy}
+                className="text-muted-foreground hover:text-destructive p-1 disabled:opacity-40"
+                aria-label="Remove class"
+                title="Remove class"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        );
+      })}
+      {editable && (
+        <div className="pt-0.5">
+          <ClassAssignDropdown subjects={subjects} onAssign={onAssign} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClassAssignDropdown({ subjects, onAssign }: {
   subjects: any[]; onAssign: (classIds: string[]) => Promise<void> | void;
 }) {
@@ -967,11 +1046,14 @@ function StudentsTab() {
   const [form, setForm] = useState({ ...BLANK_STUDENT });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
-  const [studentClasses, setStudentClasses] = useState<Record<string, string>>({});
+  type Assignment = { row: number; classId: string; label: string };
+  const [studentClasses, setStudentClasses] = useState<Record<string, Assignment[]>>({});
   const [subjectObjects,  setSubjectObjects]  = useState<any[]>([]);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("active");
   const [page,         setPage]         = useState(1);
+  const [rowBusy,      setRowBusy]      = useState<Record<number, boolean>>({});
+  const qc = useQueryClient();
 
   // Build "Subject (Day)" label from an enrollment row. The new schema has one
   // Subject row per (Class, Day), with ClassID like "SUB-ENG-TUE" — the day
@@ -991,22 +1073,24 @@ function StudentsTab() {
     try {
       const data = await apiFetch("/enrollments");
       if (!Array.isArray(data)) return;
-      const grouped = data.reduce((acc: Record<string, string[]>, enr: any) => {
+      const grouped: Record<string, Assignment[]> = {};
+      for (const enr of data) {
         const userId = enr.UserID || enr["UserID"];
-        if (!userId) return acc;
+        if (!userId) continue;
         const status = String(enr.Status || "").toLowerCase();
-        if (status && status !== "active") return acc;
-        const label = enrollmentLabel(enr);
-        if (!label) return acc;
-        if (!acc[userId]) acc[userId] = [];
-        acc[userId].push(label);
-        return acc;
-      }, {});
-      const mapped = Object.fromEntries(
-        Object.entries(grouped).map(([userId, names]) => [userId, names.join(", ")])
-      );
-      setStudentClasses(mapped);
+        if (status && status !== "active") continue;
+        const classId = String(enr.ClassID || enr["ClassID"] || "");
+        const row = Number(enr._row);
+        if (!classId || !row) continue;
+        if (!grouped[userId]) grouped[userId] = [];
+        grouped[userId].push({ row, classId, label: enrollmentLabel(enr) });
+      }
+      setStudentClasses(grouped);
     } catch { /* ignore */ }
+  }
+
+  function invalidateCalendar() {
+    qc.invalidateQueries({ queryKey: ["calendar"] });
   }
 
   async function assignClasses(userId: string, classIds: string[]) {
@@ -1015,7 +1099,43 @@ function StudentsTab() {
       method: "POST",
       body: JSON.stringify({ userId, classIds }),
     });
+    invalidateCalendar();
     await load();
+  }
+
+  async function changeStudentClass(row: number, userId: string, classId: string) {
+    if (!row || !classId) return;
+    setRowBusy(prev => ({ ...prev, [row]: true }));
+    try {
+      await apiFetch(`/enrollments/${row}/change-class`, {
+        method: "PUT",
+        body: JSON.stringify({ classId, userId }),
+      });
+      invalidateCalendar();
+      await loadAllStudentClasses();
+    } catch (e: any) {
+      alert(e?.message || "Could not change class");
+    } finally {
+      setRowBusy(prev => { const n = { ...prev }; delete n[row]; return n; });
+    }
+  }
+
+  async function removeStudentClass(row: number, userId: string, classId: string) {
+    if (!row) return;
+    if (!window.confirm("Remove this class from the student?")) return;
+    setRowBusy(prev => ({ ...prev, [row]: true }));
+    try {
+      await apiFetch(`/enrollments/${row}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ userId, classId }),
+      });
+      invalidateCalendar();
+      await loadAllStudentClasses();
+    } catch (e: any) {
+      alert(e?.message || "Could not remove class");
+    } finally {
+      setRowBusy(prev => { const n = { ...prev }; delete n[row]; return n; });
+    }
   }
 
   async function load() {
@@ -1188,27 +1308,28 @@ function StudentsTab() {
                   </thead>
                   <tbody className="divide-y">
                     {paged.map((s) => {
-                      const classes = studentClasses[s.userId] || s.ClassID || s.classId || s.classes || s.subjects || s.enrolledClasses || "—";
+                      const assignments = studentClasses[s.userId] || [];
+                      const isActive = s.status?.toLowerCase() === "active";
                       return (
                         <Fragment key={s.userId}>
                           <tr className="hover:bg-muted/20">
-                            <td className="px-3 py-2.5 font-medium">{s.name || s.displayName || s.email || "Unknown"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground">{s.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground">{s.currentGrade ? s.currentGrade.toString().replace(/[^\d]/g, "") || s.currentGrade : "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground">{s.currentSchool || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground">{s.parentEmail || "—"}</td>
-                            <td className="px-3 py-2.5 text-muted-foreground text-xs">
-                              <div className="flex items-center gap-2">
-                                <span className="flex-1">{classes}</span>
-                                {s.status?.toLowerCase() === "active" && (
-                                  <ClassAssignDropdown
-                                    subjects={subjectObjects}
-                                    onAssign={(classIds) => assignClasses(s.userId, classIds)}
-                                  />
-                                )}
-                              </div>
+                            <td className="px-3 py-2.5 font-medium align-top">{s.name || s.displayName || s.email || "Unknown"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.email || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.currentGrade ? s.currentGrade.toString().replace(/[^\d]/g, "") || s.currentGrade : "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.currentSchool || "—"}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground align-top">{s.parentEmail || "—"}</td>
+                            <td className="px-3 py-2.5 align-top">
+                              <StudentClassesEditor
+                                assignments={assignments}
+                                subjects={subjectObjects}
+                                rowBusy={rowBusy}
+                                editable={isActive}
+                                onChange={(row, classId) => changeStudentClass(row, s.userId, classId)}
+                                onRemove={(row, classId) => removeStudentClass(row, s.userId, classId)}
+                                onAssign={(classIds) => assignClasses(s.userId, classIds)}
+                              />
                             </td>
-                            <td className="px-3 py-2.5"><StatusBadge status={s.status} /></td>
+                            <td className="px-3 py-2.5 align-top"><StatusBadge status={s.status} /></td>
                           </tr>
                         </Fragment>
                       );
