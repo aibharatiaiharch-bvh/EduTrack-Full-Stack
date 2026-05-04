@@ -787,6 +787,12 @@ function ClassAssignDropdown({ subjects, onAssign }: {
     return [name, tutor ? `Tutor: ${tutor}` : "", day, time].filter(Boolean).join(" — ");
   }
 
+  const sortedSubjects = [...subjects].sort((a, b) => {
+    const an = String(a.Name || a["Name"] || "").toLowerCase();
+    const bn = String(b.Name || b["Name"] || "").toLowerCase();
+    return an.localeCompare(bn);
+  });
+
   return (
     <div className="relative inline-block" ref={ref}>
       <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1" onClick={() => setOpen(o => !o)}>
@@ -798,7 +804,7 @@ function ClassAssignDropdown({ subjects, onAssign }: {
             {subjects.length === 0 && (
               <p className="text-xs text-muted-foreground px-2 py-2">No active classes available.</p>
             )}
-            {subjects.map(s => {
+            {sortedSubjects.map(s => {
               const id = s.SubjectID || s["SubjectID"];
               if (!id) return null;
               return (
